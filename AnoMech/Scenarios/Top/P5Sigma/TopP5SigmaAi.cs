@@ -12,11 +12,12 @@ namespace AnoMech.Scenarios.Top.P5Sigma;
 // positions with state-aware ones (NewNorthA / SpinnerRotation / etc.) as
 // they harden the choreography. See TopP5DeltaAi for the canonical shape
 // once choreography matures (named methods, Apply-chained transforms).
-public sealed class TopP5SigmaAi : IScenarioAi<TopP5SigmaState>
+public class TopP5SigmaAi : IScenarioAi<TopP5SigmaState>
 {
-    public string Name => "Standard";
+    public virtual string Name => "Standard";
+    public virtual string? Group => "美服";
 
-    private TopP5SigmaState state = null!;
+    protected TopP5SigmaState state = null!;
     private RoleList markingsOrder = null!;
 
     public void Run(TopP5SigmaState s, SimWorld world)
@@ -24,10 +25,7 @@ public sealed class TopP5SigmaAi : IScenarioAi<TopP5SigmaState>
         state = s;
         var ai = new AiManager(world);
 
-        var handBait = state.DynamisTargets.Random(2, state.HelloWorldTargets.List);
-        var hWJumpsOrder = RoleList.AllExcept(world.Party, state.HelloWorldTargets.List.Concat(handBait.List).ToArray());
-        markingsOrder = new(world.Party, [handBait[0], hWJumpsOrder[0], handBait[1], hWJumpsOrder[1],
-                        hWJumpsOrder[2], hWJumpsOrder[3], state.HelloWorldTargets[0], state.HelloWorldTargets[1]]);
+        markingsOrder = BuildMarkingsOrder(world);
 
         ai.Move(0.5f, InitialPositions);
         ai.Move(14.1f, LineupNextToOmegaM);
@@ -35,12 +33,24 @@ public sealed class TopP5SigmaAi : IScenarioAi<TopP5SigmaState>
         ai.Move(32f, KnockbackPrePosition);
         ai.Move(36f, KnockbackPosition, jitter: 0.1f, arrivalTime: 39.5f);
         ai.Move(41.5f, TowerPositions, jitter: 0.1f);
-        ai.Automarker(43.5f, MarkerMapping);
+        if (state.Markers == MarkerMode.System)
+            ai.Automarker(43.5f, MarkerMapping);
+        else
+            world.Events.Add(49f, () => markingsOrder = HandPlacedSigns.Reorder(
+                                 world.Party, markingsOrder, HandPlacedPlan, state.HelloWorldTargets.List));
         ai.Move(44f, InitialPositions, jitter: 3f);
         ai.Move(50f, RearLasersPrePosition, arrivalTime: 56.5f);
         ai.Move(58f, AdjustForLegs, arrivalTime: 60.5f);
         ai.Move(62f, HelloWorldPositions, arrivalTime: 66.5f);
         ai.Move(73f, InitialPositions);
+    }
+
+    protected virtual RoleList BuildMarkingsOrder(SimWorld world)
+    {
+        var handBait = state.DynamisTargets.Random(2, state.HelloWorldTargets.List);
+        var hWJumpsOrder = RoleList.AllExcept(world.Party, state.HelloWorldTargets.List.Concat(handBait.List).ToArray());
+        return new(world.Party, [handBait[0], hWJumpsOrder[0], handBait[1], hWJumpsOrder[1],
+                        hWJumpsOrder[2], hWJumpsOrder[3], state.HelloWorldTargets[0], state.HelloWorldTargets[1]]);
     }
 
     private IAiMove InitialPositions()
@@ -57,7 +67,7 @@ public sealed class TopP5SigmaAi : IScenarioAi<TopP5SigmaState>
         ).NaturalOrder();
     }
 
-    private IAiMove LineupNextToOmegaM()
+    protected virtual IAiMove LineupNextToOmegaM()
     {
         return AiMove.Create(
             new(-2, -18), new(2, -18),
@@ -85,7 +95,7 @@ public sealed class TopP5SigmaAi : IScenarioAi<TopP5SigmaState>
         .ApplyPositions(FarGlitchWaveCannonAdjustment, state.NewNorthA.Apply);
     }
     
-    private IReadOnlyList<PartyRole> WaveCannonAssignments()
+    protected IReadOnlyList<PartyRole> WaveCannonAssignments()
     {
         return [
             state.FullPair(0).left,
@@ -99,7 +109,7 @@ public sealed class TopP5SigmaAi : IScenarioAi<TopP5SigmaState>
         ];
     }
 
-    private IAiMove KnockbackPrePosition()
+    protected virtual IAiMove KnockbackPrePosition()
     {
         return AiMove.Create(
             new(0f, -4f),     // N (absolute)
@@ -116,7 +126,7 @@ public sealed class TopP5SigmaAi : IScenarioAi<TopP5SigmaState>
     }
     
 
-    private IAiMove KnockbackPosition()
+    protected virtual IAiMove KnockbackPosition()
     {
         return (state.GlitchType == GlitchType.Mid
                     ? AiMove.Create(
@@ -145,7 +155,7 @@ public sealed class TopP5SigmaAi : IScenarioAi<TopP5SigmaState>
                .ApplyPositions(state.AdjustedNorthA.Apply);
     }
 
-    private IAiMove TowerPositions()
+    protected virtual IAiMove TowerPositions()
     {
         return (state.GlitchType == GlitchType.Mid
                     ? AiMove.Create(
@@ -174,20 +184,29 @@ public sealed class TopP5SigmaAi : IScenarioAi<TopP5SigmaState>
                .ApplyPositions(state.AdjustedNorthA.Apply);
     }
 
+    // Slot 0-2 are the three sent to Omega F (NW / N / NE); slot 5 guides Distant
+    // World from due south. Slots 3-4 and both debuff holders go unmarked, which is
+    // what a party actually places by hand.
+    private static readonly (Sign Sign, int Slot)[] HandPlacedPlan =
+    [
+        (Sign.Attack1, 0), (Sign.Attack2, 1), (Sign.Attack3, 2), (Sign.Attack4, 5),
+    ];
+
     private Dictionary<PartyRole, Sign> MarkerMapping()
     {
         return new Dictionary<PartyRole, Sign>()
         {
-            [markingsOrder[0]] = Sign.Bind1,
-            [markingsOrder[1]] = Sign.Attack1,
-            [markingsOrder[2]] = Sign.Bind2,
-            [markingsOrder[3]] = Sign.Attack2,
-            [markingsOrder[4]] = Sign.Attack3,
+            [markingsOrder[0]] = Sign.Attack1,
+            [markingsOrder[1]] = Sign.Attack2,
+            [markingsOrder[2]] = Sign.Attack3,
+            [markingsOrder[3]] = Sign.Bind1,
+            [markingsOrder[4]] = Sign.Bind2,
             [markingsOrder[5]] = Sign.Attack4,
             [markingsOrder[6]] = Sign.Triangle,
             [markingsOrder[7]] = Sign.Cross,
         };
     }
+
 
     private IAiMove RearLasersPrePosition()
     {

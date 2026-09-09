@@ -34,6 +34,8 @@ namespace AnoMech.Scenarios.Top.P5Sigma
 
         public RoleList HelloWorldTargets { get; }
 
+        public MarkerMode Markers { get; }
+
         public readonly Tower?[] Towers;
 
         public int FirstMissing;
@@ -41,6 +43,7 @@ namespace AnoMech.Scenarios.Top.P5Sigma
 
         public TopP5SigmaState(SimParty party, TopP5SigmaStateOverrides overrides)
         {
+            Markers = overrides.Markers;
             Order = RoleList.Random(party);
             DynamisTargets = new RoleListBuilder
             {

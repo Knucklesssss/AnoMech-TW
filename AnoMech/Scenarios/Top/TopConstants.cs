@@ -279,7 +279,9 @@ public static class TopConstants
         public const uint PlaystationTr = 417;
         public const uint WaveCannon = 244;
 
-        public static readonly IReadOnlyList<uint> Playstation = [PlaystationX, PlaystationSq, PlaystationO, PlaystationTr];
+        // Index is the tether-pair number, which every strat maps straight onto a
+        // north-to-south row, so this has to be the order strats call out: O X Tr Sq.
+        public static readonly IReadOnlyList<uint> Playstation = [PlaystationO, PlaystationX, PlaystationTr, PlaystationSq];
     }
 
     public static class KnockbackId

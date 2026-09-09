@@ -18,7 +18,7 @@ public sealed class TopP5SigmaScenario : IScenario
     public void DrawSettings() => settingsWindow.Draw();
     private readonly TopP5SigmaSettingsWindow settingsWindow = new();
 
-    public IReadOnlyList<IScenarioAi> AiStrats => [new TopP5SigmaAi()];
+    public IReadOnlyList<IScenarioAi> AiStrats => [new TopP5SigmaAi(), new TopP5SigmaTuuuflessAi()];
 
     private TopUtils topUtils = null!;
 

@@ -31,13 +31,22 @@ https://raw.githubusercontent.com/Knucklesssss/AnoMech-TW/api13-tw/repo.json
 **可用的場景（6 個）**
 
 - 絕歐米茄（The Omega Protocol）
-  - P2 Party Synergy
-  - P5 Delta
-  - P5 Sigma
+  - P2 Party Synergy — 美服 / 日服（tuuufless）兩套戰術可切換
+  - P5 Delta — 攻略法為 Kinda Awk，日服攻略採用同一套，故不分地區
+  - P5 Sigma — 美服 / 日服（tuuufless）兩套戰術可切換
   - P5 Omega
   - P6 Exasquares / Wave Cannon 2
 - 絕神兵（The Weapon's Refrain）
   - Ultimate Predation
+
+**你好世界的標記方式（P5 西格瑪 / P5 歐米茄）**
+
+設定視窗裡可選：
+
+- **系統標**：插件自動把八個人全部掛上標記，適合邊學邊看。
+- **玩家手標**：插件完全不掛標，改成**讀你自己在遊戲裡放的標記**來決定誰跑哪個位置——
+  攻擊 1～4 與鎖鏈 1・2 各自對應固定的站位，可以拿來練你們自己的指派。沒放的標記會沿用
+  插件原本挑的人，所以只放一半也跑得完。你好世界的持有者不受標記影響，他們的站位由機制決定。
 
 **已知限制**
 
@@ -45,8 +54,11 @@ https://raw.githubusercontent.com/Knucklesssss/AnoMech-TW/api13-tw/repo.json
   NPC、技能與特效資料，無法移植。上游有 5 個 DMU 場景，本分支全部移除。
 - **副本不會正式「開始」**，結界可能不會降下。負責送出開始事件的
   `EventFramework.ProcessDirectorUpdate` 在繁中版的執行檔上還沒找到正確的簽章，該呼叫會被跳過。
-- **實測非常有限。** 目前只完整跑過 TOP P5 Delta。其餘 5 個場景尚未有人驗證。
-- 上游原本就有的問題同樣存在（連線距離判定粗略、Optical Unit 的直線 AOE 不會顯示等）。
+- **實測有限。** 已在遊戲中驗證過 TOP P2 Party Synergy、P5 Delta、P5 Sigma。
+  P5 Omega、P6 與絕神兵尚未有人完整驗證。
+- 隊伍列表的順序無法調成 `MT ST H1 H2 D1 D2 D3 D4`：遊戲會把本機玩家固定畫在第一列，
+  所以除非你打 MT，你自己那一列一定在最上面，其餘七人才依職位排序。
+- 上游原本就有的問題部分仍在（例如連線距離判定粗略）。
 
 **與伺服器的關係**
 
@@ -70,6 +82,15 @@ https://raw.githubusercontent.com/Knucklesssss/AnoMech-TW/api13-tw/repo.json
   修正 `GetEventObjectByIndex` 過短而會誤配到錯誤位址的簽章
 - 介面繁體中文化。機制與型態名稱維持英文；副本名稱改為直接讀取客戶端自身的
   `ContentFinderCondition` 資料表，因此顯示的一定是官方用語
+- 依 [tuuufless 的攻略](https://ffxiv-top.tsuki-sakura.workers.dev/guide)新增日服戰術：
+  TOP P2 Party Synergy（開場兩列、同組同符號靠南換邊、分攤換離眼睛較遠者）與
+  TOP P5 Sigma（在兩隻手臂中間排隊、依優先度分派歐米茄 F 側三人、擊退後看左右按
+  雙人塔→單人塔踩塔）
+- P5 西格瑪與 P5 歐米茄新增「玩家手標」模式：插件不掛標，改讀玩家放置的隊伍標記決定站位
+- 修正 P2 的 Optical Unit 生成在 `NewNorthA` 的**反方向**且背對場地，導致 4:4 分散整組
+  轉了 180°、直線雷射判定框也永遠掃不到人（同一份程式碼中只有這一處的 Z 軸符號寫反）
+- 修正 PS 符號陣列順序（`× □ 〇 ▽` → `〇 × ▽ □`），該陣列的索引就是連線組別編號，
+  順序錯會讓 P2 與 P5 西格瑪每一排掛到錯的符號
 
 ## 授權
 

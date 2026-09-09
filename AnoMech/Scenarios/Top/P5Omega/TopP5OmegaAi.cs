@@ -27,10 +27,16 @@ public class TopP5OmegaAi : IScenarioAi<TopP5OmegaState>
         ai.Move(0f, InitialPositions);
         ai.Move(20f, Dodge(0), arrivalTime: 24f);
         ai.Move(24f, Dodge(1), arrivalTime: 28f);
-        ai.Automarker(28f, () => HelloWorldMarkers(helloWorld1));
+        if (state.Markers == MarkerMode.System)
+            ai.Automarker(28f, () => HelloWorldMarkers(helloWorld1));
+        else
+            world.Events.Add(31f, () => helloWorld1 = ReadHandPlacedSigns(world.Party, helloWorld1));
         ai.Move(32f, HelloWorld1Pos, jitter: 0.1f, arrivalTime: 41f);
         world.Events.Add(46f, () => helloWorld2 = solveHelloWorld2(world.Party));
-        ai.Automarker(47f, () => HelloWorldMarkers(helloWorld2));
+        if (state.Markers == MarkerMode.System)
+            ai.Automarker(47f, () => HelloWorldMarkers(helloWorld2));
+        else
+            world.Events.Add(52f, () => helloWorld2 = ReadHandPlacedSigns(world.Party, helloWorld2));
         ai.Move(48f, GatherMiddle);
         ai.Move(53f, HelloWorld2Pos, arrivalTime: 57f);
         ai.Move(62f, InitialPositions);
@@ -58,6 +64,21 @@ public class TopP5OmegaAi : IScenarioAi<TopP5OmegaState>
                                AdjustSafeCardinal(attack),
                                AdjustSafeSpot(attack)
                            );
+    }
+
+    // Chain 1-2 take the monitors (first list) or the beetle tethers (second); Attack
+    // 1-4 are everyone left who is not holding this round's Hello World.
+    private static readonly (Sign Sign, int Slot)[] HandPlacedPlan =
+    [
+        (Sign.Bind1, 2), (Sign.Bind2, 3),
+        (Sign.Attack1, 4), (Sign.Attack2, 5), (Sign.Attack3, 6), (Sign.Attack4, 7),
+    ];
+
+    private RoleList? ReadHandPlacedSigns(SimParty party, RoleList? fallback)
+    {
+        return fallback == null
+                   ? null
+                   : HandPlacedSigns.Reorder(party, fallback, HandPlacedPlan, [fallback[0], fallback[1]]);
     }
 
     private Dictionary<PartyRole, Sign> HelloWorldMarkers(RoleList? list)

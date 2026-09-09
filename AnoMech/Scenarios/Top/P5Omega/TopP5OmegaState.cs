@@ -23,8 +23,11 @@ public sealed class TopP5OmegaState
 
     public MonitorSide MonitorSide { get; }
 
+    public MarkerMode Markers { get; }
+
     public TopP5OmegaState(SimParty party, TopP5OmegaStateOverrides overrides)
     {
+        Markers = overrides.Markers;
         var firstAttackDirection = rng.NextIntercardinal();
         var secondAttackDirection = firstAttackDirection.Rotate(rng.NextSign() * 2);
         AttackDirections = [firstAttackDirection, firstAttackDirection.Flip(), secondAttackDirection, secondAttackDirection.Flip()];

@@ -15,4 +15,5 @@ public sealed class TopP5SigmaStateOverrides
     public OmegaAttack? OmegaFForm { get; set; }
     public HelloWorldOption HelloWorld { get; set; }
     public bool? Dynamis { get; set; }
+    public MarkerMode Markers { get; set; } = MarkerMode.System;
 }

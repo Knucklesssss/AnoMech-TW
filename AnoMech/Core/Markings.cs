@@ -48,6 +48,15 @@ internal static unsafe class Markings
         ctrl->Markers[idx] = target;
     }
 
+    public static GameObjectId Get(Sign sign)
+    {
+        var idx = (int)sign;
+        if (idx < 0 || idx >= SlotCount) return default;
+        var ctrl = MarkingController.Instance();
+        if (ctrl == null) return default;
+        return ctrl->Markers[idx];
+    }
+
     public static void Clear(Sign sign)
     {
         var idx = (int)sign;

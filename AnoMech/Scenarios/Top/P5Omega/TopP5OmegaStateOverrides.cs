@@ -19,4 +19,5 @@ public sealed class TopP5OmegaStateOverrides
     public bool? ExtraDynamis { get; set; }
     public HelloWorldOrderOption HelloWorldOrder { get; set; }
     public HelloWorldTypeOption HelloWorldType { get; set; }
+    public MarkerMode Markers { get; set; } = MarkerMode.System;
 }

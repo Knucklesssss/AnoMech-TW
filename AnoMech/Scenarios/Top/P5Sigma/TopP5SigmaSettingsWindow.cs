@@ -23,6 +23,7 @@ public sealed class TopP5SigmaSettingsWindow
             DrawOmegaFForm();
             DrawHelloWorld();
             DrawDynamis();
+            DrawMarkers();
             SettingsGrid.End();
         }
     }
@@ -39,6 +40,16 @@ public sealed class TopP5SigmaSettingsWindow
         Overrides.OmegaFForm = null;
         Overrides.HelloWorld = HelloWorldOption.Auto;
         Overrides.Dynamis = null;
+        Overrides.Markers = MarkerMode.System;
+    }
+
+    private void DrawMarkers()
+    {
+        var v = Overrides.Markers;
+        SettingsGrid.Row("標記方式：");
+        if (ImGui.RadioButton("系統標##marks", v == MarkerMode.System)) Overrides.Markers = MarkerMode.System;
+        ImGui.SameLine();
+        if (ImGui.RadioButton("玩家手標##marks", v == MarkerMode.Manual)) Overrides.Markers = MarkerMode.Manual;
     }
 
 #if DEBUG

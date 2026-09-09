@@ -7,9 +7,10 @@ namespace AnoMech.Scenarios.Top.P2PartySynergy;
 
 public class TopP2PartySynergyAi : IScenarioAi<TopP2PartySynergyState>
 {
-    public string Name => "Standard";
+    public virtual string Name => "Standard";
+    public virtual string? Group => "美服";
 
-    private TopP2PartySynergyState state = null!;
+    protected TopP2PartySynergyState state = null!;
 
     public void Run(TopP2PartySynergyState s, SimWorld world)
     {
@@ -22,7 +23,7 @@ public class TopP2PartySynergyAi : IScenarioAi<TopP2PartySynergyState>
         ai.Move(30f, StackPositions, arrivalTime: 33f);
     }
 
-    private IAiMove CongaLine()
+    protected virtual IAiMove CongaLine()
     {
         return AiMove.Create(
             new(-1.2f, 2),
@@ -113,7 +114,7 @@ public class TopP2PartySynergyAi : IScenarioAi<TopP2PartySynergyState>
         move.Multiply(mul);
     }
 
-    private void SwapForCongaOrder(IAiRoles s)
+    protected virtual void SwapForCongaOrder(IAiRoles s)
     {
         for (int i = 0; i < 4; i++)
         {
@@ -143,7 +144,7 @@ public class TopP2PartySynergyAi : IScenarioAi<TopP2PartySynergyState>
     }
 
 
-    private void AdjustForStacks(IAiRoles s)
+    protected virtual void AdjustForStacks(IAiRoles s)
     {
         var pos0 = s.PositionOf(state.Stacks[0]);
         var pos1 = s.PositionOf(state.Stacks[1]);

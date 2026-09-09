@@ -26,6 +26,7 @@ public sealed class TopP5OmegaSettingsWindow
             DrawExtraDynamis();
             DrawHelloWorldOrder();
             DrawHelloWorldType();
+            DrawMarkers();
             SettingsGrid.End();
         }
         DrawForceButtons();
@@ -43,6 +44,7 @@ public sealed class TopP5OmegaSettingsWindow
         Overrides.ExtraDynamis = null;
         Overrides.HelloWorldOrder = HelloWorldOrderOption.Auto;
         Overrides.HelloWorldType = HelloWorldTypeOption.Auto;
+        Overrides.Markers = MarkerMode.System;
     }
 
     private static void DrawAttack(string label, string suffix,
@@ -127,6 +129,15 @@ public sealed class TopP5OmegaSettingsWindow
         if (ImGui.RadioButton("近##hwt", v == HelloWorldTypeOption.Near)) Overrides.HelloWorldType = HelloWorldTypeOption.Near;
         ImGui.SameLine();
         if (ImGui.RadioButton("遠##hwt",  v == HelloWorldTypeOption.Far))  Overrides.HelloWorldType = HelloWorldTypeOption.Far;
+    }
+
+    private void DrawMarkers()
+    {
+        var v = Overrides.Markers;
+        SettingsGrid.Row("標記方式：");
+        if (ImGui.RadioButton("系統標##marks", v == MarkerMode.System)) Overrides.Markers = MarkerMode.System;
+        ImGui.SameLine();
+        if (ImGui.RadioButton("玩家手標##marks", v == MarkerMode.Manual)) Overrides.Markers = MarkerMode.Manual;
     }
 
     private void DrawForceButtons()
