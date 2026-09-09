@@ -21,7 +21,7 @@
 在遊戲中打 `/xlsettings` → **實驗性**分頁 → 自訂插件庫，加入這條網址後按存檔：
 
 ```
-https://raw.githubusercontent.com/zcx599e692/AnoMech-TW/api13-tw/repo.json
+https://raw.githubusercontent.com/Knucklesssss/AnoMech-TW/api13-tw/repo.json
 ```
 
 接著 `/xlplugins` 就能搜尋到 **AnoMech (TC)** 並安裝。之後有更新也會自動收到。
