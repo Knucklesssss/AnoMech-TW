@@ -51,7 +51,7 @@ public unsafe class MainWindow : Window, IDisposable
     // Labels are the canonical raid role abbreviations: MT/OT tanks, H1/H2 healers
     // (H1 = regen), M1/M2 melee DPS, R1/R2 ranged DPS (R1 = phys).
     private static readonly string[] RoleLabels =
-        ["Auto", "MT", "OT", "H1", "H2", "M1", "M2", "R1", "R2"];
+        ["自動", "MT", "OT", "H1", "H2", "M1", "M2", "R1", "R2"];
 
 #if DEBUG
     private readonly DebugMenu debugMenu;
@@ -85,7 +85,7 @@ public unsafe class MainWindow : Window, IDisposable
             Icon = FontAwesomeIcon.Cog,
             IconOffset = new Vector2(2f, 1f),
             Click = _ => plugin.ToggleConfigUi(),
-            ShowTooltip = () => ImGui.SetTooltip("Settings"),
+            ShowTooltip = () => ImGui.SetTooltip("設定"),
         });
 #if DEBUG
         debugMenu = new DebugMenu(plugin);
@@ -161,7 +161,7 @@ public unsafe class MainWindow : Window, IDisposable
     {
         if (_leftPanelOpen)
         {
-            ImGui.TextUnformatted("Scenarios");
+            ImGui.TextUnformatted("場景");
             ImGui.SameLine();
             if (ImGui.SmallButton("<##collapse")) _leftPanelOpen = false;
             ImGui.Separator();
@@ -213,7 +213,7 @@ public unsafe class MainWindow : Window, IDisposable
     {
         if (_selectedScenario == null)
         {
-            ImGui.TextDisabled("Select a scenario");
+            ImGui.TextDisabled("請選擇場景");
             return;
         }
 
@@ -233,48 +233,48 @@ public unsafe class MainWindow : Window, IDisposable
         var hasStrat = HasStartableStrat();
         var canStart = envReady && hasStrat;
         ImGui.BeginDisabled(!canStart);
-        if (ImGui.Button("Start")) game.RunScenario(_selectedScenario, _roleOverride, _selectedStrat, _selectedWaymark);
+        if (ImGui.Button("開始##start")) game.RunScenario(_selectedScenario, _roleOverride, _selectedStrat, _selectedWaymark);
         ImGui.EndDisabled();
         if (!canStart && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
         {
             ImGui.SetTooltip(!inInn
-                ? "Scenarios can only be started from an inn."
+                ? "場景只能在旅館中開始。"
                 : busy
-                    ? "Cannot start while you are busy (cutscene, NPC event, crafting, trading, zoning, etc.)."
-                    : "No strat available for this region yet.");
+                    ? "忙碌中無法開始（過場動畫、NPC 事件、製作、交易、區域切換等）。"
+                    : "這個地區目前還沒有可用的戰術。");
         }
         ImGui.SameLine();
-        if (ImGui.Button("Reset")) game.Reset();
+        if (ImGui.Button("重置##reset")) game.Reset();
         if (game.World.Map.IsInInstance)
         {
             ImGui.SameLine();
-            if (ImGui.Button("Leave")) game.Leave();
+            if (ImGui.Button("離開##leave")) game.Leave();
         }
 
         if (_selectedScenario.SupportsSolo)
         {
             ImGui.BeginDisabled(!envReady);
-            if (ImGui.Button("Start Solo")) game.RunScenario(_selectedScenario, _roleOverride, selectedAi: null, _selectedWaymark);
+            if (ImGui.Button("單人開始##startsolo")) game.RunScenario(_selectedScenario, _roleOverride, selectedAi: null, _selectedWaymark);
             ImGui.EndDisabled();
             if (!envReady && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
             {
                 ImGui.SetTooltip(!inInn
-                    ? "Scenarios can only be started from an inn."
-                    : "Cannot start while you are busy (cutscene, NPC event, crafting, trading, zoning, etc.).");
+                    ? "場景只能在旅館中開始。"
+                    : "忙碌中無法開始（過場動畫、NPC 事件、製作、交易、區域切換等）。");
             }
         }
 
         var god = game.GodMode;
-        if (ImGui.Checkbox("God mode", ref god)) game.GodMode = god;
+        if (ImGui.Checkbox("無敵模式##godmode", ref god)) game.GodMode = god;
 
 #if DEBUG
         debugMenu.DrawSpeedControl();
 #endif
 
-        if (game.Paused) ImGui.TextDisabled("(scenario paused — press Reset to clear)");
+        if (game.Paused) ImGui.TextDisabled("（場景已暫停 —— 按「重置」清除）");
 
         ImGui.Spacing();
-        if (ImGui.CollapsingHeader("Scenario config", ImGuiTreeNodeFlags.DefaultOpen))
+        if (ImGui.CollapsingHeader("場景設定##scenariocfg", ImGuiTreeNodeFlags.DefaultOpen))
         {
             ImGui.Indent();
             _selectedScenario.DrawSettings();
@@ -283,7 +283,7 @@ public unsafe class MainWindow : Window, IDisposable
 
 #if DEBUG
         ImGui.Spacing();
-        if (ImGui.CollapsingHeader("Debug"))
+        if (ImGui.CollapsingHeader("偵錯##debug"))
         {
             debugMenu.DrawDebugContent();
         }
@@ -303,7 +303,7 @@ public unsafe class MainWindow : Window, IDisposable
         var labels = new string[presets.Count];
         for (var i = 0; i < presets.Count; i++) labels[i] = presets[i].Name;
 
-        ImGui.TextUnformatted("Waymarks:");
+        ImGui.TextUnformatted("場地標記：");
         ImGui.SameLine();
         ImGui.SetNextItemWidth(180);
         if (ImGui.Combo("##waymarks", ref _selectedWaymark, labels, labels.Length)
@@ -314,7 +314,7 @@ public unsafe class MainWindow : Window, IDisposable
     private void DrawRoleSelector()
     {
         var idx = _roleOverride is { } role ? (int)role + 1 : 0;
-        ImGui.TextUnformatted("Select your Role:");
+        ImGui.TextUnformatted("選擇你的職能：");
         ImGui.SameLine();
         ImGui.SetNextItemWidth(120);
         if (ImGui.Combo("##role", ref idx, RoleLabels, RoleLabels.Length))
@@ -339,7 +339,7 @@ public unsafe class MainWindow : Window, IDisposable
         _selectedStrat = Math.Clamp(_selectedStrat, 0, strats.Count - 1);
         var labels = new string[strats.Count];
         for (var i = 0; i < strats.Count; i++) labels[i] = strats[i].Name;
-        ImGui.TextUnformatted("Select Strat:");
+        ImGui.TextUnformatted("選擇戰術：");
         ImGui.SameLine();
         ImGui.SetNextItemWidth(280);
         ImGui.Combo("##strat", ref _selectedStrat, labels, labels.Length);
@@ -353,7 +353,7 @@ public unsafe class MainWindow : Window, IDisposable
         if (!GroupsContain(groups, _selectedStratGroup))
             _selectedStratGroup = groups[0];
 
-        ImGui.TextUnformatted("Region:");
+        ImGui.TextUnformatted("地區：");
         for (var i = 0; i < groups.Count; i++)
         {
             ImGui.SameLine();
@@ -374,12 +374,12 @@ public unsafe class MainWindow : Window, IDisposable
         for (var i = 0; i < strats.Count; i++)
             if (strats[i].Group == _selectedStratGroup) filtered.Add(i);
 
-        ImGui.TextUnformatted("Select Strat:");
+        ImGui.TextUnformatted("選擇戰術：");
         ImGui.SameLine();
         if (filtered.Count == 0)
         {
             _selectedStrat = -1;
-            ImGui.TextDisabled("(no strats for this region yet)");
+            ImGui.TextDisabled("（這個地區目前還沒有戰術）");
             return;
         }
 
@@ -414,8 +414,8 @@ public unsafe class MainWindow : Window, IDisposable
     private void DrawLocationHint()
     {
         if (ZoneSession.IsInInn()) return;
-        ImGui.TextDisabled("Scenarios only run in an inn");
+        ImGui.TextDisabled("場景只能在旅館中執行");
         ImGui.SameLine();
-        ImGuiComponents.HelpMarker("Scenarios can only be started from an inn — return to one to run a scenario.");
+        ImGuiComponents.HelpMarker("場景只能從旅館開始 —— 回到旅館才能執行場景。");
     }
 }

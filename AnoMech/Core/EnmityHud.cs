@@ -204,7 +204,7 @@ internal sealed unsafe class EnmityHud : IDisposable
             strArr->SetValue(i * 2 + StrCastname, castName, managed: true);
         }
 
-        enemyArr->EnemyCount = activeCount;
+        enemyArr->Unk1 = activeCount; // EnemyCount (0x04); unnamed in the API13 CS snapshot
     }
 
     private static void MarkArraysDirty()

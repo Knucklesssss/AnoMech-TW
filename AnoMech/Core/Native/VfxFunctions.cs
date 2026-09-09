@@ -51,7 +51,7 @@ internal static unsafe class VfxFunctions
         fixed (byte* pathPtr = pathBytes)
         fixed (byte* poolPtr = poolBytes)
         {
-            vfx = VfxObject.Create(pathPtr, poolPtr);
+            vfx = VfxObjectPointers.Create(pathPtr, poolPtr);
         }
         if (vfx == null) return null;
 
@@ -60,16 +60,16 @@ internal static unsafe class VfxFunctions
         vfx->Rotation = q;
         vfx->Scale = scale;
         vfx->Flags |= 0x2;          // mark dirty so position/rotation/scale apply
-        vfx->SomeFlags &= 0xF7;     // clear flag that sometimes hides the vfx
+        VfxObjectPointers.SomeFlags(vfx) &= 0xF7; // clear flag that sometimes hides the vfx
 
-        vfx->Update(0f, -1);
+        VfxObjectPointers.Update(vfx, 0f, -1);
         return vfx;
     }
 
     public static void RemoveStaticVfx(VfxObject* vfx)
     {
         if (vfx == null) return;
-        vfx->CleanupRender();
+        VfxObjectPointers.CleanupRender(vfx);
     }
 
     // Spawns an entity-attached VFX (follows caster/target, used for head markers and
@@ -109,7 +109,7 @@ internal static unsafe class VfxFunctions
     {
         var sheet = Plugin.DataManager.GetExcelSheet<Lockon>();
         if (!sheet.TryGetRow(lockonId, out var row)) return null;
-        var iconName = row.IconName.ExtractText();
+        var iconName = row.Unknown0.ExtractText(); // IconName; unnamed in the API13 Lumina sheet
         if (string.IsNullOrEmpty(iconName)) return null;
         return iconName;
     }

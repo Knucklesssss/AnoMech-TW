@@ -2,7 +2,7 @@ using Dalamud.Bindings.ImGui;
 
 namespace AnoMech.Scenarios.Top.P6WaveCannon2;
 
-// ImGui panel rendered in the main window's "Scenario config" pane when this
+// ImGui panel rendered in the main window's "場景設定" pane when this
 // scenario is active. Owns the StateOverrides instance and writes user choices
 // into it. See TopP5DeltaSettingsWindow for the canonical shape.
 public sealed class TopP6WaveCannon2SettingsWindow
@@ -11,7 +11,7 @@ public sealed class TopP6WaveCannon2SettingsWindow
 
     public void Draw()
     {
-        if (ImGui.Button("Auto")) ResetAll();
+        if (ImGui.Button("自動##resetall")) ResetAll();
         if (SettingsGrid.Begin("##p6wavecannon2"))
         {
             DrawCosmoArrow();
@@ -27,11 +27,11 @@ public sealed class TopP6WaveCannon2SettingsWindow
     private void DrawCosmoArrow()
     {
         var v = Overrides.InFirst;
-        SettingsGrid.Row("Cosmo Arrow:");
-        if (ImGui.RadioButton("Auto##cosmo", v == null))  Overrides.InFirst = null;
+        SettingsGrid.Row("Cosmo Arrow：");
+        if (ImGui.RadioButton("自動##cosmo", v == null))  Overrides.InFirst = null;
         ImGui.SameLine();
-        if (ImGui.RadioButton("In##cosmo",   v == true))  Overrides.InFirst = true;
+        if (ImGui.RadioButton("內##cosmo",   v == true))  Overrides.InFirst = true;
         ImGui.SameLine();
-        if (ImGui.RadioButton("Out##cosmo",  v == false)) Overrides.InFirst = false;
+        if (ImGui.RadioButton("外##cosmo",  v == false)) Overrides.InFirst = false;
     }
 }

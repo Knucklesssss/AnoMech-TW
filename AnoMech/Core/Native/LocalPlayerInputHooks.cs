@@ -8,6 +8,7 @@ using Dalamud.Utility.Signatures;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using FFXIVClientStructs.FFXIV.Client.System.Input;
+using AnoMech.Core.Native;
 
 namespace AnoMech.Core.Native;
 
@@ -59,7 +60,7 @@ public sealed unsafe class LocalPlayerInputHooks : IDisposable
     }
 
     private delegate void RMIWalkDelegate(void* self, float* sumLeft, float* sumForward, float* sumTurnLeft, byte* haveBackwardOrStrafe, byte* a6, byte bAdditiveUnk);
-    [Signature("E8 ?? ?? ?? ?? 80 7B 3E 00 48 8D 3D")]
+    [Signature("E8 ?? ?? ?? ?? 80 7B 3E 00 48 8D 3D", Fallibility = Fallibility.Fallible)]
     private Hook<RMIWalkDelegate> rmiWalkHook = null!;
 
     private enum KeybindType
@@ -70,33 +71,43 @@ public sealed unsafe class LocalPlayerInputHooks : IDisposable
 
     [return: MarshalAs(UnmanagedType.U1)]
     private delegate bool CheckStrafeKeybindDelegate(IntPtr ptr, KeybindType keybind);
-    [Signature("E8 ?? ?? ?? ?? 84 C0 74 04 41 C6 06 01 BA 44 01 00 00")]
+    [Signature("E8 ?? ?? ?? ?? 84 C0 74 04 41 C6 06 01 BA 44 01 00 00", Fallibility = Fallibility.Fallible)]
     private Hook<CheckStrafeKeybindDelegate> checkStrafeKeybindHook = null!;
 
-    private readonly Hook<InputData.Delegates.IsInputIdPressed> isInputIdPressedHook;
-    private readonly Hook<ActionManager.Delegates.Update> updateHook;
-    private readonly Hook<ActionManager.Delegates.UseAction> useActionHook;
-    private readonly Hook<ActionManager.Delegates.UseActionLocation> useActionLocationHook;
+    private readonly Hook<InputData.Delegates.IsInputIdPressed>? isInputIdPressedHook;
+    private readonly Hook<ActionManager.Delegates.Update>? updateHook;
+    private readonly Hook<ActionManager.Delegates.UseAction>? useActionHook;
+    private readonly Hook<ActionManager.Delegates.UseActionLocation>? useActionLocationHook;
 
     public LocalPlayerInputHooks(IGameInteropProvider hook)
     {
         hook.InitializeFromAttributes(this);
 
-        isInputIdPressedHook = hook.HookFromAddress<InputData.Delegates.IsInputIdPressed>(
-            InputData.Addresses.IsInputIdPressed.Value, IsInputIdPressedDetour);
-        updateHook = hook.HookFromAddress<ActionManager.Delegates.Update>(
-            ActionManager.Addresses.Update.Value, UpdateDetour);
-        useActionHook = hook.HookFromAddress<ActionManager.Delegates.UseAction>(
-            ActionManager.Addresses.UseAction.Value, UseActionDetour);
-        useActionLocationHook = hook.HookFromAddress<ActionManager.Delegates.UseActionLocation>(
-            ActionManager.Addresses.UseActionLocation.Value, UseActionLocationDetour);
+        // ClientStructs resolves these four itself. Where its own signatures miss on
+        // the TC binary, Value comes back zero and HookFromAddress would throw, taking
+        // the whole plugin load down with it. Track and skip instead.
+        var isInputIdPressedAddr = SignatureReport.TrackAddress("InputData.IsInputIdPressed", InputData.Addresses.IsInputIdPressed.Value);
+        if (isInputIdPressedAddr != 0)
+            isInputIdPressedHook = hook.HookFromAddress<InputData.Delegates.IsInputIdPressed>(isInputIdPressedAddr, IsInputIdPressedDetour);
 
-        rmiWalkHook.Enable();
-        checkStrafeKeybindHook.Enable();
-        isInputIdPressedHook.Enable();
-        updateHook.Enable();
-        useActionHook.Enable();
-        useActionLocationHook.Enable();
+        var updateAddr = SignatureReport.TrackAddress("ActionManager.Update", ActionManager.Addresses.Update.Value);
+        if (updateAddr != 0)
+            updateHook = hook.HookFromAddress<ActionManager.Delegates.Update>(updateAddr, UpdateDetour);
+
+        var useActionAddr = SignatureReport.TrackAddress("ActionManager.UseAction", ActionManager.Addresses.UseAction.Value);
+        if (useActionAddr != 0)
+            useActionHook = hook.HookFromAddress<ActionManager.Delegates.UseAction>(useActionAddr, UseActionDetour);
+
+        var useActionLocationAddr = SignatureReport.TrackAddress("ActionManager.UseActionLocation", ActionManager.Addresses.UseActionLocation.Value);
+        if (useActionLocationAddr != 0)
+            useActionLocationHook = hook.HookFromAddress<ActionManager.Delegates.UseActionLocation>(useActionLocationAddr, UseActionLocationDetour);
+
+        rmiWalkHook?.Enable();
+        checkStrafeKeybindHook?.Enable();
+        isInputIdPressedHook?.Enable();
+        updateHook?.Enable();
+        useActionHook?.Enable();
+        useActionLocationHook?.Enable();
     }
 
     public void Dispose()
@@ -132,14 +143,14 @@ public sealed unsafe class LocalPlayerInputHooks : IDisposable
     {
         if (ZeroMovement && (inputId == InputId.JUMP || inputId == InputId.PAD_JUMPANDCANCELCAST))
             return false;
-        return isInputIdPressedHook.Original(inputData, inputId);
+        return isInputIdPressedHook!.Original(inputData, inputId);
     }
 
     // Drains queued auto-attacks while DisableAllActions is set so the player
     // doesn't keep swinging mid-stun; mirrors raid-rewritten's UpdateDetour.
     private void UpdateDetour(ActionManager* self)
     {
-        updateHook.Original(self);
+        updateHook!.Original(self);
         if (!DisableAllActions) return;
         var autosOn = UIState.Instance()->WeaponState.AutoAttackState.IsAutoAttacking;
         if (autosOn) self->UseAction(ActionType.GeneralAction, 1);
@@ -148,7 +159,7 @@ public sealed unsafe class LocalPlayerInputHooks : IDisposable
     private bool UseActionDetour(ActionManager* self, ActionType actionType, uint actionId, ulong targetId, uint extraParam, ActionManager.UseActionMode mode, uint comboRouteId, bool* outOptAreaTargeted)
     {
         if (DisableAllActions && !IsStopAutosAction(actionType, actionId)) return false;
-        var result = useActionHook.Original(self, actionType, actionId, targetId, extraParam, mode, comboRouteId, outOptAreaTargeted);
+        var result = useActionHook!.Original(self, actionType, actionId, targetId, extraParam, mode, comboRouteId, outOptAreaTargeted);
         // Record a real action use for Party.Player.IsActing — but ignore the auto-attack-cancel
         // general action that UpdateDetour issues while stunned.
         if (result && !IsStopAutosAction(actionType, actionId))
@@ -161,7 +172,7 @@ public sealed unsafe class LocalPlayerInputHooks : IDisposable
     private bool UseActionLocationDetour(ActionManager* self, ActionType actionType, uint actionId, ulong targetId, Vector3* location, uint extraParam, byte a7)
     {
         if (DisableAllActions && !IsStopAutosAction(actionType, actionId)) return false;
-        var result = useActionLocationHook.Original(self, actionType, actionId, targetId, location, extraParam, a7);
+        var result = useActionLocationHook!.Original(self, actionType, actionId, targetId, location, extraParam, a7);
         if (result) actionUsedSincePoll = true;
         return result;
     }

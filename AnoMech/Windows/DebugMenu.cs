@@ -588,7 +588,7 @@ internal sealed unsafe class DebugMenu
         Plugin.Log.Info($"  Mode={ch->Mode} ({(byte)ch->Mode}) ModeParam=0x{ch->ModeParam:X2} ({ch->ModeParam})");
         Plugin.Log.Info($"  TransformationId={ch->TransformationId} StatusLoopVfxId={ch->StatusLoopVfxId} Battalion={ch->Battalion} ShieldValue={ch->ShieldValue}");
         Plugin.Log.Info($"  ModelContainer: ModelCharaId={ch->ModelContainer.ModelCharaId} ModelSkeletonId={ch->ModelContainer.ModelSkeletonId} ModelCharaId_2={ch->ModelContainer.ModelCharaId_2} ModelSkeletonId_2={ch->ModelContainer.ModelSkeletonId_2}");
-        Plugin.Log.Info($"  ModelContainer: ModelScaleId=0x{ch->ModelContainer.ModelScaleId:X2} ModeAttributeFlags=0x{ch->ModelContainer.ModeAttributeFlags:X2} UnscaledRadius={ch->ModelContainer.UnscaledRadius:F2}");
+        Plugin.Log.Info($"  ModelContainer: ModelScaleId=0x{ModelContainerFields.ModelScaleId(&ch->ModelContainer):X2} ModeAttributeFlags=0x{ModelContainerFields.ModeAttributeFlags(&ch->ModelContainer):X2} UnscaledRadius={ch->ModelContainer.UnscaledRadius:F2}");
         Plugin.Log.Info($"  WeaponFlags=0x{ch->WeaponFlags:X2} ActorControlFlags=0x{ch->ActorControlFlags:X2}");
         Plugin.Log.Info($"  Timeline.ModelState=0x{ch->Timeline.ModelState:X2} AnimationState=[0x{ch->Timeline.AnimationState[0]:X2},0x{ch->Timeline.AnimationState[1]:X2}]");
         for (int s = 0; s < 3; s++)
@@ -644,7 +644,7 @@ internal sealed unsafe class DebugMenu
             var dz = pos.Z - origin.Z;
             var dist = MathF.Sqrt(dx * dx + dz * dz);
             var inst = (FFXIVClientStructs.FFXIV.Client.LayoutEngine.ILayoutInstance*)sg;
-            rows.Add((dist, $"  dist={dist,7:F2} pos=({pos.X,8:F2},{pos.Y,7:F2},{pos.Z,8:F2}) active={inst->IsActive,-5} key=0x{inst->Id.InstanceKey:X8} sub=0x{inst->SubId:X8}  '{path}'"));
+            rows.Add((dist, $"  dist={dist,7:F2} pos=({pos.X,8:F2},{pos.Y,7:F2},{pos.Z,8:F2}) active={((inst->Flags3 & 0x10) != 0),-5} key=0x{inst->Id.InstanceKey:X8} sub=0x{inst->SubId:X8}  '{path}'"));
         });
         rows.Sort((a, b) => a.Dist.CompareTo(b.Dist));
         Plugin.Log.Info($"=== SharedGroups in active layout: {total} ===");

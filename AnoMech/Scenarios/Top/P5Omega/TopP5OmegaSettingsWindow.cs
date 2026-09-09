@@ -9,16 +9,16 @@ public sealed class TopP5OmegaSettingsWindow
 
     public void Draw()
     {
-        if (ImGui.Button("Auto")) ResetAll();
+        if (ImGui.Button("自動##resetall")) ResetAll();
         if (SettingsGrid.Begin("##p5omega"))
         {
-            DrawAttack("First F attack:",  "1f", OmegaAttack.Legs,   "Legs",   OmegaAttack.Staff,  "Staff",
+            DrawAttack("第一次 F 攻擊：",  "1f", OmegaAttack.Legs,   "Legs",   OmegaAttack.Staff,  "Staff",
                        () => Overrides.FirstFAttack,  v => Overrides.FirstFAttack  = v);
-            DrawAttack("First M attack:",  "1m", OmegaAttack.Sword,  "Sword",  OmegaAttack.Shield, "Shield",
+            DrawAttack("第一次 M 攻擊：",  "1m", OmegaAttack.Sword,  "Sword",  OmegaAttack.Shield, "Shield",
                        () => Overrides.FirstMAttack,  v => Overrides.FirstMAttack  = v);
-            DrawAttack("Second F attack:", "2f", OmegaAttack.Legs,   "Legs",   OmegaAttack.Staff,  "Staff",
+            DrawAttack("第二次 F 攻擊：", "2f", OmegaAttack.Legs,   "Legs",   OmegaAttack.Staff,  "Staff",
                        () => Overrides.SecondFAttack, v => Overrides.SecondFAttack = v);
-            DrawAttack("Second M attack:", "2m", OmegaAttack.Sword,  "Sword",  OmegaAttack.Shield, "Shield",
+            DrawAttack("第二次 M 攻擊：", "2m", OmegaAttack.Sword,  "Sword",  OmegaAttack.Shield, "Shield",
                        () => Overrides.SecondMAttack, v => Overrides.SecondMAttack = v);
             DrawWaveCannon();
             DrawMonitorSide();
@@ -52,7 +52,7 @@ public sealed class TopP5OmegaSettingsWindow
     {
         var v = get();
         SettingsGrid.Row(label);
-        if (ImGui.RadioButton($"Auto##{suffix}",    v == null))     set(null);
+        if (ImGui.RadioButton($"自動##{suffix}",    v == null))     set(null);
         ImGui.SameLine();
         if (ImGui.RadioButton($"{nameA}##{suffix}", v == optionA))  set(optionA);
         ImGui.SameLine();
@@ -62,29 +62,29 @@ public sealed class TopP5OmegaSettingsWindow
     private void DrawWaveCannon()
     {
         var v = Overrides.FirstWaveCannonFront;
-        SettingsGrid.Row("Diffuse Wave Cannon:");
-        if (ImGui.RadioButton("Auto##wc",       v == null))  Overrides.FirstWaveCannonFront = null;
+        SettingsGrid.Row("Diffuse Wave Cannon：");
+        if (ImGui.RadioButton("自動##wc",       v == null))  Overrides.FirstWaveCannonFront = null;
         ImGui.SameLine();
-        if (ImGui.RadioButton("Horizontal##wc", v == false)) Overrides.FirstWaveCannonFront = false;
+        if (ImGui.RadioButton("橫向##wc", v == false)) Overrides.FirstWaveCannonFront = false;
         ImGui.SameLine();
-        if (ImGui.RadioButton("Vertical##wc",   v == true))  Overrides.FirstWaveCannonFront = true;
+        if (ImGui.RadioButton("縱向##wc",   v == true))  Overrides.FirstWaveCannonFront = true;
     }
 
     private void DrawMonitorSide()
     {
         var v = Overrides.MonitorSide;
-        SettingsGrid.Row("Monitor side:");
-        if (ImGui.RadioButton("Auto##mon",  v == null))               Overrides.MonitorSide = null;
+        SettingsGrid.Row("Monitor 方向：");
+        if (ImGui.RadioButton("自動##mon",  v == null))               Overrides.MonitorSide = null;
         ImGui.SameLine();
-        if (ImGui.RadioButton("Left##mon",  v == MonitorSide.Left))   Overrides.MonitorSide = MonitorSide.Left;
+        if (ImGui.RadioButton("左##mon",  v == MonitorSide.Left))   Overrides.MonitorSide = MonitorSide.Left;
         ImGui.SameLine();
-        if (ImGui.RadioButton("Right##mon", v == MonitorSide.Right))  Overrides.MonitorSide = MonitorSide.Right;
+        if (ImGui.RadioButton("右##mon", v == MonitorSide.Right))  Overrides.MonitorSide = MonitorSide.Right;
     }
 
     private void DrawBeetleSpawn()
     {
-        SettingsGrid.Row("Beetle spawn:");
-        if (ImGui.RadioButton("Auto##beetle", Overrides.BettleSpawnDirection == null)) Overrides.BettleSpawnDirection = null;
+        SettingsGrid.Row("Beetle 生成：");
+        if (ImGui.RadioButton("自動##beetle", Overrides.BettleSpawnDirection == null)) Overrides.BettleSpawnDirection = null;
         foreach (var d in Direction.Cardinal)
         {
             ImGui.SameLine();
@@ -95,49 +95,49 @@ public sealed class TopP5OmegaSettingsWindow
     private void DrawExtraDynamis()
     {
         var v = Overrides.ExtraDynamis;
-        SettingsGrid.Row("Extra dynamis stack:");
-        if (ImGui.RadioButton("Auto##dyn", v == null))  Overrides.ExtraDynamis = null;
+        SettingsGrid.Row("額外 Dynamis 層數：");
+        if (ImGui.RadioButton("自動##dyn", v == null))  Overrides.ExtraDynamis = null;
         ImGui.SameLine();
-        if (ImGui.RadioButton("No##dyn",   v == false)) Overrides.ExtraDynamis = false;
+        if (ImGui.RadioButton("否##dyn",   v == false)) Overrides.ExtraDynamis = false;
         ImGui.SameLine();
-        if (ImGui.RadioButton("Yes##dyn",  v == true))  Overrides.ExtraDynamis = true;
+        if (ImGui.RadioButton("是##dyn",  v == true))  Overrides.ExtraDynamis = true;
     }
 
     private void DrawHelloWorldOrder()
     {
         var v = Overrides.HelloWorldOrder;
-        SettingsGrid.Row("Hello World order:");
-        if (ImGui.RadioButton("Auto##hwo",   v == HelloWorldOrderOption.Auto))   Overrides.HelloWorldOrder = HelloWorldOrderOption.Auto;
+        SettingsGrid.Row("Hello World 順序：");
+        if (ImGui.RadioButton("自動##hwo",   v == HelloWorldOrderOption.Auto))   Overrides.HelloWorldOrder = HelloWorldOrderOption.Auto;
         ImGui.SameLine();
-        if (ImGui.RadioButton("Any##hwo",    v == HelloWorldOrderOption.Any))    Overrides.HelloWorldOrder = HelloWorldOrderOption.Any;
+        if (ImGui.RadioButton("任意##hwo",    v == HelloWorldOrderOption.Any))    Overrides.HelloWorldOrder = HelloWorldOrderOption.Any;
         ImGui.SameLine();
-        if (ImGui.RadioButton("First##hwo",  v == HelloWorldOrderOption.First))  Overrides.HelloWorldOrder = HelloWorldOrderOption.First;
+        if (ImGui.RadioButton("第一##hwo",  v == HelloWorldOrderOption.First))  Overrides.HelloWorldOrder = HelloWorldOrderOption.First;
         ImGui.SameLine();
-        if (ImGui.RadioButton("Second##hwo", v == HelloWorldOrderOption.Second)) Overrides.HelloWorldOrder = HelloWorldOrderOption.Second;
+        if (ImGui.RadioButton("第二##hwo", v == HelloWorldOrderOption.Second)) Overrides.HelloWorldOrder = HelloWorldOrderOption.Second;
         ImGui.SameLine();
-        if (ImGui.RadioButton("None##hwo",   v == HelloWorldOrderOption.None))   Overrides.HelloWorldOrder = HelloWorldOrderOption.None;
+        if (ImGui.RadioButton("無##hwo",   v == HelloWorldOrderOption.None))   Overrides.HelloWorldOrder = HelloWorldOrderOption.None;
     }
 
     private void DrawHelloWorldType()
     {
         var v = Overrides.HelloWorldType;
-        SettingsGrid.Row("Hello World type:");
-        if (ImGui.RadioButton("Auto##hwt", v == HelloWorldTypeOption.Auto)) Overrides.HelloWorldType = HelloWorldTypeOption.Auto;
+        SettingsGrid.Row("Hello World 類型：");
+        if (ImGui.RadioButton("自動##hwt", v == HelloWorldTypeOption.Auto)) Overrides.HelloWorldType = HelloWorldTypeOption.Auto;
         ImGui.SameLine();
-        if (ImGui.RadioButton("Near##hwt", v == HelloWorldTypeOption.Near)) Overrides.HelloWorldType = HelloWorldTypeOption.Near;
+        if (ImGui.RadioButton("近##hwt", v == HelloWorldTypeOption.Near)) Overrides.HelloWorldType = HelloWorldTypeOption.Near;
         ImGui.SameLine();
-        if (ImGui.RadioButton("Far##hwt",  v == HelloWorldTypeOption.Far))  Overrides.HelloWorldType = HelloWorldTypeOption.Far;
+        if (ImGui.RadioButton("遠##hwt",  v == HelloWorldTypeOption.Far))  Overrides.HelloWorldType = HelloWorldTypeOption.Far;
     }
 
     private void DrawForceButtons()
     {
-        if (ImGui.Button("Force take monitor"))
+        if (ImGui.Button("強制接 Monitor##forcemon"))
         {
             Overrides.ExtraDynamis = true;
             Overrides.HelloWorldOrder = HelloWorldOrderOption.Second;
         }
         ImGui.SameLine();
-        if (ImGui.Button("Force take tether"))
+        if (ImGui.Button("強制接連線##forcetether"))
         {
             Overrides.ExtraDynamis = true;
             Overrides.HelloWorldOrder = HelloWorldOrderOption.First;

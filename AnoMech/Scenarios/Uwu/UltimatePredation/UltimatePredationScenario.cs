@@ -378,7 +378,7 @@ public unsafe class UltimatePredationScenario : IScenario
             Plugin.ChatGui.Print(new XivChatEntry
             {
                 Type = XivChatType.SystemMessage,
-                Message = new SeStringBuilder().AddText($"[AnoMech] {Name}: Assuming Tank Swap").Build(),
+                Message = new SeStringBuilder().AddText($"[AnoMech] {Name}：假設有 Tank Swap").Build(),
             });
 
             ultima?.SetTarget(ot);
@@ -432,7 +432,7 @@ public unsafe class UltimatePredationScenario : IScenario
             Plugin.ChatGui.Print(new XivChatEntry
             {
                 Type = XivChatType.SystemMessage,
-                Message = new SeStringBuilder().AddText($"[AnoMech] {Name}: Assuming Tank Swap").Build(),
+                Message = new SeStringBuilder().AddText($"[AnoMech] {Name}：假設有 Tank Swap").Build(),
             });
 
             ultima?.SetTarget(mt);
@@ -1288,7 +1288,7 @@ public unsafe class UltimatePredationScenario : IScenario
 
         world.Events.Add(effectOffset + 0.16f, () => ResolveSnapshot(burstSnapshot, "Burst"));
 
-        world.Events.Add(fadeOffset, () => PacketDispatcher.HandleActorControlPacket(boulder!.EntityId, 607, boulder.EntityId, 1, 0, 100, 0, 0, 0, 0, 0xE0000000, false));
+        world.Events.Add(fadeOffset, () => PacketDispatcherPointers.HandleActorControlPacket(boulder!.EntityId, 607, boulder.EntityId, 1, 0, 100, 0, 0, 0, 0, 0xE0000000, false));
         world.Events.Add(despawnOffset, () => boulder?.Despawn());
     }
 

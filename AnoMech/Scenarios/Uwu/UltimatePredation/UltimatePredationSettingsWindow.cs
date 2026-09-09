@@ -8,7 +8,7 @@ public class UltimatePredationSettingsWindow
 
     public void Draw()
     {
-        if (ImGui.Button("Auto"))
+        if (ImGui.Button("自動##resetall"))
         {
             ResetAll();
         }
@@ -23,10 +23,10 @@ public class UltimatePredationSettingsWindow
     private void DrawCenterDodge()
     {
         var v = Overrides.CenterDodge;
-        SettingsGrid.Row("Boss Positions:");
-        if (ImGui.RadioButton("Random##centerdodge", v == null)) Overrides.CenterDodge = null;
+        SettingsGrid.Row("Boss 位置：");
+        if (ImGui.RadioButton("隨機##centerdodge", v == null)) Overrides.CenterDodge = null;
         ImGui.SameLine();
-        if (ImGui.RadioButton("Center Dodge##centerdodge", v == true)) Overrides.CenterDodge = true;
+        if (ImGui.RadioButton("中央閃避##centerdodge", v == true)) Overrides.CenterDodge = true;
     }
 
     private void ResetAll()

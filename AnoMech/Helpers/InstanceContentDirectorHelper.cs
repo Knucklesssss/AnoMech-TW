@@ -28,8 +28,14 @@ internal static unsafe class InstanceContentDirectorHelper
             return;
         }
 
+        if (EventFrameworkPointers.ProcessDirectorUpdate is null)
+        {
+            Plugin.Log.Error($"[InstanceContentDirectorHelper] ProcessDirectorUpdate did not resolve on this client — dropping director update 0x{category:X}.");
+            return;
+        }
+
         var eventId = director->GetEventId();
-        eventFramework->ProcessDirectorUpdate(eventId, category, arg1, arg2, arg3, arg4, arg5, arg6);
+        EventFrameworkPointers.ProcessDirectorUpdate(eventFramework, eventId, category, arg1, arg2, arg3, arg4, arg5, arg6);
     }
 
     public static void SetDirectorData(byte sequence, byte unknown, byte* unionData, ulong length = 12)

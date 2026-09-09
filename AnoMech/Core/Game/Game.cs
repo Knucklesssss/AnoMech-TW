@@ -12,11 +12,6 @@ using AnoMech.Scenarios.Top.P5Delta;
 using AnoMech.Scenarios.Top.P5Omega;
 using AnoMech.Scenarios.Top.P5Sigma;
 using AnoMech.Scenarios.Top.P6WaveCannon2;
-using AnoMech.Scenarios.Umad;
-using AnoMech.Scenarios.Umad.P2Forsaken;
-using AnoMech.Scenarios.Umad.P3BlackHole;
-using AnoMech.Scenarios.Umad.P4KefkaSays;
-using AnoMech.Scenarios.Umad.P5Exaflares;
 using AnoMech.Scenarios.Uwu.UltimatePredation;
 using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
@@ -72,11 +67,6 @@ public sealed class Game : IDisposable
         opcodeUpdater = new OpcodeUpdater();
         Scenarios = new IScenario[]
         {
-            new UmadP2ForsakenScenario(),
-            new UmadP3BlackHoleScenario(),
-            new UmadP4KefkaSaysScenario(),
-            new UmadP5ExaflaresScenario(),
-            new UmadP5ForsakenNull(),
             new TopP2PartySynergyScenario(),
             new TopP5DeltaScenario(),
             new TopP5SigmaScenario(),
@@ -189,7 +179,7 @@ public sealed class Game : IDisposable
         Plugin.ChatGui.Print(new XivChatEntry
         {
             Type = XivChatType.SystemMessage,
-            Message = new SeStringBuilder().AddText($"[AnoMech] Starting: {FullName(scenario)}{(solo ? " (Solo)" : "")}").Build(),
+            Message = new SeStringBuilder().AddText($"[AnoMech] 開始：{FullName(scenario)}{(solo ? "（單人）" : "")}").Build(),
         });
     }
 
@@ -281,15 +271,15 @@ public sealed class Game : IDisposable
         Plugin.ChatGui.Print(new XivChatEntry
         {
             Type = XivChatType.SystemMessage,
-            Message = new SeStringBuilder().AddText($"[AnoMech] {DescribeName(target)} died: {cause}").Build(),
+            Message = new SeStringBuilder().AddText($"[AnoMech] {DescribeName(target)} 死亡：{cause}").Build(),
         });
     }
 
     private static string DescribeName(ISimPartyMember target) => target switch
     {
-        SimPlayer => "You",
+        SimPlayer => "你",
         SimPartyNpc pm => pm.DisplayName,
-        _ => "Character",
+        _ => "角色",
     };
 
     private static unsafe void ShowFirstDeathOverlay(ISimPartyMember target, string cause)

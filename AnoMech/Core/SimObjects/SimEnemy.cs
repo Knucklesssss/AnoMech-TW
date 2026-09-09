@@ -7,6 +7,7 @@ using FFXIVClientStructs.FFXIV.Client.Game.Object;
 using Lumina.Excel.Sheets;
 using System.Collections.Generic;
 using System.Numerics;
+using AnoMech.Core.Native;
 
 namespace AnoMech.Core.SimObjects;
 
@@ -68,14 +69,16 @@ public sealed unsafe class SimEnemy : SimNpc
     // (e.g. TOP P5 Sigma Omega: 1DD3 -> 1DD4 -> 1E0F -> 2FE2). Reading the
     // GameObject.Name[] buffer directly does NOT work for doppels — the engine never
     // refreshes it on rename. Falls back to the spawn-time name mid-despawn.
+    private readonly string displayName;
+
     public string DisplayName
     {
         get
         {
             var chara = BattleCharaPtr;
-            if (chara == null) return field;
+            if (chara == null) return displayName;
             var name = ((GameObject*)chara)->GetName().ToString();
-            return string.IsNullOrEmpty(name) ? field : name;
+            return string.IsNullOrEmpty(name) ? displayName : name;
         }
     }
 
@@ -100,7 +103,7 @@ public sealed unsafe class SimEnemy : SimNpc
     internal SimEnemy(int index, uint bNpcBaseId, string displayName, EnemyListMode enemyListMode, Coordinates coordinates) : base(index, coordinates)
     {
         BNpcBaseId = bNpcBaseId;
-        DisplayName = displayName;
+        this.displayName = displayName;
         EnemyListMode = enemyListMode;
         cast = new SimCast(this, coordinates);
     }
@@ -184,14 +187,14 @@ public sealed unsafe class SimEnemy : SimNpc
         chara->MaxHealth = 1_000_000;
         chara->Health = 1_000_000;
         chara->Battalion = 4;
-        chara->IsHostile = true;
-        chara->InCombat = true;
+        CharacterFlags.SetHostile((Character*)chara, true);
+        CharacterFlags.SetInCombat((Character*)chara, true);
         chara->CombatTagType = 1;
         chara->CombatTaggerId = ((GameObject*)player.Address)->GetGameObjectId();
         chara->Mode = CharacterModes.Normal;
         chara->ModeParam = 0;
         if (config.InitialModeAttributeFlags is { } maf)
-            chara->ModelContainer.ModeAttributeFlags = maf;
+            ModelContainerFields.ModeAttributeFlags(&chara->ModelContainer) = maf;
         chara->CastInfo.IsCasting = false;
         if (config.NameId != 0) chara->NameId = config.NameId;
         if (config.Level != 0) chara->Level = config.Level;

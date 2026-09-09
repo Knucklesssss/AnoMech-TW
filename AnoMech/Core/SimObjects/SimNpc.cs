@@ -19,7 +19,9 @@ public unsafe class SimNpc : SimCharacter
     private int index;
     private bool pendingDraw;
 
-    private protected override Movement Movement => field ??= new Movement(this);
+    private Movement? movement;
+
+    private protected override Movement Movement => movement ??= new Movement(this);
     
     internal override BattleChara* BattleCharaPtr => (BattleChara*)(index == InvalidIndex ? null : CharacterManager.Instance()->BattleCharas[index]);
 
@@ -53,7 +55,7 @@ public unsafe class SimNpc : SimCharacter
     {
         var chara = BattleCharaPtr;
         if (chara == null) return;
-        chara->ModelContainer.ModeAttributeFlags = value;
+        ModelContainerFields.ModeAttributeFlags(&chara->ModelContainer) = value;
         ReloadModel();
     }
 

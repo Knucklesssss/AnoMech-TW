@@ -5,7 +5,7 @@ namespace AnoMech.Pointers;
 
 internal unsafe class StatusManagerPointers
 {
-    [Signature("48 8B C4 55 57 41 54 41 56", UseFlags = SignatureUseFlags.Pointer, ScanType = ScanType.Text)]
+    [Signature("48 8B C4 55 57 41 54 41 56", UseFlags = SignatureUseFlags.Pointer, ScanType = ScanType.Text, Fallibility = Fallibility.Fallible)]
     public static OnGainStatusDelegate OnGainStatus { get; private set; } = null!;
 
     public delegate void OnGainStatusDelegate(StatusManager* self, ushort statusId, float a3, ushort param, long source, byte a6);

@@ -35,7 +35,7 @@ internal static unsafe class EventObjectHelper
             packet->ObjectIndex = (byte)freeId;
         }
 
-        PacketDispatcher.HandleSpawnObjectPacket(0, packet);
+        PacketDispatcherPointers.HandleSpawnObjectPacket(0, packet);
         slot = packet->ObjectIndex;
         eventObject = EventObjectManagerPointers.GetEventObjectByIndex(manager, (uint)slot);
         return eventObject != null;

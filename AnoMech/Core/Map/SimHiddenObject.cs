@@ -37,7 +37,7 @@ public sealed unsafe class SimHiddenObject : ISimObject
             if (go.BaseId != baseId) continue;
             var obj = (GameObject*)go.Address;
             obj->DisableDraw();
-            obj->RenderFlags |= VisibilityFlags.Model | VisibilityFlags.Nameplate;
+            obj->RenderFlags |= (int)(VisibilityFlags.Model | VisibilityFlags.Nameplate);
             return new SimHiddenObject(go.ObjectIndex, baseId);
         }
         return null;
@@ -53,7 +53,7 @@ public sealed unsafe class SimHiddenObject : ISimObject
         var obj = Lookup();
         if (obj != null)
         {
-            obj->RenderFlags &= ~(VisibilityFlags.Model | VisibilityFlags.Nameplate);
+            obj->RenderFlags &= ~(int)(VisibilityFlags.Model | VisibilityFlags.Nameplate);
             obj->EnableDraw();
         }
         hidden = false;

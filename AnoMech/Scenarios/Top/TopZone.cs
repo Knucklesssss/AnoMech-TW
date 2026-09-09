@@ -13,14 +13,15 @@ public sealed class TopZone : IZone
     public static readonly Phase P5 = new(Instance, "P5", 174, BgmId.TopP5);
     public static readonly Phase P6 = new(Instance, "P6", 175, BgmId.TopP6);
 
-    public string Name => "The Omega Protocol";
+    private string? cachedName;
+    public string Name => cachedName ??= DutyName.ForTerritory(TerritoryId) ?? "The Omega Protocol";
     public uint TerritoryId => 1122;
     public Vector3 Origin => new(100f, 0f, 100f);
     public byte Level => 90;
     public ushort ItemLevel => 365;
 
     public IReadOnlyList<WaymarkLayout> WaymarkPresets { get; } =
-        [new WaymarkLayout("Ring", TopUtils.TopWaymarks)];
+        [new WaymarkLayout("環形", TopUtils.TopWaymarks)];
 
     public void Run(SimWorld world)
     {

@@ -8,7 +8,7 @@ public sealed class TopP2PartySynergySettingsWindow
 
     public void Draw()
     {
-        if (ImGui.Button("Auto")) ResetAll();
+        if (ImGui.Button("自動##resetall")) ResetAll();
         if (SettingsGrid.Begin("##partysynergy"))
         {
 #if DEBUG
@@ -36,8 +36,8 @@ public sealed class TopP2PartySynergySettingsWindow
 #if DEBUG
     private void DrawNewNorthA()
     {
-        SettingsGrid.Row("New north (A):");
-        if (ImGui.RadioButton("Auto##northA", Overrides.NewNorthA == null)) Overrides.NewNorthA = null;
+        SettingsGrid.Row("新北 (A)：");
+        if (ImGui.RadioButton("自動##northA", Overrides.NewNorthA == null)) Overrides.NewNorthA = null;
         foreach (var d in Direction.All)
         {
             ImGui.SameLine();
@@ -47,8 +47,8 @@ public sealed class TopP2PartySynergySettingsWindow
 
     private void DrawNewNorthB()
     {
-        SettingsGrid.Row("New north (B):");
-        if (ImGui.RadioButton("Auto##northB", Overrides.NewNorthB == null)) Overrides.NewNorthB = null;
+        SettingsGrid.Row("新北 (B)：");
+        if (ImGui.RadioButton("自動##northB", Overrides.NewNorthB == null)) Overrides.NewNorthB = null;
         foreach (var d in Direction.All)
         {
             ImGui.SameLine();
@@ -60,19 +60,19 @@ public sealed class TopP2PartySynergySettingsWindow
     private void DrawGlitch()
     {
         var v = Overrides.Glitch;
-        SettingsGrid.Row("Glitch:");
-        if (ImGui.RadioButton("Auto##glitch", v == null))           Overrides.Glitch = null;
+        SettingsGrid.Row("Glitch：");
+        if (ImGui.RadioButton("自動##glitch", v == null))           Overrides.Glitch = null;
         ImGui.SameLine();
-        if (ImGui.RadioButton("Mid##glitch",  v == GlitchType.Mid)) Overrides.Glitch = GlitchType.Mid;
+        if (ImGui.RadioButton("中##glitch",  v == GlitchType.Mid)) Overrides.Glitch = GlitchType.Mid;
         ImGui.SameLine();
-        if (ImGui.RadioButton("Far##glitch",  v == GlitchType.Far)) Overrides.Glitch = GlitchType.Far;
+        if (ImGui.RadioButton("遠##glitch",  v == GlitchType.Far)) Overrides.Glitch = GlitchType.Far;
     }
 
     private void DrawAttackM()
     {
         var v = Overrides.AttackM;
-        SettingsGrid.Row("Omega-M form:");
-        if (ImGui.RadioButton("Auto##atkM",   v == null))               Overrides.AttackM = null;
+        SettingsGrid.Row("Omega-M 型態：");
+        if (ImGui.RadioButton("自動##atkM",   v == null))               Overrides.AttackM = null;
         ImGui.SameLine();
         if (ImGui.RadioButton("Sword##atkM",  v == OmegaAttack.Sword))  Overrides.AttackM = OmegaAttack.Sword;
         ImGui.SameLine();
@@ -82,8 +82,8 @@ public sealed class TopP2PartySynergySettingsWindow
     private void DrawAttackF()
     {
         var v = Overrides.AttackF;
-        SettingsGrid.Row("Omega-F form:");
-        if (ImGui.RadioButton("Auto##atkF",  v == null))              Overrides.AttackF = null;
+        SettingsGrid.Row("Omega-F 型態：");
+        if (ImGui.RadioButton("自動##atkF",  v == null))              Overrides.AttackF = null;
         ImGui.SameLine();
         if (ImGui.RadioButton("Staff##atkF", v == OmegaAttack.Staff)) Overrides.AttackF = OmegaAttack.Staff;
         ImGui.SameLine();

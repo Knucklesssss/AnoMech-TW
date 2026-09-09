@@ -194,7 +194,7 @@ public sealed unsafe class SimCast : ISimObject
             RotationInt = qRotation,
             SpellId = spellId,
             AnimationVariation = animationVariaton,
-            ActionType = (byte)actionType,
+            ActionType = (ActionType)actionType,
             Flags = flags,
             NumTargets = (byte)(nullActionTarget ? 0 : 1)
         };

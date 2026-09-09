@@ -5,7 +5,7 @@ namespace AnoMech.Pointers;
 
 internal unsafe class VfxContainerPointers
 {
-    [Signature("E8 ?? ?? ?? ?? E9 ?? ?? ?? ?? 0F B6 54 24 ?? 45", UseFlags = SignatureUseFlags.Pointer, ScanType = ScanType.Text)]
+    [Signature("E8 ?? ?? ?? ?? E9 ?? ?? ?? ?? 0F B6 54 24 ?? 45", UseFlags = SignatureUseFlags.Pointer, ScanType = ScanType.Text, Fallibility = Fallibility.Fallible)]
     public static SetTetherDelegate SetTether { get; private set; } = null!;
 
     public delegate void SetTetherDelegate(VfxContainer* thisPtr, byte tetherIndex, ushort tetherId, ulong targetId, byte tetherProgress);

@@ -41,7 +41,9 @@ public sealed unsafe class SimPlayer(Coordinates coordinates) : SimCharacter(coo
 
     internal override BattleChara* BattleCharaPtr => (BattleChara*)(Plugin.ObjectTable.LocalPlayer?.Address ?? 0);
 
-    private protected override PlayerMovement Movement => field ??= new PlayerMovement(this);
+    private PlayerMovement? playerMovement;
+
+    private protected override PlayerMovement Movement => playerMovement ??= new PlayerMovement(this);
 
     public void Knockback(Vector3 source, float distance, float speed) => Movement.Knockback(source, distance, speed);
 

@@ -52,21 +52,22 @@ public static class SimCharacterDeathExtensions
 
     // Death is party-member-only. Calling Die on a non-party character is a no-op
     // (logged) — bosses are removed via Despawn, not killed.
-    extension(SimCharacter c)
+    //
+    // Returns true only when the member actually went down (see Game.Kill):
+    // false on a non-party character, an already-dead member, or one that
+    // survived via GiveInvuln/godmode. Gate extra on-death logic on this.
+    //
+    // Classic `this`-parameter form rather than a C# 14 `extension` block: the
+    // API13 SDK targets net9.0, whose compiler cannot parse extension members.
+    public static bool Die(this SimCharacter c, string cause)
     {
-        // Returns true only when the member actually went down (see Game.Kill):
-        // false on a non-party character, an already-dead member, or one that
-        // survived via GiveInvuln/godmode. Gate extra on-death logic on this.
-        public bool Die(string cause)
-        {
-            if (c is ISimPartyMember pm) return Plugin.GameInstance.Kill(pm, cause);
-            Plugin.Log.Warning($"Die() on non-party {c.GetType().Name} ignored: {cause}");
-            return false;
-        }
+        if (c is ISimPartyMember pm) return Plugin.GameInstance.Kill(pm, cause);
+        Plugin.Log.Warning($"Die() on non-party {c.GetType().Name} ignored: {cause}");
+        return false;
+    }
 
-        public void PlayKoActionTimeline()
-        {
-            c.PlayActionTimeline(72, 73);
-        }
+    public static void PlayKoActionTimeline(this SimCharacter c)
+    {
+        c.PlayActionTimeline(72, 73);
     }
 }

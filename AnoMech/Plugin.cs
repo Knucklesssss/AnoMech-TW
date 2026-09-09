@@ -1,3 +1,5 @@
+using Dalamud.Game;
+using Dalamud.Game.ClientState.Objects;
 using Dalamud.Game.Command;
 using Dalamud.Game.DutyState;
 using Dalamud.IoC;
@@ -84,11 +86,11 @@ public sealed class Plugin : IDalamudPlugin
 
         CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
         {
-            HelpMessage = "Open AnoMech. Subcommands: config, start, reset, leave"
+            HelpMessage = "開啟 AnoMech。子指令：config、start、reset、leave"
         });
         CommandManager.AddHandler(CommandAlias, new CommandInfo(OnCommand)
         {
-            HelpMessage = "Alias for /anomech"
+            HelpMessage = "/anomech 的別名"
         });
 
         PluginInterface.UiBuilder.Draw += WindowSystem.Draw;
@@ -113,7 +115,17 @@ public sealed class Plugin : IDalamudPlugin
         StatusManagerPointers.Initialize();
         TimelineContainerPointers.Initialize();
         VfxContainerPointers.Initialize();
+        VfxObjectPointers.Initialize();
         VfxDataPointers.Initialize();
+
+        SignatureReport.Log(
+            typeof(CharacterManagerPointers), typeof(EventFrameworkPointers),
+            typeof(EventObjectManagerPointers), typeof(EventObjectPointers),
+            typeof(GameMainPointers), typeof(ModelContainerPointers),
+            typeof(PacketDispatcherPointers), typeof(RsfPointers),
+            typeof(StatusManagerPointers), typeof(TimelineContainerPointers),
+            typeof(VfxContainerPointers), typeof(VfxObjectPointers),
+            typeof(VfxDataPointers));
 
         Log.Information($"===A cool log message from {PluginInterface.Manifest.Name}===");
     }
@@ -156,7 +168,7 @@ public sealed class Plugin : IDalamudPlugin
         Game.Tick(fw->FrameDeltaTime);
     }
 
-    private void OnTerritoryChanged(uint territory)
+    private void OnTerritoryChanged(ushort territory)
     {
         var row = DataManager.GetExcelSheet<TerritoryType>()?.GetRowOrDefault(territory);
         var isInn = row?.TerritoryIntendedUse.RowId == 2; // TerritoryIntendedUse.Inn
@@ -175,14 +187,14 @@ public sealed class Plugin : IDalamudPlugin
             MainWindow.IsOpen = true;
     }
 
-    private void OnDutyStarted(IDutyStateEventArgs args)
-        => LogManager.LogCombatStart(args.TerritoryType.RowId);
+    private void OnDutyStarted(object? sender, ushort territory)
+        => LogManager.LogCombatStart(territory);
 
-    private void OnDutyWiped(IDutyStateEventArgs args)
-        => LogManager.LogCombatEnd(args.TerritoryType.RowId, wipe: true);
+    private void OnDutyWiped(object? sender, ushort territory)
+        => LogManager.LogCombatEnd(territory, wipe: true);
 
-    private void OnDutyCompleted(IDutyStateEventArgs args)
-        => LogManager.LogCombatEnd(args.TerritoryType.RowId, wipe: false);
+    private void OnDutyCompleted(object? sender, ushort territory)
+        => LogManager.LogCombatEnd(territory, wipe: false);
 
     private void OnCommand(string command, string args)
     {

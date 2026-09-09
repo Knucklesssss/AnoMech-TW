@@ -5,7 +5,7 @@ namespace AnoMech.Pointers;
 
 internal unsafe class EventObjectPointers
 {
-    [Signature("E8 ?? ?? ?? ?? 49 8B 06 44 0F B6 C5", UseFlags = SignatureUseFlags.Pointer, ScanType = ScanType.Text)]
+    [Signature("E8 ?? ?? ?? ?? 49 8B 06 44 0F B6 C5", UseFlags = SignatureUseFlags.Pointer, ScanType = ScanType.Text, Fallibility = Fallibility.Fallible)]
     public static SetEventObjectStateDelegate SetEventObjectState { get; private set; } = null!;
 
     // State-change driver. Writes `actor[0x1B2] = state` and notifies the

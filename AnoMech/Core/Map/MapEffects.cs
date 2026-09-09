@@ -1,6 +1,7 @@
 using System;
 using Dalamud.Hooking;
 using FFXIVClientStructs.FFXIV.Client.Game.Event;
+using AnoMech.Core.Native;
 
 namespace AnoMech.Core.Map;
 
@@ -21,12 +22,13 @@ internal sealed unsafe class MapEffects : IDisposable
     public bool Loaded { get; set; } = false;
 
     private delegate long ProcessMapEffectDelegate(long module, uint index, ushort state, ushort flags);
-    private readonly Hook<ProcessMapEffectDelegate> hook;
+    private readonly Hook<ProcessMapEffectDelegate>? hook;
 
     internal MapEffects()
     {
-        var addr = Plugin.SigScanner.ScanText(
+        var addr = SignatureReport.TryScanText("MapEffects.ProcessMapEffect",
             "48 89 5C 24 ?? 48 89 6C 24 ?? 48 89 74 24 ?? 57 48 83 EC 20 8B FA 41 0F B7 E8");
+        if (addr == 0) return;
         hook = Plugin.GameInterop.HookFromAddress<ProcessMapEffectDelegate>(addr, Detour);
         hook.Enable();
     }
@@ -36,7 +38,7 @@ internal sealed unsafe class MapEffects : IDisposable
         // Info logging so i can gather logs of events from instance
         Plugin.Log.Info($"[MapEffect] index=0x{index:X} state=0x{state:X} flags=0x{flags:X}");
         Plugin.LogManager.LogMapEffect(index, state, flags);
-        return hook.Original(module, index, state, flags);
+        return hook!.Original(module, index, state, flags);
     }
 
     // packetFlags: high16=State, low8=Flags (ACT type-257 raw value).
@@ -45,12 +47,12 @@ internal sealed unsafe class MapEffects : IDisposable
         if (!Loaded) return;
         var module = *(nint*)((nint)EventFramework.Instance() + 344);
         if (module == 0) return;
-        hook.Original(module, index, (ushort)(packetFlags >> 16), (ushort)(packetFlags & 0xFF));
+        hook?.Original(module, index, (ushort)(packetFlags >> 16), (ushort)(packetFlags & 0xFF));
     }
 
     public void Dispose()
     {
-        hook.Disable();
-        hook.Dispose();
+        hook?.Disable();
+        hook?.Dispose();
     }
 }
