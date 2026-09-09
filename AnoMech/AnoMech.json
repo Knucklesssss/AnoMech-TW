@@ -1,10 +1,10 @@
 {
     "Author": "Anomek",
-    "Name": "AnoMech",
-    "Punchline": "Another FFXIV mechanics simulator. Go to an inn and start practice.",
-    "Description": "Spawns fake party members and bosses client-side so you can practice raid mechanics without a full party.",
-    "RepoUrl": "https://github.com/anomek/AnoMech",
-    "IconUrl": "https://raw.githubusercontent.com/anomek/AnoMech/master/images/icon.png",
+    "Name": "AnoMech (TC)",
+    "Punchline": "在旅館單人練習高難副本機制（繁中版 / API13 分支）",
+    "Description": "在你的客戶端生出假隊友與假 boss，讓你一個人也能練習高難副本機制。進旅館後打 /anomech 開始。\n\n本分支是 anomek/AnoMech 針對繁體中文版（Dalamud API 13）的非官方移植。目前提供絕歐米茄 5 個與絕神兵 1 個場景，屬實驗性質。",
+    "RepoUrl": "https://github.com/zcx599e692/AnoMech-TW",
+    "IconUrl": "https://raw.githubusercontent.com/zcx599e692/AnoMech-TW/api13-tw/images/icon.png",
     "Tags": [
         "top",
         "omega",
