@@ -158,6 +158,8 @@ public sealed class Game : IDisposable
         World.Map.ArmColliderDrops(zone.ColliderRemovalPoints.Select(World.Coordinates.ToGlobal));
         World.PlaceWaymarks(ResolveWaymarks(zone, selectedWaymark));
         World.CreateParty(player.ClassJob.RowId, roleOverride, solo);
+        // So a player's own /mk ... <mo> macro works on the doppels straight away.
+        Markings.PrimeMouseoverTargets(World.Party);
         // zone.Run creates the SimArenaBoundary the out-of-arena check below reads.
         zone.Run(World);
         phase.Run(World);

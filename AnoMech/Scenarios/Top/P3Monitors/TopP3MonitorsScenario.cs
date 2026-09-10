@@ -176,6 +176,7 @@ public sealed class TopP3MonitorsScenario : IScenario
         // [-146.96s] 272|40003437|E0000000|0000|00|18f01304ac20d7bc
         // [-147.33s] 03|40003437|歐米茄|00|5A|0000|00||7636|15717|11125976|11125976|10000|10000|||100.00|100.00|0.00|0.00|b742bd5ccd04f067
         world.Events.Add(0f, () => omega_40003437 = world.SpawnEnemy(new EnemySpawnConfig(BNpcBaseId: BNpcBaseId.OmegaFinal, NameId: BNpcNameId.OmegaFinal, Level: 90, Targetable: false, EnemyList: EnemyListMode.Never, IsVisible: false, Placement: new Placement(new Vector3(0.000f, 0.000f, 0.000f), 0.000f))));  // spawned at -147.33s, before this window opens; hoisted so the helper exists
+        world.Events.Add(0f, () => omega_40003437?.SetTargetable(true));  // its state when this window opens
         // The parser suppresses Heading, so the recording carries no facing at all and the
         // boss would otherwise keep its spawn rotation of 0, which points south. It holds
         // north for this whole phase.

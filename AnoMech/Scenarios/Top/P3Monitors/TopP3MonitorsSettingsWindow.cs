@@ -8,12 +8,16 @@ public sealed class TopP3MonitorsSettingsWindow
 
     public void Draw()
     {
-        if (ImGui.Button("自動##resetall")) { Overrides.PlayerSlot = null; Overrides.ScreenFacesEast = null; Overrides.Markers = MarkerMode.System; }
+        if (ImGui.Button("自動##resetall"))
+        {
+            Overrides.PlayerSlot = null;
+            Overrides.ScreenFacesEast = null;
+        }
+
         if (SettingsGrid.Begin("##p3monitors"))
         {
             DrawPlayerSlot();
             DrawScreenFacing();
-            DrawMarkers();
             SettingsGrid.End();
         }
     }
@@ -42,14 +46,5 @@ public sealed class TopP3MonitorsSettingsWindow
         if (ImGui.RadioButton("東##face", v == true)) Overrides.ScreenFacesEast = true;
         ImGui.SameLine();
         if (ImGui.RadioButton("西##face", v == false)) Overrides.ScreenFacesEast = false;
-    }
-
-    private void DrawMarkers()
-    {
-        var v = Overrides.Markers;
-        SettingsGrid.Row("標記方式：");
-        if (ImGui.RadioButton("系統標##marks", v == MarkerMode.System)) Overrides.Markers = MarkerMode.System;
-        ImGui.SameLine();
-        if (ImGui.RadioButton("玩家手標##marks", v == MarkerMode.Manual)) Overrides.Markers = MarkerMode.Manual;
     }
 }

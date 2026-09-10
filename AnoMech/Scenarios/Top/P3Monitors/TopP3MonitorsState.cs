@@ -22,8 +22,6 @@ public sealed class TopP3MonitorsState
     // readable in game.
     public bool ScreenFacesEast { get; }
 
-    public MarkerMode Markers { get; }
-
     public TopP3MonitorsState(SimParty party, TopP3MonitorsStateOverrides overrides)
     {
         order = new RoleListBuilder
@@ -31,7 +29,6 @@ public sealed class TopP3MonitorsState
             ForcePlayerIndex = overrides.PlayerSlot is { } slot ? [slot] : [],
         }.Build(party);
         ScreenFacesEast = overrides.ScreenFacesEast ?? new Rng().NextBool();
-        Markers = overrides.Markers;
     }
 
     public PartyRole At(int slot) => order[slot];

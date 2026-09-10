@@ -10,6 +10,4 @@ public sealed class TopP3MonitorsStateOverrides
 
     // null = rolled; true = Omega's screen points east.
     public bool? ScreenFacesEast { get; set; }
-
-    public MarkerMode Markers { get; set; } = MarkerMode.System;
 }

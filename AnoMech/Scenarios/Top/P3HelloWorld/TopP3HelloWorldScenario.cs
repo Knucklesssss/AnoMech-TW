@@ -617,6 +617,8 @@ public sealed class TopP3HelloWorldScenario : IScenario
         // world.Events.Add(-150.44f, () => omega_400033C8?.SetVisible(false));
         // [-150.44s] 03|400033C8|歐米茄|00|5A|0000|00||7635|15712|4314620|4314620|10000|10000|||96.58|98.97|0.00|0.00|871f208eb45bfabd
         world.Events.Add(0f, () => omega_400033C8 = world.SpawnEnemy(new EnemySpawnConfig(BNpcBaseId: BNpcBaseId.OmegaM, NameId: BNpcNameId.OmegaM_1DD3, Level: 90, Targetable: false, EnemyList: EnemyListMode.Never, IsVisible: false, Placement: new Placement(new Vector3(-3.420f, 0.000f, -1.030f), 0.000f))));  // spawned at -150.44s, before this window opens; hoisted so the helper exists
+        world.Events.Add(0f, () => omega_400033C8?.SetTargetable(false));  // its state when this window opens
+        world.Events.Add(0f, () => omega_400033C8?.SetModelState((byte)0x05));  // its state when this window opens
         // [-149.28s] 271|400033C8|0.0000|00|00|97.0000|100.0000|0.0000|2a6f545e1c5a5d69
         // world.Events.Add(-149.28f, () => omega_400033C8?.SetPosition(new Placement(new Vector3(-3.000f, 0.000f, 0.000f), 0.000f)));
         // [-149.19s] 273|400033C8|0197|1E43|0|0|0|0e07874bcbb764ea
@@ -820,6 +822,9 @@ public sealed class TopP3HelloWorldScenario : IScenario
         // [-150.13s] 272|400033C7|E0000000|0000|00|4f2a560872336c0e
         // [-150.54s] 03|400033C7|歐米茄|00|5A|0000|00||7635|15713|4314620|4314620|10000|10000|||103.21|98.53|0.00|0.00|8ab3722990c30c61
         world.Events.Add(0f, () => omega_400033C7 = world.SpawnEnemy(new EnemySpawnConfig(BNpcBaseId: BNpcBaseId.OmegaF, NameId: BNpcNameId.OmegaM_1DD3, Level: 90, Targetable: false, EnemyList: EnemyListMode.Never, IsVisible: false, Placement: new Placement(new Vector3(3.210f, 0.000f, -1.470f), 0.000f))));  // spawned at -150.54s, before this window opens; hoisted so the helper exists
+        world.Events.Add(0f, () => omega_400033C7?.SetTargetable(false));  // its state when this window opens
+        world.Events.Add(0f, () => omega_400033C7?.SetModelState((byte)0x0B));  // its state when this window opens
+        world.Events.Add(0f, () => omega_400033C7?.SetModeAttributeFlags((byte)0x31));  // its state when this window opens
         // [-150.54s] 261|Add|400033C7|BNpcID|3D61|BNpcNameID|1DD3|CastTargetID|E0000000|CurrentMP|10000|CurrentWorldID|65535|Heading|0.0000|Level|90|MaxHP|4314620|MaxMP|10000|ModelStatus|18432|Name|歐米茄|NPCTargetID|E0000000|PosX|103.2147|PosY|98.5313|PosZ|0.0000|Radius|5.0100|TransformationId|491|Type|2|WorldID|65535|95c9de37f62b40bd
         // [-150.44s] 261|Change|400033C7|ModelStatus|16384|39f51f9994793113
         // world.Events.Add(-150.44f, () => omega_400033C7?.SetVisible(false));
