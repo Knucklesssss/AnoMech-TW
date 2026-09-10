@@ -90,7 +90,7 @@ public sealed class Plugin : IDalamudPlugin
 
         CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
         {
-            HelpMessage = "開啟 AnoMech。子指令：config、start、reset、leave、mark"
+            HelpMessage = "開啟 AnoMech。子指令：config、start、reset、leave、mark、actions"
         });
         CommandManager.AddHandler(CommandAlias, new CommandInfo(OnCommand)
         {
@@ -210,6 +210,12 @@ public sealed class Plugin : IDalamudPlugin
             return;
         }
 
+        if (trimmed.StartsWith("actions", StringComparison.OrdinalIgnoreCase))
+        {
+            OnActionsCommand(trimmed[7..].Trim());
+            return;
+        }
+
         switch (trimmed)
         {
             case "config":
@@ -277,6 +283,50 @@ public sealed class Plugin : IDalamudPlugin
     }
 
     private static void PrintMarkMessage(string text) => ChatOutput.Coach($"[AnoMech] {text}");
+
+    // Porting this branch is mostly working out which action id the TC client calls what.
+    // The Action sheet is right there, so read it rather than inferring ids from logs:
+    // a row that exists and carries a name is real, whatever the recordings happened to catch.
+    private static void OnActionsCommand(string args)
+    {
+        var parts = args.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length is 0 or > 2 || !TryParseActionId(parts[0], out var from))
+        {
+            PrintMarkMessage("用法：/ano actions 0x7B6B 或 /ano actions 0x7B60 0x7B70（十進位也可，十六進位要加 0x）。");
+            return;
+        }
+
+        var to = from;
+        if (parts.Length == 2 && !TryParseActionId(parts[1], out to))
+        {
+            PrintMarkMessage($"認不得結束 id「{parts[1]}」。");
+            return;
+        }
+
+        if (to < from) (from, to) = (to, from);
+        if (to - from > 63)
+        {
+            PrintMarkMessage("一次最多查 64 個 id。");
+            return;
+        }
+
+        var found = 0;
+        for (var id = from; id <= to; id++)
+        {
+            var name = ActionLookup.Name(id);
+            // Name() falls back to the raw id, which is how an absent or unnamed row reads.
+            if (name == id.ToString()) continue;
+            found++;
+            ChatOutput.Coach($"[AnoMech] 0x{id:X} ({id})  {name}");
+        }
+
+        PrintMarkMessage($"0x{from:X}–0x{to:X} 之間有名稱的共 {found} 個。");
+    }
+
+    private static bool TryParseActionId(string text, out uint id)
+        => text.StartsWith("0x", StringComparison.OrdinalIgnoreCase)
+               ? uint.TryParse(text[2..], System.Globalization.NumberStyles.HexNumber, null, out id)
+               : uint.TryParse(text, out id);
 
     private void StartSelectedScenario(bool solo)
     {
