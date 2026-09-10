@@ -58,6 +58,8 @@ public sealed class Game : IDisposable
     public bool GodMode { get; set; }
 
     private IScenario? activeScenario;
+
+    public IScenario? ActiveScenario => activeScenario;
     private float scenarioElapsed;
     private bool firstDeathScheduled;
     private bool firstFreezeScheduled;

@@ -41,7 +41,7 @@ https://raw.githubusercontent.com/Knucklesssss/AnoMech-TW/api13-tw/repo.json
 - 絕神兵（The Weapon's Refrain）
   - Ultimate Predation
 
-**你好世界的標記方式（P5 西格瑪 / P5 歐米茄 / P3 探測式檢知波動砲）**
+**你好世界的標記方式（P5 西格瑪 / P5 歐米茄）**
 
 設定視窗裡可選：
 
@@ -64,6 +64,9 @@ https://raw.githubusercontent.com/Knucklesssss/AnoMech-TW/api13-tw/repo.json
   才認得它們，所以 `/mk attack1 <mo>` 在剛開場時會靜靜地沒有反應；`/mk attack1 <t>`
   則一直有效。插件會在場景開始時幫每個假隊友各掛一次標記再立刻清除，用意就是把這層
   暖機做掉，但這條路是否對所有情況都有效尚未確認。
+  「探測式檢知波動砲」另外提供 `/ano mark attack1`，直接寫標記、沒有暖機問題：
+  優先標在滑鼠指向的對象，沒有就標在目前目標上，`/ano mark clear` 清掉全部。
+  這個指令只在該場景有效——其他 P 用隊伍列表或 `/mk <t>` 都正常，不需要第二套做法。
 - P3 的兩個場景是從單次錄影重建的，Bot 走位依攻略手寫，尚未逐項驗證完畢；
   傷害與失誤判定尚未實作（站錯不會死）。
 - 上游原本就有的問題部分仍在（例如連線距離判定粗略）。
