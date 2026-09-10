@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../AnoMech/Core/Game/Ai/*.cs" Link="Production/%(Filename)%(Extension)" />
+    <Compile Include="../AnoMech/Core/Game/EventScheduler.cs" Link="Production/EventScheduler.cs" />
+    <Compile Include="../AnoMech/Core/Game/Party/PartyRole.cs" Link="Production/PartyRole.cs" />
+    <Compile Include="../AnoMech/Scenarios/Top/TopConstants.cs" Link="Production/TopConstants.cs" />
+    <Compile Include="../AnoMech/Scenarios/Top/P3HelloWorld/TopP3HelloWorldAi.cs" Link="Production/TopP3HelloWorldAi.cs" />
+    <Compile Include="../AnoMech/Scenarios/Top/P3HelloWorld/TopP3HelloWorldMechanics.cs" Link="Production/TopP3HelloWorldMechanics.cs" />
+    <Compile Include="../AnoMech/Scenarios/Top/P3HelloWorld/TopP3TransitionRules.cs" Link="Production/TopP3TransitionRules.cs" />
+    <Compile Include="../AnoMech/Scenarios/Top/P3HelloWorld/TopP3Transition.cs" Link="Production/TopP3Transition.cs" />
+  </ItemGroup>
+</Project>

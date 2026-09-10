@@ -8,10 +8,20 @@ public sealed class TopP3HelloWorldSettingsWindow
 
     public void Draw()
     {
-        if (ImGui.Button("自動##resetall")) Overrides.PlayerSlot = null;
+        if (ImGui.Button("自動##resetall"))
+        {
+            Overrides.PlayerSlot = null;
+            Overrides.TransitionFirstArmsSouth = true;
+        }
         if (SettingsGrid.Begin("##p3helloworld"))
         {
             DrawPlayerSlot();
+            SettingsGrid.Row("轉場手臂：");
+            if (ImGui.RadioButton("原始排列##arms", Overrides.TransitionFirstArmsSouth))
+                Overrides.TransitionFirstArmsSouth = true;
+            ImGui.SameLine();
+            if (ImGui.RadioButton("反向練習排列##arms", !Overrides.TransitionFirstArmsSouth))
+                Overrides.TransitionFirstArmsSouth = false;
             SettingsGrid.End();
         }
     }

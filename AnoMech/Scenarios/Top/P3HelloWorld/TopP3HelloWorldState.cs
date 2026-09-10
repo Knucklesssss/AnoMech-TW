@@ -20,8 +20,13 @@ public sealed class TopP3HelloWorldState
 
     private readonly RoleList cycle;
 
+    public PartyRole[] TransitionRoles { get; }
+    public bool TransitionFirstArmsSouth { get; }
+
     public TopP3HelloWorldState(SimParty party, TopP3HelloWorldStateOverrides overrides)
     {
+        TransitionRoles = TopP3TransitionRules.Assign(RoleList.Random(party).List);
+        TransitionFirstArmsSouth = overrides.TransitionFirstArmsSouth;
         cycle = new RoleListBuilder
         {
             ForcePlayerIndex = overrides.PlayerSlot is { } slot ? [slot * 2, slot * 2 + 1] : [],
