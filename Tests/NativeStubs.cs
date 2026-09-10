@@ -44,6 +44,8 @@ namespace AnoMech.Core.SimObjects
 
     public sealed class SimParty
     {
+        public static SimParty Empty { get; } = new();
+        public PartyRole PlayerRole => PartyRole.MainTank;
         private readonly SimCharacter[] members = Enumerable.Range(0, 8).Select(i => new SimCharacter { GameObjectId = (uint)(i + 1) }).ToArray();
         public SimCharacter? Get(int role) => members[role];
         public SimCharacter? Get(PartyRole role) => Get((int)role);
@@ -125,18 +127,24 @@ namespace AnoMech.Core.SimObjects
     }
 }
 
-namespace AnoMech.Core.Game
-{
-    public readonly record struct Placement(Vector3 Position, float Rotation);
-}
-
 namespace AnoMech.Core
 {
-    public enum Sign { }
+    public enum Sign { Attack1, Attack2, Attack3, Attack4, Bind1, Bind2, Triangle, Cross }
     public static class Markings
     {
         public static void ClearAll() { }
         public static void Set(Sign sign, uint id) { }
+    }
+}
+
+namespace AnoMech.Scenarios.Top
+{
+    internal static class HandPlacedSigns
+    {
+        public static RoleList Reorder(AnoMech.Core.SimObjects.SimParty party, RoleList fallback,
+            IReadOnlyList<(AnoMech.Core.Sign Sign, int Slot)> plan,
+            IReadOnlyCollection<PartyRole> keepInPlace) =>
+            throw new NotSupportedException("Live player signs are outside these tests.");
     }
 }
 

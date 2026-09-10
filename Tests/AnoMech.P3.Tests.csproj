@@ -6,6 +6,17 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../AnoMech/Core/Game/Placement.cs" Link="Production/Placement.cs" />
+    <Compile Include="../AnoMech/Core/SimObjects/IPositioned.cs" Link="Production/IPositioned.cs" />
+    <Compile Include="../AnoMech/Helpers/ShuffleExtensions.cs" Link="Production/ShuffleExtensions.cs" />
+    <Compile Include="../AnoMech/Scenarios/RoleList.cs" Link="Production/RoleList.cs" />
+    <Compile Include="../AnoMech/Scenarios/Rng.cs" Link="Production/Rng.cs" />
+    <Compile Include="../AnoMech/Scenarios/ScenarioStates.cs" Link="Production/ScenarioStates.cs" />
+    <Compile Include="../AnoMech/Scenarios/Top/MarkerMode.cs" Link="Production/MarkerMode.cs" />
+    <Compile Include="../AnoMech/Scenarios/Top/P5Sigma/TopP5SigmaAi.cs" Link="Production/TopP5SigmaAi.cs" />
+    <Compile Include="../AnoMech/Scenarios/Top/P5Sigma/TopP5SigmaTuuuflessAi.cs" Link="Production/TopP5SigmaTuuuflessAi.cs" />
+    <Compile Include="../AnoMech/Scenarios/Top/P5Sigma/TopP5SigmaState.cs" Link="Production/TopP5SigmaState.cs" />
+    <Compile Include="../AnoMech/Scenarios/Top/P5Sigma/TopP5SigmaStateOverrides.cs" Link="Production/TopP5SigmaStateOverrides.cs" />
     <Compile Include="../AnoMech/Core/Game/Ai/*.cs" Link="Production/%(Filename)%(Extension)" />
     <Compile Include="../AnoMech/Core/Game/EventScheduler.cs" Link="Production/EventScheduler.cs" />
     <Compile Include="../AnoMech/Core/Game/Party/PartyRole.cs" Link="Production/PartyRole.cs" />

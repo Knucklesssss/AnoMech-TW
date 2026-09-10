@@ -71,7 +71,7 @@ public sealed class TopP5SigmaTuuuflessAi : TopP5SigmaAi
     protected override IAiMove TowerPositions()
     {
         var towers = state.GlitchType == GlitchType.Mid ? MidGlitchTowerForEachGap : FarGlitchTowerForEachGap;
-        return AiMove.Create(towers.Select(t => (Vector2?)t).ToArray())
+        return AiMove.Create(towers.Select((t, i) => (Vector2?)(state.GlitchType == GlitchType.Far ? FarTowerWallPosition(i) : t)).ToArray())
                      .Assignments(WaveCannonAssignments())
                      .ApplySwaps(ToTowerRelativeClockSpot)
                      .ApplyPositions(state.AdjustedNorthA.Apply);
@@ -83,6 +83,17 @@ public sealed class TopP5SigmaTuuuflessAi : TopP5SigmaAi
                      .Assignments(WaveCannonAssignments())
                      .ApplySwaps(ToTowerRelativeClockSpot)
                      .ApplyPositions(state.AdjustedNorthA.Apply);
+    }
+
+    private static Vector2 FarTowerWallPosition(int index)
+    {
+        var tower = FarGlitchTowerForEachGap[index];
+        var partnerTower = FarGlitchTowerForEachGap[(index + 4) % 8];
+        var outward = Vector2.Normalize(tower - partnerTower);
+        var projection = Vector2.Dot(tower, outward);
+        var radius = TopConstants.Geometry.ArenaRadius - 0.5f;
+        var distance = MathF.Sqrt(projection * projection + radius * radius - tower.LengthSquared()) - projection;
+        return tower + outward * distance;
     }
 
     private void ToTowerRelativeClockSpot(IAiRoles s)
