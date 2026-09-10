@@ -1,7 +1,10 @@
+using System;
 using Dalamud.Game;
 using Dalamud.Game.ClientState.Objects;
 using Dalamud.Game.Command;
 using Dalamud.Game.DutyState;
+using Dalamud.Game.Text;
+using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Interface.Windowing;
@@ -11,6 +14,7 @@ using AnoMech.Core;
 using AnoMech.Core.Game;
 using AnoMech.Core.Map;
 using AnoMech.Core.Native;
+using AnoMech.Scenarios.Top.P3Monitors;
 using AnoMech.Windows;
 using AnoMech.Pointers;
 using CSFramework = FFXIVClientStructs.FFXIV.Client.System.Framework.Framework;
@@ -86,7 +90,7 @@ public sealed class Plugin : IDalamudPlugin
 
         CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
         {
-            HelpMessage = "開啟 AnoMech。子指令：config、start、reset、leave"
+            HelpMessage = "開啟 AnoMech。子指令：config、start、reset、leave、mark"
         });
         CommandManager.AddHandler(CommandAlias, new CommandInfo(OnCommand)
         {
@@ -199,7 +203,14 @@ public sealed class Plugin : IDalamudPlugin
 
     private void OnCommand(string command, string args)
     {
-        switch (args.Trim())
+        var trimmed = args.Trim();
+        if (trimmed.StartsWith("mark", StringComparison.OrdinalIgnoreCase))
+        {
+            OnMarkCommand(trimmed[4..].Trim());
+            return;
+        }
+
+        switch (trimmed)
         {
             case "config":
                 ConfigWindow.Toggle();
@@ -221,6 +232,56 @@ public sealed class Plugin : IDalamudPlugin
                 break;
         }
     }
+
+    // The game's own /mk macro cannot resolve <mo> onto a doppel until that doppel has
+    // carried a sign once, so a fresh party silently ignores the whole macro. This writes
+    // MarkingController directly, which has no such warm-up. Deliberately gated to the P3
+    // monitors scenario: every other phase marks fine through the party list or /mk <t>,
+    // and a global marking command would be a second, divergent way to do the same thing.
+    private void OnMarkCommand(string args)
+    {
+        if (Game.ActiveScenario is not TopP3MonitorsScenario)
+        {
+            PrintMarkMessage("/ano mark 只能在「探測式檢知波動砲」進行中使用。");
+            return;
+        }
+
+        if (args.Length == 0)
+        {
+            PrintMarkMessage("用法：/ano mark attack1（標在滑鼠指向的對象，沒有就標在目標上）、/ano mark clear 清除全部。");
+            return;
+        }
+
+        if (args.Equals("clear", StringComparison.OrdinalIgnoreCase))
+        {
+            Markings.ClearAll();
+            PrintMarkMessage("已清除所有標記。");
+            return;
+        }
+
+        if (!Enum.TryParse<Sign>(args, ignoreCase: true, out var sign) || !Enum.IsDefined(sign))
+        {
+            PrintMarkMessage($"認不得標記「{args}」。可用：attack1-8、bind1-3、ignore1-2、square、circle、cross、triangle。");
+            return;
+        }
+
+        var target = TargetManager.MouseOverTarget ?? TargetManager.Target;
+        if (target == null)
+        {
+            PrintMarkMessage("沒有指向或選取任何對象。");
+            return;
+        }
+
+        Markings.Set(sign, target.GameObjectId);
+        PrintMarkMessage($"{sign} → {target.Name}");
+    }
+
+    private static void PrintMarkMessage(string text)
+        => ChatGui.Print(new XivChatEntry
+        {
+            Type = XivChatType.SystemMessage,
+            Message = new SeStringBuilder().AddText($"[AnoMech] {text}").Build(),
+        });
 
     private void StartSelectedScenario(bool solo)
     {

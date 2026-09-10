@@ -13,79 +13,98 @@ public sealed class TopP3MonitorsAi : IScenarioAi<TopP3MonitorsState>
     public string Name => "tuuufless";
 
     private TopP3MonitorsState state = null!;
+    private SimWorld world = null!;
 
-    // The party's own order, used for the pre-position column and for deciding who takes
-    // which numbered spot within a group.
     private static readonly PartyRole[] NorthToSouth =
     [
         PartyRole.RegenHealer, PartyRole.MainTank, PartyRole.OffTank, PartyRole.MeleeDpsA,
         PartyRole.MeleeDpsB, PartyRole.PhysRangedDps, PartyRole.CasterDps, PartyRole.ShieldHealer,
     ];
 
-    // Spots 1-5 for the five without a monitor, drawn for a west-facing screen. Spots 1, 4
-    // and 5 sit on the north-south line; 2 steps just off the middle and 3 runs out along
-    // the east-west line, which is what puts the pair of them in Omega's own cannon and
-    // keeps them clear of the players' ones.
-    private static readonly Vector2[] Clear =
+    private static readonly Vector2[] ScreenlessSpotsAgainstAWestFacingScreen =
     [
-        new(0f, -16.4f), new(-2f, 0f), new(-14.4f, 0f), new(0f, 10f), new(0f, 18.5f),
+        new(1.7f, -16.1f), new(-1.7f, -0.3f), new(-13.8f, -0.2f), new(2.2f, 9.4f), new(2.1f, 18.3f),
     ];
 
-    // The three monitor holders stay on the far side from Omega's screen, fanned out so no
-    // one cannon can cover two of them.
-    private static readonly Vector2[] Holding =
+    private static readonly Vector2[] ScreenSpotsAgainstAWestFacingScreen =
     [
-        new(11.4f, -13.9f), new(17.5f, -5.4f), new(18.1f, 4.7f),
+        new(10.1f, -13.6f), new(15.2f, -5.3f), new(15.6f, 3.4f),
     ];
 
-    public void Run(TopP3MonitorsState s, SimWorld world)
+    private static readonly Vector2[] CannonAimAgainstAWestFacingScreen =
+    [
+        new(1f, 0f), new(0f, -1f), new(0f, 1f),
+    ];
+
+    private static float MirrorForOmegasScreen => TopP3MonitorsState.ScreenFacesEast ? -1f : 1f;
+
+    public void Run(TopP3MonitorsState s, SimWorld w)
     {
         state = s;
+        world = w;
         var ai = new AiManager(world);
-        ai.Move(0.5f, WestColumn, arrivalTime: 6f);
-        ai.Move(9f, MonitorSpots, arrivalTime: 16.5f);
+        ai.Move(0.5f, LineUpOnTheWestEdge, arrivalTime: 6f);
+        ai.Move(9f, SpreadOntoTheCannonSpots, arrivalTime: 16.5f);
+        world.Events.Add(17f, TurnEachScreenOntoItsOwnTargets);
+        world.Events.Add(18f, TurnEachScreenOntoItsOwnTargets);
     }
 
-    // The party's own call: a north-to-south column on the west side, sitting on the line
-    // between the two western waymarks.
-    private IAiMove WestColumn()
+    private IAiMove LineUpOnTheWestEdge()
     {
         var coords = new Vector2?[8];
         for (var i = 0; i < 8; i++) coords[i] = new Vector2(-13f, -14f + 4f * i);
         return AiMove.Create(coords).Assignments(NorthToSouth);
     }
 
-    // Monitor holders opposite Omega's screen, everyone else on the numbered spots. The
-    // diagram is drawn for a west-facing screen, so an east-facing one mirrors it.
-    private IAiMove MonitorSpots()
+    private IAiMove SpreadOntoTheCannonSpots()
     {
-        var mirror = state.ScreenFacesEast ? -1f : 1f;
         var coords = new Vector2?[8];
         var roles = new PartyRole[8];
         var next = 0;
 
-        void Place(PartyRole role, Vector2 at)
+        void Place(int slot, Vector2 spot)
         {
-            coords[next] = new Vector2(at.X * mirror, at.Y);
-            roles[next++] = role;
+            coords[next] = new Vector2(spot.X * MirrorForOmegasScreen, spot.Y);
+            roles[next++] = state.At(slot);
         }
 
-        var holders = MonitorHolders();
-        var clear = ClearPlayers();
-        for (var i = 0; i < holders.Count; i++) Place(holders[i], Holding[i]);
-        for (var i = 0; i < clear.Count; i++) Place(clear[i], Clear[i]);
+        var screens = ScreenSlotsInPartyOrder();
+        var screenless = ScreenlessSlotsInPartyOrder();
+        for (var i = 0; i < screens.Count && i < ScreenSpotsAgainstAWestFacingScreen.Length; i++)
+            Place(screens[i], ScreenSpotsAgainstAWestFacingScreen[i]);
+        for (var i = 0; i < screenless.Count && i < ScreenlessSpotsAgainstAWestFacingScreen.Length; i++)
+            Place(screenless[i], ScreenlessSpotsAgainstAWestFacingScreen[i]);
 
         return AiMove.Create(coords).Assignments(roles);
     }
 
-    private List<PartyRole> InPartyOrder(IEnumerable<int> slots) =>
-        slots.Select(state.At)
-             .OrderBy(role => Array.IndexOf(NorthToSouth, role))
-             .ToList();
+    private void TurnEachScreenOntoItsOwnTargets()
+    {
+        var screens = ScreenSlotsInPartyOrder();
+        for (var i = 0; i < screens.Count && i < CannonAimAgainstAWestFacingScreen.Length; i++)
+        {
+            var role = state.At(screens[i]);
+            if (role == world.Party.PlayerRole) continue;
+            if (state.SideAt(screens[i]) is not { } side) continue;
+            var aim = CannonAimAgainstAWestFacingScreen[i];
+            world.Party.Get(role)?.SetRotation(
+                RotationThatAimsTheCannon(new Vector2(aim.X * MirrorForOmegasScreen, aim.Y), side));
+        }
+    }
 
-    private List<PartyRole> MonitorHolders() =>
-        InPartyOrder(Enumerable.Range(0, TopP3MonitorsState.SlotCount).Where(state.HasMonitor));
+    private static float RotationThatAimsTheCannon(Vector2 aim, ScreenSide side)
+    {
+        var right = aim * -side.Mul;
+        return MathF.Atan2(right.Y, -right.X);
+    }
 
-    private List<PartyRole> ClearPlayers() =>
-        InPartyOrder(Enumerable.Range(0, TopP3MonitorsState.SlotCount).Where(slot => !state.HasMonitor(slot)));
+    private List<int> ScreenSlotsInPartyOrder() => SlotsInPartyOrder(state.HasMonitor);
+
+    private List<int> ScreenlessSlotsInPartyOrder() => SlotsInPartyOrder(slot => !state.HasMonitor(slot));
+
+    private List<int> SlotsInPartyOrder(Func<int, bool> keep) =>
+        Enumerable.Range(0, TopP3MonitorsState.SlotCount)
+                  .Where(keep)
+                  .OrderBy(slot => Array.IndexOf(NorthToSouth, state.At(slot)))
+                  .ToList();
 }

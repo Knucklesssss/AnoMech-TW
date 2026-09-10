@@ -15,6 +15,7 @@ public sealed class TopP3HelloWorldAi : IScenarioAi<TopP3HelloWorldState>
 
     private TopP3HelloWorldState state = null!;
     private SimWorld world = null!;
+    private readonly bool[] towerBugSeen = new bool[8];
 
     private const float WaymarkRing = 13.63f;
 
@@ -69,18 +70,15 @@ public sealed class TopP3HelloWorldAi : IScenarioAi<TopP3HelloWorldState>
         for (var i = 0; i < 4; i++)
         {
             var round = i;
+            // The debuff clears six to ten seconds after Hello World resolves and the next
+            // towers spawn roughly eleven after, so the pass has that gap and no more. Polled
+            // rather than fired once because the clear time drifts by up to three seconds
+            // between rounds; it runs right up to the next TakeTowers, which then takes over.
+            var until = round < 3 ? TowersAppear[round + 1] : Resolve[round] + 12f;
             ai.Move(TowersAppear[round], () => TakeTowers(round), arrivalTime: Resolve[round] - 3f);
-            // Polled rather than fired once: the collection only starts when the towers have
-            // actually been taken, which the poison holders' own tower debuff announces.
-            for (var step = 0; step < 20; step++)
-            {
-                var at = Resolve[round] - 3f + step * 0.5f;
+            for (var at = Resolve[round] - 3f; at < until; at += 0.5f)
                 ai.Move(at, () => ReachForThePass(round), jitter: 0f);
-            }
-
-            ai.Move(Resolve[round] + 4f, () => BreakAndClear(round), arrivalTime: Resolve[round] + 8f);
         }
-
     }
 
     // Transition: the two high-powered cannons pair up with the two undebuffed players on
@@ -157,13 +155,36 @@ public sealed class TopP3HelloWorldAi : IScenarioAi<TopP3HelloWorldState>
         var stack = StackTowers[round];
         return ForEachMember((slot, member) => JobForSlot[round][slot] switch
         {
-            Job.Defamation => defamation[member],
-            Job.Stack => stack[member],
-            Job.NearTether => Rotate(Normalize(defamation[0] + defamation[1]),
-                                     (member == 0 ? -1f : 1f) * MathF.PI / 2f) * 19f,
-            _ => Between(stack) * 0.7f + Perpendicular(stack) * (member == 0 ? -1.8f : 1.8f),
+            Job.Defamation => SpreadStand(defamation, member),
+            Job.Stack => StackStand(stack, member),
+            _ => WaitingSpot(round, slot, member),
         });
     }
+
+    // Both holders stand off-centre inside their own tower. The Stack holder leans the way
+    // the tether pair will come from so the hand-off is a step rather than a run; the
+    // Defamation holder backs away from the middle so their circle covers less of the arena.
+    // Measured off the guide diagram: 4.5 yalms of lean, 3 yalms of standoff, both well
+    // inside a tower about six across.
+    private const float StackLean = 4.5f;
+    private const float SpreadStandOff = 3f;
+
+    private static Vector2 StackStand(Vector2[] stack, int member)
+    {
+        var tower = stack[member];
+        return tower + Normalize(Between(stack) - tower) * StackLean;
+    }
+
+    private static Vector2 SpreadStand(Vector2[] defamation, int member)
+    {
+        var tower = defamation[member];
+        return Normalize(tower) * (tower.Length() + SpreadStandOff);
+    }
+
+    // Round four only: instead of huddling in the middle, both tether pairs post up beside
+    // the Stack towers before the mechanic lands, one of each pair either side.
+    private static Vector2 BesideTheStackTowers(Vector2[] stack, int member) =>
+        Normalize(Between(stack)) * 14.8f + Perpendicular(stack) * (member == 0 ? -3.6f : 3.6f);
 
     // Towers are spent: only now does the Defamation holder step onto the nearest waymark
     // and the tether pairs walk in to collect. Until the towers land, everyone holds the
@@ -172,37 +193,47 @@ public sealed class TopP3HelloWorldAi : IScenarioAi<TopP3HelloWorldState>
     {
         var defamation = DefamationTowers[round];
         var stack = StackTowers[round];
-        var taken = TowersTaken(round);
+        // Each side watches only the holders it is walking to, so the near pair is not held
+        // up by a Stack player still owing their tower a visit, or the far pair by a
+        // Defamation one.
+        var defamationDone = TowerRunFinished(round, Job.Defamation);
+        var stackDone = TowerRunFinished(round, Job.Stack);
         var last = round == 3;
         return ForEachMember((slot, member) => JobForSlot[round][slot] switch
         {
-            Job.Defamation => taken ? Normalize(defamation[member]) * WaymarkRing : defamation[member],
-            Job.Stack => stack[member],
-            // The last round hands nothing on, so the near pair joins the far pair on the
-            // stack side, clear of the Defamation, and breaks its own tether first.
-            Job.NearTether when last => Between(stack) * 0.7f + Perpendicular(stack) * (member == 0 ? -3.5f : 3.5f),
-            Job.NearTether => taken ? PassTarget(round, slot, member, Job.Defamation)
-                                    : WaitingSpot(round, slot, member),
-            _ => taken ? PassTarget(round, slot, member, Job.Stack)
-                       : WaitingSpot(round, slot, member),
+            Job.Defamation => defamationDone ? Normalize(defamation[member]) * WaymarkRing
+                                             : SpreadStand(defamation, member),
+            Job.Stack => StackStand(stack, member),
+            // The last round hands nothing on, so the near pair holds its spot beside the
+            // Stack towers and breaks its own tether there.
+            Job.NearTether when last => BesideTheStackTowers(stack, member),
+            Job.NearTether => defamationDone ? PassTarget(round, slot, member, Job.Defamation)
+                                             : WaitingSpot(round, slot, member),
+            _ => stackDone ? PassTarget(round, slot, member, Job.Stack)
+                           : WaitingSpot(round, slot, member),
         });
     }
 
-    // A tower is taken the moment its occupant picks up the matching tower debuff, so that
-    // is the signal the tether pairs wait on instead of a stopwatch.
-    private bool TowersTaken(int round)
+    // The cue is the holders' own debuff being gone, nothing else — no timer, no duration.
+    // The Defamation holder carries Performance and the Stack holder Underflow while they
+    // still owe the tower a visit. Latched, because "not carrying" is equally true for the
+    // whole run-up before it ever lands.
+    private bool TowerRunFinished(int round, Job job)
     {
+        var carrying = false;
         for (var slot = 0; slot < TopP3HelloWorldState.SlotCount; slot++)
         {
-            if (JobForSlot[round][slot] is not (Job.Defamation or Job.Stack)) continue;
+            if (JobForSlot[round][slot] != job) continue;
             for (var member = 0; member < 2; member++)
                 if (world.Party.Get(state.At(slot, member)) is { } holder &&
                     (holder.HasStatus(StatusId.LatentDefectUnderflow) ||
                      holder.HasStatus(StatusId.LatentDefectPerformance)))
-                    return true;
+                    carrying = true;
         }
 
-        return false;
+        var latch = round * 2 + (job == Job.Defamation ? 0 : 1);
+        if (carrying) towerBugSeen[latch] = true;
+        return towerBugSeen[latch] && !carrying;
     }
 
     // Send each half of a tethered pair to whichever holder is the shorter walk, so the
@@ -239,24 +270,12 @@ public sealed class TopP3HelloWorldAi : IScenarioAi<TopP3HelloWorldState>
     {
         var defamation = DefamationTowers[round];
         var stack = StackTowers[round];
+        if (round == 3) return BesideTheStackTowers(stack, member);
         return JobForSlot[round][slot] == Job.NearTether
-                   ? Rotate(Normalize(defamation[0] + defamation[1]), (member == 0 ? -1f : 1f) * MathF.PI / 2f) * 19f
+                   // The waymark ring, not the wall: the diagram puts the near pair level with
+                   // the towers, and the old radius of 19 had them a yalm off the arena edge.
+                   ? Rotate(Normalize(defamation[0] + defamation[1]), (member == 0 ? -1f : 1f) * MathF.PI / 2f) * WaymarkRing
                    : Between(stack) * 0.7f + Perpendicular(stack) * (member == 0 ? -1.8f : 1.8f);
-    }
-
-    // Tower poisons are live now and kill anyone standing with their holder, so the two
-    // holders clear to the wall while the near pair closes up to break its tether.
-    private IAiMove BreakAndClear(int round)
-    {
-        var defamation = DefamationTowers[round];
-        var stack = StackTowers[round];
-        return ForEachMember((slot, member) => JobForSlot[round][slot] switch
-        {
-            Job.Defamation => Normalize(defamation[member]) * 19f,
-            Job.Stack => Normalize(stack[member]) * 19f,
-            Job.NearTether => Between(defamation) * 0.35f,
-            _ => Normalize(stack[member]) * 4f,
-        });
     }
 
     private IAiMove ForEachMember(Func<int, int, Vector2> position)
@@ -280,17 +299,6 @@ public sealed class TopP3HelloWorldAi : IScenarioAi<TopP3HelloWorldState>
     }
 
     private static Vector2 Between(Vector2[] pair) => Normalize(pair[0] + pair[1]) * 14f;
-
-    // "Outside the two towers" is angular, not radial: the towers already sit at radius 14
-    // and are about seven wide, so stepping straight out would leave the arena. Swing away
-    // from the other tower of the pair instead.
-    private static Vector2 AngledClearOf(Vector2[] pair, int member)
-    {
-        var mine = Normalize(pair[member]);
-        var middle = Normalize(pair[0] + pair[1]);
-        var away = mine.X * middle.Y - mine.Y * middle.X >= 0f ? 1f : -1f;
-        return Rotate(mine, away * MathF.PI / 4f);
-    }
 
     private static Vector2 Rotate(Vector2 v, float radians)
     {
