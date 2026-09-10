@@ -263,8 +263,12 @@ public static class TopConstants
         public const uint CriticalError = 0x7B64U;   // 嚴重錯誤
         public const uint OversampledWaveCannon = 0x7B6BU;   // 探測式波動砲
         // The P3 read is a pair, one action per screen direction, the same shape as the P5
-        // monitors' 0x7B96/0x7B97. Only the right-hand one appears in the TC logs we have;
-        // 0x7B6C is its unrecorded sibling.
+        // monitors' 0x7B96/0x7B97. 0x7B6B, 0x7B6C and 0x7B6D are three consecutive rows all
+        // named 探測式波動砲 in the TC Action sheet (checked with /ano actions): the two casts
+        // and the circle. Only 0x7B6B appears in the recordings we have, which is why the old
+        // replay-based scenario could never show a west-facing screen. Right is the screen
+        // facing east — Omega faces north, so its right hand points east and the holders go
+        // to the opposite side.
         public const uint P3MonitorRight = OversampledWaveCannon;      // 31595
         public const uint P3MonitorLeft = 0x7B6CU;                     // 31596
         public const uint P3MonitorCircle = OversampledWaveCannonAoe;  // 31597
