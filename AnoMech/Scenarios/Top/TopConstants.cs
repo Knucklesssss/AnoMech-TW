@@ -52,6 +52,10 @@ public static class TopConstants
         public const uint RocketPunchYellow = 15709;  // 0x3D5D — RocketPunch1 (color 0)
         public const uint RocketPunchBlue = 15710;    // 0x3D5E — RocketPunch2 (color 1)
         public const uint AlphaOmega = 15725;         // 0x3D6D — P6 Alpha Omega boss
+
+        // P3 (Omega Final), read off a TC-client network log. The trailing comment is
+        // the client's own name for the id, so a wrong guess stays easy to spot.
+        public const uint OmegaFinal = 0x3D65U;   // 歐米茄_3D65
     }
 
     public static class BNpcNameId
@@ -77,6 +81,10 @@ public static class TopConstants
         public const uint TowerTimer = 2013244;
         public const uint TowerSolo = 2013245;
         public const uint TowerPair = 2013246;
+
+        // P3 (Omega Final), read off a TC-client network log. The trailing comment is
+        // the client's own name for the id, so a wrong guess stays easy to spot.
+        public const uint P3ArenaObject = 0x1EB821U;   // EventObj1EB821
     }
 
     public static class ActionId
@@ -217,6 +225,39 @@ public static class TopConstants
         public const uint AlphaOmegaAutoAttack = 31747;            // 0x7C03
         public const uint Unknown7ddf = 32223;                      // 0x7DDF
         public const uint Inhale = 32337;                           // 0x7E51
+
+        // P3 (Omega Final), read off a TC-client network log. The trailing comment is
+        // the client's own name for the id, so a wrong guess stays easy to spot.
+        public const uint Unknown7b12 = 0x7B12U;
+        public const uint Unknown7b13 = 0x7B13U;
+        public const uint CosmoMemory_7B24 = 0x7B24U;   // 宇宙記憶 — the P2/P3 transition raidwide, not P6's CosmoMemory (0x7BA1)
+        public const uint OmegaMeteor = 0x7B32U;   // 歐米茄隕石流星
+        public const uint LimitlessSynergy_7B38 = 0x7B38U;   // 協作程式LB_7B38
+        public const uint LimitlessSynergy = 0x7B39U;   // 協作程式LB
+        public const uint OmegaArmourGuard = 0x7B44U;   // 歐米茄武裝戍衛
+        public const uint LaserShower = 0x7B45U;   // 雷射驟雨
+        public const uint Unknown7b46 = 0x7B46U;
+        public const uint IonEfflux = 0x7B48U;   // 離子流出
+        public const uint Unknown7b49 = 0x7B49U;
+        public const uint Unknown7b4a = 0x7B4AU;
+        public const uint Unknown7b4b = 0x7B4BU;
+        public const uint Unknown7b4c = 0x7B4CU;
+        public const uint ColossalBlow = 0x7B4EU;   // 巨能爆散
+        public const uint RapidFireWaveCannon = 0x7B4FU;   // 速射式波動砲
+        public const uint RapidFireWaveCannon_7B50 = 0x7B50U;   // 速射式波動砲_7B50
+        public const uint RapidFireWaveCannon_7B51 = 0x7B51U;   // 速射式波動砲_7B51
+        public const uint RapidFireWaveCannon_7B52 = 0x7B52U;   // 速射式波動砲_7B52
+        public const uint HelloWorld = 0x7B55U;
+        public const uint CriticalErrorUnderflow = 0x7B5AU;   // 嚴重錯誤下溢
+        public const uint CriticalErrorPerformance = 0x7B5BU;   // 嚴重錯誤性能
+        public const uint LatentDefectUnderflow = 0x7B5FU;   // 潛在錯誤下溢
+        public const uint LatentDefectPerformance = 0x7B60U;   // 潛在錯誤性能
+        public const uint CriticalError = 0x7B64U;   // 嚴重錯誤
+        public const uint OversampledWaveCannon = 0x7B6BU;   // 探測式波動砲
+        public const uint LatentDefect = 0x7B6FU;   // 潛在錯誤
+        public const uint Unknown7c00 = 0x7C00U;
+        public const uint SynthesizedShield = 0x7E71U;   // 合成盾
+        public const uint OmegaBladeDance = 0x7F75U;   // 歐米茄刀光劍舞
     }
 
     public static class StatusId
@@ -247,6 +288,33 @@ public static class TopConstants
         public const ushort HPPenalty = 3401;
         public const ushort CodeMi = 3447;                          // 0xD77 — P6 Alpha Omega 'Code M/i' form
         public const ushort BrilliantDynamis = 3446;
+
+        // P3 (Omega Final), read off a TC-client network log. The trailing comment is
+        // the client's own name for the id, so a wrong guess stays easy to spot.
+        public const ushort Weakness = (ushort)0x2B;   // 衰弱
+        public const ushort Transcendent = (ushort)0x1A2;   // 生還
+        public const ushort Invulnerability = (ushort)0x29F;   // 無敵
+        public const ushort Unknown95D = (ushort)0x95D;
+        public const ushort Doom = (ushort)0x9D7;   // 死亡宣告
+        public const ushort PhysicalVulnerabilityUp = (ushort)0xB7C;   // 物理受傷加重
+        public const ushort SniperCannon = (ushort)0xD61;   // 狙擊式波動砲
+        public const ushort HighPoweredSniperCannon = (ushort)0xD62;   // 狙擊式大功率波動砲
+        public const ushort CriticalErrorPerformance = (ushort)0xD65;   // 嚴重錯誤效能
+        public const ushort RepairedDefectShared = (ushort)0xD66;   // 修復錯誤共享
+        public const ushort RepairedDefectOverflow = (ushort)0xD67;   // 修復錯誤溢位
+        public const ushort RepairedDefectUnderflow = (ushort)0xD68;   // 修復錯誤下溢
+        public const ushort RepairedDefectPerformance = (ushort)0xD69;   // 修復錯誤效能
+        public const ushort LatentDefectShared = (ushort)0xD6A;   // 潛在錯誤共享
+        public const ushort LatentDefectPerformance = (ushort)0xD6B;   // 潛在錯誤效能
+        public const ushort CodeAnomalyShared = (ushort)0xD6C;   // 程式碼異常共享
+        public const ushort CodeAnomalyOverflow = (ushort)0xD6D;   // 程式碼異常溢位
+        public const ushort CodeAnomalyUnderflow = (ushort)0xD6E;   // 程式碼異常下溢
+        public const ushort CodeAnomalyPerformance = (ushort)0xD6F;   // 程式碼異常效能
+        public const ushort CriticalErrorShared = (ushort)0xDC4;   // 嚴重錯誤共享
+        public const ushort CriticalErrorOverflow = (ushort)0xDC5;   // 嚴重錯誤溢位
+        public const ushort CriticalErrorUnderflow = (ushort)0xDC6;   // 嚴重錯誤下溢
+        public const ushort LatentDefect = (ushort)0xDC7;   // 潛在錯誤
+        public const ushort LatentDefectUnderflow = (ushort)0xDC8;   // 潛在錯誤下溢
     }
 
     public static class TetherId

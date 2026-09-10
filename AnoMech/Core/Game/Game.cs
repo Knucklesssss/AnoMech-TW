@@ -8,6 +8,7 @@ using AnoMech.Core.Native;
 using AnoMech.Core.SimObjects;
 using AnoMech.Scenarios;
 using AnoMech.Scenarios.Top.P2PartySynergy;
+using AnoMech.Scenarios.Top.P3HelloWorld;
 using AnoMech.Scenarios.Top.P5Delta;
 using AnoMech.Scenarios.Top.P5Omega;
 using AnoMech.Scenarios.Top.P5Sigma;
@@ -68,6 +69,7 @@ public sealed class Game : IDisposable
         Scenarios = new IScenario[]
         {
             new TopP2PartySynergyScenario(),
+            new TopP3HelloWorldScenario(),
             new TopP5DeltaScenario(),
             new TopP5SigmaScenario(),
             new TopP5OmegaScenario(),
