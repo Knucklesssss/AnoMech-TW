@@ -70,9 +70,9 @@ public sealed class TopP3HelloWorldAi : IScenarioAi<TopP3HelloWorldState>
         for (var i = 0; i < 4; i++)
         {
             var round = i;
-            // The tower clears about six to ten seconds after Hello World resolves and the next
-            // set spawns roughly eleven after, so the pass has that gap and no more. Polled
-            // rather than fired once because the exact clear time drifts by up to three seconds
+            // The debuff clears six to ten seconds after Hello World resolves and the next
+            // towers spawn roughly eleven after, so the pass has that gap and no more. Polled
+            // rather than fired once because the clear time drifts by up to three seconds
             // between rounds; it runs right up to the next TakeTowers, which then takes over.
             var until = round < 3 ? TowersAppear[round + 1] : Resolve[round] + 12f;
             ai.Move(TowersAppear[round], () => TakeTowers(round), arrivalTime: Resolve[round] - 3f);
@@ -170,9 +170,9 @@ public sealed class TopP3HelloWorldAi : IScenarioAi<TopP3HelloWorldState>
     {
         var defamation = DefamationTowers[round];
         var stack = StackTowers[round];
-        // Each side waits on its own holders. Gating both on "every tower holder is done"
-        // would tie the near pair to whichever Stack player was slowest into their tower —
-        // up to three seconds apart in the recording, out of a five second window.
+        // Each side watches only the holders it is walking to, so the near pair is not held
+        // up by a Stack player still owing their tower a visit, or the far pair by a
+        // Defamation one.
         var defamationDone = TowerRunFinished(round, Job.Defamation);
         var stackDone = TowerRunFinished(round, Job.Stack);
         var last = round == 3;
@@ -190,33 +190,26 @@ public sealed class TopP3HelloWorldAi : IScenarioAi<TopP3HelloWorldState>
         });
     }
 
-    // The tower run is over when the holders' own debuff *clears*, not when it lands: the
-    // Defamation holder carries Performance and the Stack holder Underflow on a nominal ten
-    // second timer, and standing in the tower cuts it short. Latched, because "not present"
-    // is equally true for the whole run-up before it ever appears.
+    // The cue is the holders' own debuff being gone, nothing else — no timer, no duration.
+    // The Defamation holder carries Performance and the Stack holder Underflow while they
+    // still owe the tower a visit. Latched, because "not carrying" is equally true for the
+    // whole run-up before it ever lands.
     private bool TowerRunFinished(int round, Job job)
     {
-        var holders = 0;
-        var carrying = 0;
+        var carrying = false;
         for (var slot = 0; slot < TopP3HelloWorldState.SlotCount; slot++)
         {
             if (JobForSlot[round][slot] != job) continue;
             for (var member = 0; member < 2; member++)
-            {
-                if (world.Party.Get(state.At(slot, member)) is not { } holder) continue;
-                holders++;
-                if (holder.HasStatus(StatusId.LatentDefectUnderflow) ||
-                    holder.HasStatus(StatusId.LatentDefectPerformance))
-                    carrying++;
-            }
+                if (world.Party.Get(state.At(slot, member)) is { } holder &&
+                    (holder.HasStatus(StatusId.LatentDefectUnderflow) ||
+                     holder.HasStatus(StatusId.LatentDefectPerformance)))
+                    carrying = true;
         }
 
         var latch = round * 2 + (job == Job.Defamation ? 0 : 1);
-        if (carrying > 0) towerBugSeen[latch] = true;
-        // The first of the pair clearing is the cue, not the last. The two are one mechanic
-        // that resolves once; the gap between them is only how unevenly the recorded players
-        // stepped in, and waiting it out costs up to 1.9s of a window that is 5s at best.
-        return towerBugSeen[latch] && carrying < holders;
+        if (carrying) towerBugSeen[latch] = true;
+        return towerBugSeen[latch] && !carrying;
     }
 
     // Send each half of a tethered pair to whichever holder is the shorter walk, so the
