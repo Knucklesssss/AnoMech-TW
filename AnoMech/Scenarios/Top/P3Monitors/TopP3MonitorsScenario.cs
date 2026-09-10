@@ -102,6 +102,19 @@ public sealed class TopP3MonitorsScenario : IScenario
         Run_OtherDebuffs();
     }
 
+    // The recording's own left/right is replaced by the per-run roll. The baked cannons
+    // hit fixed targets whichever way the sides land, so the side is free to vary — and
+    // varying it is the point: the holder has to read the debuff to know which way to turn.
+    private void AddScreen(int slot)
+    {
+        if (state.SideAt(slot) is { } side) party.Get(state.At(slot))?.AddStatus(side.Status);
+    }
+
+    private void RemoveScreen(int slot)
+    {
+        if (state.SideAt(slot) is { } side) party.Get(state.At(slot))?.RemoveStatus(side.Status);
+    }
+
     private void Run_InstanceEvents()
     {
         // [36.08s] 33|800375AC|40000005|00|00|00|00|ae9008a60a7f6928
@@ -113,17 +126,17 @@ public sealed class TopP3MonitorsScenario : IScenario
         // [0.08s] 30|2B|衰弱|0.00|E0000000||100484C3|MainTank|00|79897||536e82218e1361e8
         world.Events.Add(0.08f, () => party.Get(state.At(0))?.RemoveStatus(StatusId.Weakness));
         // [8.23s] 26|D7D|探測式波動砲|9999.00|E0000000||1006F2C9|OffTank|00|73182||b29f9d30a370b64d
-        world.Events.Add(8.23f, () => party.Get(state.At(1))?.AddStatus(StatusId.PlayerMonitorLeft));
+        world.Events.Add(8.23f, () => AddScreen(1));
         // [8.23s] 26|D7C|探測式波動砲|9999.00|E0000000||1005F413|ShieldHealer|00|115023||11e39cbb60505713
-        world.Events.Add(8.23f, () => party.Get(state.At(3))?.AddStatus(StatusId.PlayerMonitorRight));
+        world.Events.Add(8.23f, () => AddScreen(3));
         // [8.23s] 26|D7D|探測式波動砲|9999.00|E0000000||1005909E|MeleeDpsB|00|114747||649c2edcf36549ad
-        world.Events.Add(8.23f, () => party.Get(state.At(5))?.AddStatus(StatusId.PlayerMonitorLeft));
+        world.Events.Add(8.23f, () => AddScreen(5));
         // [18.28s] 30|D7C|探測式波動砲|0.00|E0000000||1005F413|ShieldHealer|00|115023||a780bd644721d72e
-        world.Events.Add(18.28f, () => party.Get(state.At(3))?.RemoveStatus(StatusId.PlayerMonitorRight));
+        world.Events.Add(18.28f, () => RemoveScreen(3));
         // [18.28s] 30|D7D|探測式波動砲|0.00|E0000000||1005909E|MeleeDpsB|00|114747||8b8088e0ad4547ed
-        world.Events.Add(18.28f, () => party.Get(state.At(5))?.RemoveStatus(StatusId.PlayerMonitorLeft));
+        world.Events.Add(18.28f, () => RemoveScreen(5));
         // [18.28s] 30|D7D|探測式波動砲|0.00|E0000000||1006F2C9|OffTank|00|73182||dd9016d638ff1041
-        world.Events.Add(18.28f, () => party.Get(state.At(1))?.RemoveStatus(StatusId.PlayerMonitorLeft));
+        world.Events.Add(18.28f, () => RemoveScreen(1));
         // [19.00s] 30|D69|修復錯誤：效能|0.00|E0000000||1004CB37|MeleeDpsA|00|79865||9f9c3fe4b63d5303
         world.Events.Add(19.00f, () => party.Get(state.At(4))?.RemoveStatus(StatusId.RepairedDefectPerformance));
         // [19.00s] 30|D66|修復錯誤：共享|0.00|E0000000||1004CB37|MeleeDpsA|00|79865||7c83ff5375cb6a01

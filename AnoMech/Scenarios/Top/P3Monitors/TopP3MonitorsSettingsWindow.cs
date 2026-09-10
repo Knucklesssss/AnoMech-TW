@@ -8,16 +8,11 @@ public sealed class TopP3MonitorsSettingsWindow
 
     public void Draw()
     {
-        if (ImGui.Button("自動##resetall"))
-        {
-            Overrides.PlayerSlot = null;
-            Overrides.ScreenFacesEast = null;
-        }
+        if (ImGui.Button("自動##resetall")) Overrides.PlayerSlot = null;
 
         if (SettingsGrid.Begin("##p3monitors"))
         {
             DrawPlayerSlot();
-            DrawScreenFacing();
             SettingsGrid.End();
         }
     }
@@ -35,16 +30,5 @@ public sealed class TopP3MonitorsSettingsWindow
         }
 
         ImGui.TextDisabled("★ 會拿到螢幕");
-    }
-
-    private void DrawScreenFacing()
-    {
-        var v = Overrides.ScreenFacesEast;
-        SettingsGrid.Row("歐米茄螢幕方向：");
-        if (ImGui.RadioButton("自動##face", v == null)) Overrides.ScreenFacesEast = null;
-        ImGui.SameLine();
-        if (ImGui.RadioButton("東##face", v == true)) Overrides.ScreenFacesEast = true;
-        ImGui.SameLine();
-        if (ImGui.RadioButton("西##face", v == false)) Overrides.ScreenFacesEast = false;
     }
 }

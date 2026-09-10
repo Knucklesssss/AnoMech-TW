@@ -3,24 +3,38 @@ using AnoMech.Core.SimObjects;
 
 namespace AnoMech.Scenarios.Top.P3Monitors;
 
+// Mul is the sign CharacterFind.OnSideN applies when it picks the half of the arena a
+// screen fires into: +1 keeps the players on the holder's left, -1 the ones on their
+// right. Same convention as the P5 monitors, so the two stay comparable.
+public sealed record ScreenSide(int Mul, ushort Status)
+{
+    public static readonly ScreenSide Left = new(1, TopConstants.StatusId.PlayerMonitorLeft);
+    public static readonly ScreenSide Right = new(-1, TopConstants.StatusId.PlayerMonitorRight);
+}
+
 // Per-run randomization for the Oversampled Wave Cannon.
 //
-// The timeline is one recorded pull, so who does what is fixed by slot: slot 3 takes a
-// right-facing monitor, slots 1 and 5 take left-facing ones, and the rest are the players
-// those monitors have to be aimed away from. Rolling the slots re-deals that assignment
-// every run while keeping the recording's relationships.
+// The timeline is one recorded pull, so which slots end up holding a screen (1, 3 and 5)
+// and who each baked cannon hits are both fixed. Rolling the slot order re-deals those
+// jobs every run while keeping the recording's relationships.
+//
+// The left/right facing of a screen feeds none of that — it only decides which way its
+// holder has to turn — so it is rolled fresh for each holder, which is what the fight
+// does. Without this the same three seats always got the same sides and the debuff was
+// never worth reading.
 public sealed class TopP3MonitorsState
 {
     public const int SlotCount = 8;
     public static readonly int[] MonitorSlots = [1, 3, 5];
 
-    private readonly RoleList order;
+    // Omega's screen points east for the whole of this scenario. Nothing here chooses that:
+    // the screen is part of the recorded animation, and the sim has no way to turn it, so a
+    // setting offering the other case would move the bots while the picture stayed put.
+    public const bool ScreenFacesEast = true;
 
-    // Omega's own screen always points due east or due west; the three player monitors are
-    // rolled independently of it. The recording does not carry Omega's facing, so it is
-    // rolled here and the scenario turns the model to match, which is what makes the case
-    // readable in game.
-    public bool ScreenFacesEast { get; }
+    private readonly Rng rng = new();
+    private readonly RoleList order;
+    private readonly ScreenSide?[] sides = new ScreenSide?[SlotCount];
 
     public TopP3MonitorsState(SimParty party, TopP3MonitorsStateOverrides overrides)
     {
@@ -28,10 +42,14 @@ public sealed class TopP3MonitorsState
         {
             ForcePlayerIndex = overrides.PlayerSlot is { } slot ? [slot] : [],
         }.Build(party);
-        ScreenFacesEast = overrides.ScreenFacesEast ?? new Rng().NextBool();
+
+        foreach (var monitor in MonitorSlots)
+            sides[monitor] = rng.NextObj(ScreenSide.Left, ScreenSide.Right);
     }
 
     public PartyRole At(int slot) => order[slot];
 
-    public bool HasMonitor(int slot) => System.Array.IndexOf(MonitorSlots, slot) >= 0;
+    public ScreenSide? SideAt(int slot) => slot >= 0 && slot < SlotCount ? sides[slot] : null;
+
+    public bool HasMonitor(int slot) => SideAt(slot) != null;
 }
