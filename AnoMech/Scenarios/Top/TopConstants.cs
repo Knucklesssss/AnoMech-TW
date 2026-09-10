@@ -57,6 +57,9 @@ public static class TopConstants
         // the client's own name for the id, so a wrong guess stays easy to spot.
         public const uint OmegaFinal = 0x3D65U;   // 歐米茄_3D65
         public const uint OmegaFinalHelper = 0x3D5CU;   // 歐米茄_3D5C
+
+        public const uint P3MonitorBoss = OmegaFinal;
+        public const uint P3MonitorHelper = OmegaHelper;
     }
 
     public static class BNpcNameId
@@ -68,6 +71,9 @@ public static class TopConstants
         public const uint OmegaM_1DD3 = 7635;          // P2 Omega
         public const uint OmegaBeetle = 7695;
         public const uint OmegaFinal = 7636;
+
+        public const uint P3MonitorBoss = OmegaFinal;
+        public const uint P3MonitorHelper = OmegaBeetle;
         public const uint RightArmUnit = 7638;        // 0x1DD6 — log name for BNpc 0x3D67
         public const uint LeftArmUnit = 7637;
         public const uint OpticalUnit = 7640;
@@ -256,6 +262,12 @@ public static class TopConstants
         public const uint LatentDefectPerformance = 0x7B60U;   // 潛在錯誤性能
         public const uint CriticalError = 0x7B64U;   // 嚴重錯誤
         public const uint OversampledWaveCannon = 0x7B6BU;   // 探測式波動砲
+        // The P3 read is a pair, one action per screen direction, the same shape as the P5
+        // monitors' 0x7B96/0x7B97. Only the right-hand one appears in the TC logs we have;
+        // 0x7B6C is its unrecorded sibling.
+        public const uint P3MonitorRight = OversampledWaveCannon;      // 31595
+        public const uint P3MonitorLeft = 0x7B6CU;                     // 31596
+        public const uint P3MonitorCircle = OversampledWaveCannonAoe;  // 31597
         public const uint LatentDefect = 0x7B6FU;   // 潛在錯誤
         public const uint Unknown7c00 = 0x7C00U;
         public const uint SynthesizedShield = 0x7E71U;   // 合成盾

@@ -242,7 +242,7 @@ public sealed class Plugin : IDalamudPlugin
     {
         if (Game.ActiveScenario is not TopP3MonitorsScenario)
         {
-            PrintMarkMessage("/ano mark 只能在「探測式檢知波動砲」進行中使用。");
+            PrintMarkMessage("/ano mark 只能在「螢幕砲」進行中使用。");
             return;
         }
 
@@ -276,12 +276,7 @@ public sealed class Plugin : IDalamudPlugin
         PrintMarkMessage($"{sign} → {target.Name}");
     }
 
-    private static void PrintMarkMessage(string text)
-        => ChatGui.Print(new XivChatEntry
-        {
-            Type = XivChatType.SystemMessage,
-            Message = new SeStringBuilder().AddText($"[AnoMech] {text}").Build(),
-        });
+    private static void PrintMarkMessage(string text) => ChatOutput.Coach($"[AnoMech] {text}");
 
     private void StartSelectedScenario(bool solo)
     {
