@@ -28,10 +28,12 @@ https://raw.githubusercontent.com/Knucklesssss/AnoMech-TW/api13-tw/repo.json
 
 ## 目前狀況
 
-**可用的場景（6 個）**
+**可用的場景（8 個）**
 
 - 絕歐米茄（The Omega Protocol）
   - P2 Party Synergy — 美服 / 日服（tuuufless）兩套戰術可切換
+  - P3 Hello, World — 轉場、四輪傳毒
+  - P3 探測式檢知波動砲 — 螢幕（獨立場景，可單獨練）
   - P5 Delta — 攻略法為 Kinda Awk，日服攻略採用同一套，故不分地區
   - P5 Sigma — 美服 / 日服（tuuufless）兩套戰術可切換
   - P5 Omega
@@ -39,7 +41,7 @@ https://raw.githubusercontent.com/Knucklesssss/AnoMech-TW/api13-tw/repo.json
 - 絕神兵（The Weapon's Refrain）
   - Ultimate Predation
 
-**你好世界的標記方式（P5 西格瑪 / P5 歐米茄）**
+**你好世界的標記方式（P5 西格瑪 / P5 歐米茄 / P3 探測式檢知波動砲）**
 
 設定視窗裡可選：
 
@@ -58,6 +60,11 @@ https://raw.githubusercontent.com/Knucklesssss/AnoMech-TW/api13-tw/repo.json
   P5 Omega、P6 與絕神兵尚未有人完整驗證。
 - 隊伍列表的順序無法調成 `MT ST H1 H2 D1 D2 D3 D4`：遊戲會把本機玩家固定畫在第一列，
   所以除非你打 MT，你自己那一列一定在最上面，其餘七人才依職位排序。
+- **手動下標記前，請先用遊戲內的標記面板標一次。** 進入模擬區域後，`/mk` 這類巨集指令
+  第一次不會生效；用面板（介面設定裡的「標記」視窗）標過任何一次之後，巨集就會正常運作。
+  這是遊戲端標記模組的初始化順序問題，插件無法代勞。
+- P3 的兩個場景是從單次錄影重建的，Bot 走位依攻略手寫，尚未逐項驗證完畢；
+  傷害與失誤判定尚未實作（站錯不會死）。
 - 上游原本就有的問題部分仍在（例如連線距離判定粗略）。
 
 **與伺服器的關係**
@@ -91,6 +98,10 @@ https://raw.githubusercontent.com/Knucklesssss/AnoMech-TW/api13-tw/repo.json
   轉了 180°、直線雷射判定框也永遠掃不到人（同一份程式碼中只有這一處的 Z 軸符號寫反）
 - 修正 PS 符號陣列順序（`× □ 〇 ▽` → `〇 × ▽ □`），該陣列的索引就是連線組別編號，
   順序錯會讓 P2 與 P5 西格瑪每一排掛到錯的符號
+- 新增 P3（歐米茄最終形態）：以 `tools/parser.py` 從一次實戰錄影重建時間軸，分成
+  「Hello, World」與「探測式檢知波動砲」兩個場景。每次執行會重新洗牌八人在循環中的位置，
+  Bot 走位依 tuuufless 攻略手寫；傳毒階段的接毒時機改為讀取塔的實際狀態而非固定秒數，
+  接線的一方會就近選擇帶毒者
 
 ## 授權
 

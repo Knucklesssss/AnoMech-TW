@@ -56,6 +56,7 @@ public static class TopConstants
         // P3 (Omega Final), read off a TC-client network log. The trailing comment is
         // the client's own name for the id, so a wrong guess stays easy to spot.
         public const uint OmegaFinal = 0x3D65U;   // 歐米茄_3D65
+        public const uint OmegaFinalHelper = 0x3D5CU;   // 歐米茄_3D5C
     }
 
     public static class BNpcNameId
@@ -85,6 +86,7 @@ public static class TopConstants
         // P3 (Omega Final), read off a TC-client network log. The trailing comment is
         // the client's own name for the id, so a wrong guess stays easy to spot.
         public const uint P3ArenaObject = 0x1EB821U;   // EventObj1EB821
+        public const uint EventObj1E850B = 0x1E850BU;
     }
 
     public static class ActionId

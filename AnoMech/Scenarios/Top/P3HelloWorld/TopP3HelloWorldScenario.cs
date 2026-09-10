@@ -11,6 +11,7 @@
 // Suppressed 261|Change keys (state-sync churn — no C# emission):
 //   CurrentMP, Heading, MaxHP, NPCTargetID, PCTargetID, PosX, PosY, PosZ
 
+using System;
 using System.Collections.Generic;
 using System.Numerics;
 using AnoMech.Core;
@@ -32,7 +33,7 @@ public sealed class TopP3HelloWorldScenario : IScenario
     public string Name => "Hello, World";
     public IPhase Phase => TopZone.P3;
 
-    public IReadOnlyList<IScenarioAi> AiStrats => [];
+    public IReadOnlyList<IScenarioAi> AiStrats => [new TopP3HelloWorldAi()];
 
     public void DrawSettings() => settingsWindow.Draw();
     private readonly TopP3HelloWorldSettingsWindow settingsWindow = new();
@@ -46,6 +47,8 @@ public sealed class TopP3HelloWorldScenario : IScenario
         world = worldParam;
         party = worldParam.Party;
         state = new TopP3HelloWorldState(party, settingsWindow.Overrides);
+        if (selectedAi is { } idx && idx < AiStrats.Count)
+            ((IScenarioAi<TopP3HelloWorldState>)AiStrats[idx]).Run(state, world);
 
         Run_Omega_400033C8();
         Run_Omega_400033C7();
@@ -545,61 +548,61 @@ public sealed class TopP3HelloWorldScenario : IScenario
         // [147.73s] 30|D67|修復錯誤：溢位|0.00|E0000000||100484C3|MeleeDpsA|00|79897||7250c00dd6cde4ad
         world.Events.Add(147.73f, () => party.Get(state.At(3, 1))?.RemoveStatus(StatusId.RepairedDefectOverflow));
         // [151.08s] 30|2B|衰弱|0.00|E0000000||100484C3|MeleeDpsA|00|79897||536e82218e1361e8
-        world.Events.Add(151.08f, () => party.Get(state.At(3, 1))?.RemoveStatus(StatusId.Weakness));
+        // [monitors are their own scenario] world.Events.Add(151.08f, () => party.Get(state.At(3, 1))?.RemoveStatus(StatusId.Weakness));
         // [159.23s] 26|D7D|探測式波動砲|9999.00|E0000000||1006F2C9|MeleeDpsB|00|73182||b29f9d30a370b64d
-        world.Events.Add(159.23f, () => party.Get(state.At(0, 0))?.AddStatus(StatusId.PlayerMonitorLeft));
+        // [monitors are their own scenario] world.Events.Add(159.23f, () => party.Get(state.At(0, 0))?.AddStatus(StatusId.PlayerMonitorLeft));
         // [159.23s] 26|D7C|探測式波動砲|9999.00|E0000000||1005F413|MainTank|00|115023||11e39cbb60505713
-        world.Events.Add(159.23f, () => party.Get(state.At(0, 1))?.AddStatus(StatusId.PlayerMonitorRight));
+        // [monitors are their own scenario] world.Events.Add(159.23f, () => party.Get(state.At(0, 1))?.AddStatus(StatusId.PlayerMonitorRight));
         // [159.23s] 26|D7D|探測式波動砲|9999.00|E0000000||1005909E|CasterDps|00|114747||649c2edcf36549ad
-        world.Events.Add(159.23f, () => party.Get(state.At(1, 0))?.AddStatus(StatusId.PlayerMonitorLeft));
+        // [monitors are their own scenario] world.Events.Add(159.23f, () => party.Get(state.At(1, 0))?.AddStatus(StatusId.PlayerMonitorLeft));
         // [169.28s] 30|D7C|探測式波動砲|0.00|E0000000||1005F413|MainTank|00|115023||a780bd644721d72e
-        world.Events.Add(169.28f, () => party.Get(state.At(0, 1))?.RemoveStatus(StatusId.PlayerMonitorRight));
+        // [monitors are their own scenario] world.Events.Add(169.28f, () => party.Get(state.At(0, 1))?.RemoveStatus(StatusId.PlayerMonitorRight));
         // [169.28s] 30|D7D|探測式波動砲|0.00|E0000000||1005909E|CasterDps|00|114747||8b8088e0ad4547ed
-        world.Events.Add(169.28f, () => party.Get(state.At(1, 0))?.RemoveStatus(StatusId.PlayerMonitorLeft));
+        // [monitors are their own scenario] world.Events.Add(169.28f, () => party.Get(state.At(1, 0))?.RemoveStatus(StatusId.PlayerMonitorLeft));
         // [169.28s] 30|D7D|探測式波動砲|0.00|E0000000||1006F2C9|MeleeDpsB|00|73182||dd9016d638ff1041
-        world.Events.Add(169.28f, () => party.Get(state.At(0, 0))?.RemoveStatus(StatusId.PlayerMonitorLeft));
+        // [monitors are their own scenario] world.Events.Add(169.28f, () => party.Get(state.At(0, 0))?.RemoveStatus(StatusId.PlayerMonitorLeft));
         // [170.00s] 30|D69|修復錯誤：效能|0.00|E0000000||1004CB37|PhysRangedDps|00|79865||9f9c3fe4b63d5303
-        world.Events.Add(170.00f, () => party.Get(state.At(3, 0))?.RemoveStatus(StatusId.RepairedDefectPerformance));
+        // [monitors are their own scenario] world.Events.Add(170.00f, () => party.Get(state.At(3, 0))?.RemoveStatus(StatusId.RepairedDefectPerformance));
         // [170.00s] 30|D66|修復錯誤：共享|0.00|E0000000||1004CB37|PhysRangedDps|00|79865||7c83ff5375cb6a01
-        world.Events.Add(170.00f, () => party.Get(state.At(3, 0))?.RemoveStatus(StatusId.RepairedDefectShared));
+        // [monitors are their own scenario] world.Events.Add(170.00f, () => party.Get(state.At(3, 0))?.RemoveStatus(StatusId.RepairedDefectShared));
         // [170.00s] 30|D68|修復錯誤：下溢|0.00|E0000000||1004CB37|PhysRangedDps|00|79865||c39de7082d323afd
-        world.Events.Add(170.00f, () => party.Get(state.At(3, 0))?.RemoveStatus(StatusId.RepairedDefectUnderflow));
+        // [monitors are their own scenario] world.Events.Add(170.00f, () => party.Get(state.At(3, 0))?.RemoveStatus(StatusId.RepairedDefectUnderflow));
         // [170.00s] 30|D68|修復錯誤：下溢|0.00|E0000000||10059F54|ShieldHealer|00|73012||a1ed7f6a321b8f17
-        world.Events.Add(170.00f, () => party.Get(state.At(1, 1))?.RemoveStatus(StatusId.RepairedDefectUnderflow));
+        // [monitors are their own scenario] world.Events.Add(170.00f, () => party.Get(state.At(1, 1))?.RemoveStatus(StatusId.RepairedDefectUnderflow));
         // [170.00s] 30|D69|修復錯誤：效能|0.00|E0000000||10059F54|ShieldHealer|00|73012||d351b8c4bf2f8d40
-        world.Events.Add(170.00f, () => party.Get(state.At(1, 1))?.RemoveStatus(StatusId.RepairedDefectPerformance));
+        // [monitors are their own scenario] world.Events.Add(170.00f, () => party.Get(state.At(1, 1))?.RemoveStatus(StatusId.RepairedDefectPerformance));
         // [170.00s] 30|D66|修復錯誤：共享|0.00|E0000000||10059F54|ShieldHealer|00|73012||21fd02c4ba39f310
-        world.Events.Add(170.00f, () => party.Get(state.At(1, 1))?.RemoveStatus(StatusId.RepairedDefectShared));
+        // [monitors are their own scenario] world.Events.Add(170.00f, () => party.Get(state.At(1, 1))?.RemoveStatus(StatusId.RepairedDefectShared));
         // [170.00s] 30|D66|修復錯誤：共享|0.00|E0000000||10045D8E|RegenHealer|00|72988||d62becc2d95df455
-        world.Events.Add(170.00f, () => party.Get(state.At(2, 1))?.RemoveStatus(StatusId.RepairedDefectShared));
+        // [monitors are their own scenario] world.Events.Add(170.00f, () => party.Get(state.At(2, 1))?.RemoveStatus(StatusId.RepairedDefectShared));
         // [170.00s] 30|D68|修復錯誤：下溢|0.00|E0000000||10045D8E|RegenHealer|00|72988||675881c44faa642a
-        world.Events.Add(170.00f, () => party.Get(state.At(2, 1))?.RemoveStatus(StatusId.RepairedDefectUnderflow));
+        // [monitors are their own scenario] world.Events.Add(170.00f, () => party.Get(state.At(2, 1))?.RemoveStatus(StatusId.RepairedDefectUnderflow));
         // [170.00s] 30|D69|修復錯誤：效能|0.00|E0000000||10045D8E|RegenHealer|00|72988||a5c98e25db3ad710
-        world.Events.Add(170.00f, () => party.Get(state.At(2, 1))?.RemoveStatus(StatusId.RepairedDefectPerformance));
+        // [monitors are their own scenario] world.Events.Add(170.00f, () => party.Get(state.At(2, 1))?.RemoveStatus(StatusId.RepairedDefectPerformance));
         // [170.00s] 30|D68|修復錯誤：下溢|0.00|E0000000||1005909E|CasterDps|00|114747||601fae90fb8731e6
-        world.Events.Add(170.00f, () => party.Get(state.At(1, 0))?.RemoveStatus(StatusId.RepairedDefectUnderflow));
+        // [monitors are their own scenario] world.Events.Add(170.00f, () => party.Get(state.At(1, 0))?.RemoveStatus(StatusId.RepairedDefectUnderflow));
         // [170.00s] 30|D69|修復錯誤：效能|0.00|E0000000||1005909E|CasterDps|00|114747||7b4569512f333499
-        world.Events.Add(170.00f, () => party.Get(state.At(1, 0))?.RemoveStatus(StatusId.RepairedDefectPerformance));
+        // [monitors are their own scenario] world.Events.Add(170.00f, () => party.Get(state.At(1, 0))?.RemoveStatus(StatusId.RepairedDefectPerformance));
         // [170.00s] 30|D66|修復錯誤：共享|0.00|E0000000||100484C3|MeleeDpsA|00|79897||36c4e44e3c77adb0
-        world.Events.Add(170.00f, () => party.Get(state.At(3, 1))?.RemoveStatus(StatusId.RepairedDefectShared));
+        // [monitors are their own scenario] world.Events.Add(170.00f, () => party.Get(state.At(3, 1))?.RemoveStatus(StatusId.RepairedDefectShared));
         // [170.00s] 30|D69|修復錯誤：效能|0.00|E0000000||100484C3|MeleeDpsA|00|79897||1a7c5baf03869247
-        world.Events.Add(170.00f, () => party.Get(state.At(3, 1))?.RemoveStatus(StatusId.RepairedDefectPerformance));
+        // [monitors are their own scenario] world.Events.Add(170.00f, () => party.Get(state.At(3, 1))?.RemoveStatus(StatusId.RepairedDefectPerformance));
         // [170.00s] 30|D68|修復錯誤：下溢|0.00|E0000000||100484C3|MeleeDpsA|00|79897||b88482765c2de48b
-        world.Events.Add(170.00f, () => party.Get(state.At(3, 1))?.RemoveStatus(StatusId.RepairedDefectUnderflow));
+        // [monitors are their own scenario] world.Events.Add(170.00f, () => party.Get(state.At(3, 1))?.RemoveStatus(StatusId.RepairedDefectUnderflow));
         // [170.04s] 30|D66|修復錯誤：共享|0.00|E0000000||1005C8B8|OffTank|00|79717||d4ccd49853edeef0
-        world.Events.Add(170.04f, () => party.Get(state.At(2, 0))?.RemoveStatus(StatusId.RepairedDefectShared));
+        // [monitors are their own scenario] world.Events.Add(170.04f, () => party.Get(state.At(2, 0))?.RemoveStatus(StatusId.RepairedDefectShared));
         // [170.04s] 30|D68|修復錯誤：下溢|0.00|E0000000||1005C8B8|OffTank|00|79717||b37efb3922404efd
-        world.Events.Add(170.04f, () => party.Get(state.At(2, 0))?.RemoveStatus(StatusId.RepairedDefectUnderflow));
+        // [monitors are their own scenario] world.Events.Add(170.04f, () => party.Get(state.At(2, 0))?.RemoveStatus(StatusId.RepairedDefectUnderflow));
         // [170.04s] 30|D69|修復錯誤：效能|0.00|E0000000||1005C8B8|OffTank|00|79717||9dfb3af27a5daf4f
-        world.Events.Add(170.04f, () => party.Get(state.At(2, 0))?.RemoveStatus(StatusId.RepairedDefectPerformance));
+        // [monitors are their own scenario] world.Events.Add(170.04f, () => party.Get(state.At(2, 0))?.RemoveStatus(StatusId.RepairedDefectPerformance));
         // [186.01s] 30|D69|修復錯誤：效能|0.00|E0000000||1005F413|MainTank|00|115023||b4283387f4f9e4fe
-        world.Events.Add(186.01f, () => party.Get(state.At(0, 1))?.RemoveStatus(StatusId.RepairedDefectPerformance));
+        // [monitors are their own scenario] world.Events.Add(186.01f, () => party.Get(state.At(0, 1))?.RemoveStatus(StatusId.RepairedDefectPerformance));
         // [186.01s] 30|D68|修復錯誤：下溢|0.00|E0000000||1005F413|MainTank|00|115023||64477876b2887b81
-        world.Events.Add(186.01f, () => party.Get(state.At(0, 1))?.RemoveStatus(StatusId.RepairedDefectUnderflow));
+        // [monitors are their own scenario] world.Events.Add(186.01f, () => party.Get(state.At(0, 1))?.RemoveStatus(StatusId.RepairedDefectUnderflow));
         // [186.05s] 30|D68|修復錯誤：下溢|0.00|E0000000||1006F2C9|MeleeDpsB|00|73182||17e0101c2a33cbaf
-        world.Events.Add(186.05f, () => party.Get(state.At(0, 0))?.RemoveStatus(StatusId.RepairedDefectUnderflow));
+        // [monitors are their own scenario] world.Events.Add(186.05f, () => party.Get(state.At(0, 0))?.RemoveStatus(StatusId.RepairedDefectUnderflow));
         // [186.05s] 30|D69|修復錯誤：效能|0.00|E0000000||1006F2C9|MeleeDpsB|00|73182||2067db73f70f03fb
-        world.Events.Add(186.05f, () => party.Get(state.At(0, 0))?.RemoveStatus(StatusId.RepairedDefectPerformance));
+        // [monitors are their own scenario] world.Events.Add(186.05f, () => party.Get(state.At(0, 0))?.RemoveStatus(StatusId.RepairedDefectPerformance));
     }
 
     public void Tick(float delta, float elapsed) { }
@@ -1187,6 +1190,10 @@ public sealed class TopP3HelloWorldScenario : IScenario
         // [4.04s] 272|40003437|E0000000|0000|00|18f01304ac20d7bc
         // [3.67s] 03|40003437|歐米茄|00|5A|0000|00||7636|15717|11125976|11125976|10000|10000|||100.00|100.00|0.00|0.00|b742bd5ccd04f067
         world.Events.Add(3.67f, () => omega_40003437 = world.SpawnEnemy(new EnemySpawnConfig(BNpcBaseId: BNpcBaseId.OmegaFinal, NameId: BNpcNameId.OmegaFinal, Level: 90, Targetable: false, EnemyList: EnemyListMode.Never, IsVisible: false, Placement: new Placement(new Vector3(0.000f, 0.000f, 0.000f), 0.000f))));
+        // The parser suppresses Heading, so the recording carries no facing at all and the
+        // boss would otherwise keep its spawn rotation of 0, which points south. It holds
+        // north for this whole phase.
+        world.Events.Add(3.8f, () => omega_40003437?.SetPosition(new Placement(new Vector3(0f, 0f, 0f), MathF.PI)));
         // [3.67s] 261|Add|40003437|BNpcID|3D65|BNpcNameID|1DD4|CastTargetID|E0000000|CurrentMP|10000|CurrentWorldID|65535|Heading|0.0000|Level|90|MaxHP|11125976|MaxMP|10000|ModelStatus|18432|Name|歐米茄|NPCTargetID|E0000000|PosX|100.0000|PosY|100.0000|PosZ|0.0000|Radius|12.5020|Type|2|WorldID|65535|87abb5f439ebe0b1
         // [3.67s] 261|Change|40003437|ModelStatus|16384|ce9a83d84c7b1f08
         world.Events.Add(3.67f, () => omega_40003437?.SetVisible(false));
@@ -1368,38 +1375,38 @@ public sealed class TopP3HelloWorldScenario : IScenario
         // [148.76s] 30|B7D|魔法受傷加重|0.00|40003437|歐米茄|100484C3|MeleeDpsA|00|79897|11125976|d8aef4c1bc1e029f
         world.Events.Add(148.76f, () => party.Get(state.At(3, 1))?.RemoveStatus(StatusId.MagicVulnerabilityUp));
         // [151.44s] 21|40003437|歐米茄|7C00|unknown_7c00|1005909E|CasterDps|730003|7EDD0000|0|0|0|0|0|0|0|0|0|0|0|0|0|0|114698|114747|5400|10000|||100.48|91.98|0.00|-0.09|2802538|11125976|10000|10000|||100.42|99.57|0.00|3.13|00004550|0|1|00||01|7C00|7C00|0.100|FFA8|2d2f747408557528
-        world.Events.Add(151.44f, () => omega_40003437?.Cast(ActionId.Unknown7c00, castSeconds: 0f, targetId: party.Get(state.At(1, 0))?.GameObjectId));
+        // [monitors are their own scenario] world.Events.Add(151.44f, () => omega_40003437?.Cast(ActionId.Unknown7c00, castSeconds: 0f, targetId: party.Get(state.At(1, 0))?.GameObjectId));
         // [151.44s] 264|40003437|7C00|00004550|0||||3.133|1005909E|7ec4b83c2345515d
         // [154.48s] 21|40003437|歐米茄|7C00|unknown_7c00|1005909E|CasterDps|730003|8EF00000|0|0|0|0|0|0|0|0|0|0|0|0|0|0|95442|114747|6200|10000|||97.52|93.39|0.00|0.20|2565428|11125976|10000|10000|||100.42|99.57|0.00|-2.71|00004569|0|1|00||01|7C00|7C00|0.100|13BE|f7a4b01610c567f3
-        world.Events.Add(154.48f, () => omega_40003437?.Cast(ActionId.Unknown7c00, castSeconds: 0f, targetId: party.Get(state.At(1, 0))?.GameObjectId));
+        // [monitors are their own scenario] world.Events.Add(154.48f, () => omega_40003437?.Cast(ActionId.Unknown7c00, castSeconds: 0f, targetId: party.Get(state.At(1, 0))?.GameObjectId));
         // [154.48s] 264|40003437|7C00|00004569|0||||-2.657|1005909E|ade420bd6a4d6cd5
         // [157.53s] 21|40003437|歐米茄|7C00|unknown_7c00|1005909E|CasterDps|730003|9AE70000|0|0|0|0|0|0|0|0|0|0|0|0|0|0|91647|114747|6400|10000|||96.85|93.77|0.00|0.55|2308198|11125976|10000|10000|||100.42|99.57|0.00|-2.59|0000457F|0|1|00||01|7C00|7C00|0.100|166C|85accaf55e8cc55a
-        world.Events.Add(157.53f, () => omega_40003437?.Cast(ActionId.Unknown7c00, castSeconds: 0f, targetId: party.Get(state.At(1, 0))?.GameObjectId));
+        // [monitors are their own scenario] world.Events.Add(157.53f, () => omega_40003437?.Cast(ActionId.Unknown7c00, castSeconds: 0f, targetId: party.Get(state.At(1, 0))?.GameObjectId));
         // [157.53s] 264|40003437|7C00|0000457F|0||||-2.591|1005909E|9c2a9cc47b6cf916
         // [157.93s] 22|40003437|歐米茄|7B46|unknown_7b46|40003437|歐米茄|1B|7B468000|0|0|0|0|0|0|0|0|0|0|0|0|0|0|2308198|11125976|10000|10000|||100.42|99.57|0.00|-2.59|2308198|11125976|10000|10000|||100.42|99.57|0.00|-2.59|00004585|0|1|00||01|7B46|7B46|1.100|5F1F|7bc3e688855b95c9
-        world.Events.Add(157.93f, () => omega_40003437?.Cast(ActionId.Unknown7b46, castSeconds: 0f, targetId: omega_40003437?.GameObjectId));
+        // [monitors are their own scenario] world.Events.Add(157.93f, () => omega_40003437?.Cast(ActionId.Unknown7b46, castSeconds: 0f, targetId: omega_40003437?.GameObjectId));
         // [157.93s] 264|40003437|7B46|00004585|1|99.992|99.992|-0.015|-0.807|E0000000|31db7b7f80c57023
         // [158.51s] 270|40003437|-0.8069|0000|005A|99.9923|99.9923|0.0457|4af65b616cc1e500
-        world.Events.Add(158.51f, () => omega_40003437?.SetPosition(new Vector3(-0.008f, 0.046f, -0.008f)));
+        // [monitors are their own scenario] world.Events.Add(158.51f, () => omega_40003437?.SetPosition(new Vector3(-0.008f, 0.046f, -0.008f)));
         // [159.31s] 20|40003437|歐米茄|7B6B|探測式波動砲|40003437|歐米茄|9.700|99.99|99.99|0.00|-1.07|936f47f328705215
-        world.Events.Add(159.31f, () => omega_40003437?.Cast(ActionId.OversampledWaveCannon, targetLocation: new Vector3(-0.008f, 0.046f, -0.008f), castSeconds: 9.700f, targetId: omega_40003437?.GameObjectId));
+        // [monitors are their own scenario] world.Events.Add(159.31f, () => omega_40003437?.Cast(ActionId.OversampledWaveCannon, targetLocation: new Vector3(-0.008f, 0.046f, -0.008f), castSeconds: 9.700f, targetId: omega_40003437?.GameObjectId));
         // [158.92s] 261|Change|40003437|CastBuffID|31595|CastDurationCurrent|0.0502|CastDurationMax|9.7000|CastTargetID|40003437|Heading|-1.2090|IsCasting1|1|IsCasting2|1|PosX|99.9923|PosY|99.9923|PosZ|0.0000|8519a233ff9d480e
         // [159.49s] 261|Change|40003437|CastDurationCurrent|0.5881|Heading|3.1416|PosX|99.9923|PosY|99.9923|PosZ|0.0000|495395e783ba891a
         // [169.28s] 21|40003437|歐米茄|7B6B|探測式波動砲|40003437|歐米茄|1B|7B6B8000|0|0|0|0|0|0|0|0|0|0|0|0|0|0|1311596|11125976|10000|10000|||99.99|99.99|0.00|3.14|1311596|11125976|10000|10000|||99.99|99.99|0.00|3.14|000045D7|0|1|00||01|7B6B|7B6B|3.100|FFFF|9f761ada63f543fa
         // [169.28s] 264|40003437|7B6B|000045D7|0||||3.142|40003437|e38cfb3bcd8c08ff
         // [168.84s] 261|Change|40003437|CastBuffID|0|CastDurationCurrent|0.0000|CastDurationMax|0.0000|CastTargetID|E0000000|IsCasting1|0|IsCasting2|0|4f433555a7ccb61d
         // [173.40s] 21|40003437|歐米茄|7C00|unknown_7c00|1005F413|MainTank|730003|701C0000|0|0|0|0|0|0|0|0|0|0|0|0|0|0|115023|115023|9600|10000|||90.29|97.47|0.00|-2.08|1249715|11125976|10000|10000|||99.99|99.99|0.00|-1.81|000045E8|0|1|00||01|7C00|7C00|0.100|345B|874f4e7f0f687c79
-        world.Events.Add(173.40f, () => omega_40003437?.Cast(ActionId.Unknown7c00, castSeconds: 0f, targetId: party.Get(state.At(0, 1))?.GameObjectId));
+        // [monitors are their own scenario] world.Events.Add(173.40f, () => omega_40003437?.Cast(ActionId.Unknown7c00, castSeconds: 0f, targetId: party.Get(state.At(0, 1))?.GameObjectId));
         // [173.40s] 264|40003437|7C00|000045E8|0||||-1.857|1005F413|5f0166c21c814321
         // [175.23s] 20|40003437|歐米茄|7B48|離子流出|40003437|歐米茄|9.700|99.99|99.99|0.00|-1.86|b6901b67254e636f
-        world.Events.Add(175.23f, () => omega_40003437?.Cast(ActionId.IonEfflux, targetLocation: new Vector3(-0.008f, 0.046f, -0.008f), castSeconds: 9.700f, targetId: omega_40003437?.GameObjectId));
+        // [monitors are their own scenario] world.Events.Add(175.23f, () => omega_40003437?.Cast(ActionId.IonEfflux, targetLocation: new Vector3(-0.008f, 0.046f, -0.008f), castSeconds: 9.700f, targetId: omega_40003437?.GameObjectId));
         // [174.77s] 261|Change|40003437|CastBuffID|31560|CastDurationCurrent|0.0254|CastDurationMax|9.7000|CastTargetID|40003437|Heading|-1.8566|IsCasting1|1|IsCasting2|1|e5178fa449b56827
         // [185.20s] 22|40003437|歐米茄|7B48|離子流出|1005F413|MainTank|3|967F4098|1B|7B488000|0|0|0|0|0|0|0|0|0|0|0|0|104447|115023|10000|10000|||87.95|95.80|0.00|-0.32|1109071|11125976|10000|10000|||99.99|99.99|0.00|-1.86|000045FB|0|2|00||01|7B48|7B48|3.100|345B|9468979048699dd7
         // [185.20s] 22|40003437|歐米茄|7B48|離子流出|1006F2C9|MeleeDpsB|3|967F4098|1B|7B488000|0|0|0|0|0|0|0|0|0|0|0|0|73182|73182|1700|10000|||88.98|106.58|0.00|2.11|1109071|11125976|10000|10000|||99.99|99.99|0.00|-1.86|000045FB|1|2|00||01|7B48|7B48|3.100|345B|db3ca11f4140daed
-        world.Events.Add(185.20f, () => omega_40003437?.Cast(ActionId.IonEfflux, castSeconds: 0f, targetId: party.Get(state.At(0, 0))?.GameObjectId));
+        // [monitors are their own scenario] world.Events.Add(185.20f, () => omega_40003437?.Cast(ActionId.IonEfflux, castSeconds: 0f, targetId: party.Get(state.At(0, 0))?.GameObjectId));
         // [185.20s] 264|40003437|7B48|000045FB|1|-0.015|-0.015|-0.015|-1.857|40003437|4a6268d0d216c8e4
         // [185.20s] 34|40003437|歐米茄|40003437|歐米茄|00|731fe3317df9f778
-        world.Events.Add(185.20f, () => omega_40003437?.SetTargetable(false));
+        // [monitors are their own scenario] world.Events.Add(185.20f, () => omega_40003437?.SetTargetable(false));
         // [184.80s] 261|Change|40003437|CastBuffID|0|CastDurationCurrent|0.0000|CastDurationMax|0.0000|CastTargetID|E0000000|IsCasting1|0|IsCasting2|0|8fa5d25ca9688b04
     }
 
@@ -1637,12 +1644,12 @@ public sealed class TopP3HelloWorldScenario : IScenario
         world.Events.Add(136.90f, () => omega_40003358_1?.Cast(ActionId.CriticalErrorPerformance, castSeconds: 0f, targetId: party.Get(state.At(2, 0))?.GameObjectId));
         // [136.90s] 264|40003358|7B5B|000044ED|0||||0.042|1005C8B8|9f7f5e9ef73bb481
         // [169.37s] 21|40003358|歐米茄|7B6D|探測式波動砲|1004CB37|PhysRangedDps|750003|E900400B|DC000014|B7D0000|1B|7B6D8000|0|0|0|0|0|0|0|0|0|0|79865|79865|10000|10000|||97.49|110.15|0.00|2.90|44|44|0|10000|||111.19|105.86|0.00|0.04|000045DF|0|1|00||01|7B6D|7B6D|1.100|81B4|4b49b89098fe0d12
-        world.Events.Add(169.37f, () => omega_40003358_1?.Cast(ActionId.OversampledWaveCannonAoe, castSeconds: 0f, targetId: party.Get(state.At(3, 0))?.GameObjectId));
+        // [monitors are their own scenario] world.Events.Add(169.37f, () => omega_40003358_1?.Cast(ActionId.OversampledWaveCannonAoe, castSeconds: 0f, targetId: party.Get(state.At(3, 0))?.GameObjectId));
         // [169.37s] 264|40003358|7B6D|000045DF|0||||0.042|1004CB37|e86e8e90d23421fd
         // [169.37s] 26|9D7|死亡宣告|2.96|40003358|歐米茄|1004CB37|PhysRangedDps|00|79865|44|d2a1b3e9c5d7df4c
-        world.Events.Add(169.37f, () => party.Get(state.At(3, 0))?.AddStatus(StatusId.Doom, 2.960f));
+        // [monitors are their own scenario] world.Events.Add(169.37f, () => party.Get(state.At(3, 0))?.AddStatus(StatusId.Doom, 2.960f));
         // [170.00s] 30|9D7|死亡宣告|0.00|40003358|歐米茄|1004CB37|PhysRangedDps|00|79865|44|4116be4dc5b36afc
-        world.Events.Add(170.00f, () => party.Get(state.At(3, 0))?.RemoveStatus(StatusId.Doom));
+        // [monitors are their own scenario] world.Events.Add(170.00f, () => party.Get(state.At(3, 0))?.RemoveStatus(StatusId.Doom));
         // [172.01s] 25|1004CB37|PhysRangedDps|40003358|歐米茄|b04d6eae401f4149
     }
 
@@ -2321,12 +2328,12 @@ public sealed class TopP3HelloWorldScenario : IScenario
         // [133.99s] 30|DC8|潛在錯誤：下溢|0.00|40003357|歐米茄|1004CB37|PhysRangedDps|00|79865|44|c34a217657a384ac
         world.Events.Add(133.99f, () => party.Get(state.At(3, 0))?.RemoveStatus(StatusId.LatentDefectUnderflow));
         // [169.37s] 21|40003357|歐米茄|7B6D|探測式波動砲|10045D8E|RegenHealer|750003|5C30400B|DC000014|B7D0000|1B|7B6D8000|0|0|0|0|0|0|0|0|0|0|72988|72988|1200|10000|||98.58|118.84|0.00|3.07|44|44|0|10000|||110.72|96.80|0.00|-1.47|000045E1|0|1|00||01|7B6D|7B6D|1.100|440F|11a8909efab02c25
-        world.Events.Add(169.37f, () => omega_40003357_1?.Cast(ActionId.OversampledWaveCannonAoe, castSeconds: 0f, targetId: party.Get(state.At(2, 1))?.GameObjectId));
+        // [monitors are their own scenario] world.Events.Add(169.37f, () => omega_40003357_1?.Cast(ActionId.OversampledWaveCannonAoe, castSeconds: 0f, targetId: party.Get(state.At(2, 1))?.GameObjectId));
         // [169.37s] 264|40003357|7B6D|000045E1|0||||-1.471|10045D8E|86b2854d3e2c0af1
         // [169.37s] 26|9D7|死亡宣告|2.96|40003357|歐米茄|10045D8E|RegenHealer|00|72988|44|106c43d4be67b658
-        world.Events.Add(169.37f, () => party.Get(state.At(2, 1))?.AddStatus(StatusId.Doom, 2.960f));
+        // [monitors are their own scenario] world.Events.Add(169.37f, () => party.Get(state.At(2, 1))?.AddStatus(StatusId.Doom, 2.960f));
         // [170.00s] 30|9D7|死亡宣告|0.00|40003357|歐米茄|10045D8E|RegenHealer|00|72988|44|b9df10c651821ea7
-        world.Events.Add(170.00f, () => party.Get(state.At(2, 1))?.RemoveStatus(StatusId.Doom));
+        // [monitors are their own scenario] world.Events.Add(170.00f, () => party.Get(state.At(2, 1))?.RemoveStatus(StatusId.Doom));
         // [172.01s] 25|10045D8E|RegenHealer|40003357|歐米茄|a9e00d9a5d5394b0
     }
 
@@ -2430,18 +2437,18 @@ public sealed class TopP3HelloWorldScenario : IScenario
         // [127.55s] 30|B7D|魔法受傷加重|0.00|40003352|歐米茄|1005C8B8|OffTank|00|79717|44|48ba29a2039b8e04
         world.Events.Add(127.55f, () => party.Get(state.At(2, 0))?.RemoveStatus(StatusId.MagicVulnerabilityUp));
         // [169.37s] 22|40003352|歐米茄|7B6D|探測式波動砲|10059F54|ShieldHealer|750003|B06A0000|DC0E|B7D0000|100000E|9E60000|1B|7B6D8000|0|0|0|0|0|0|0|0|73012|73012|5950|10000|||103.87|89.49|0.00|-0.36|44|44|0|10000|||100.00|90.00|0.00|0.00|000045DA|0|2|00||01|7B6D|7B6D|1.100|7FFF|42b769090bb997d0
-        world.Events.Add(169.37f, () => omega_40003352?.Cast(ActionId.OversampledWaveCannonAoe, castSeconds: 0f, targetId: party.Get(state.At(1, 1))?.GameObjectId));
+        // [monitors are their own scenario] world.Events.Add(169.37f, () => omega_40003352?.Cast(ActionId.OversampledWaveCannonAoe, castSeconds: 0f, targetId: party.Get(state.At(1, 1))?.GameObjectId));
         // [169.37s] 22|40003352|歐米茄|7B6D|探測式波動砲|1005909E|CasterDps|750003|6A160000|DC0E|B7D0000|100000E|9E60000|1B|7B6D8000|0|0|0|0|0|0|0|0|114747|114747|7200|10000|||107.84|94.22|0.00|0.17|44|44|0|10000|||100.00|90.00|0.00|0.00|000045DA|1|2|00||01|7B6D|7B6D|1.100|7FFF|7c75ca1f726f1777
-        world.Events.Add(169.37f, () => omega_40003352?.Cast(ActionId.OversampledWaveCannonAoe, castSeconds: 0f, targetId: party.Get(state.At(1, 0))?.GameObjectId));
+        // [monitors are their own scenario] world.Events.Add(169.37f, () => omega_40003352?.Cast(ActionId.OversampledWaveCannonAoe, castSeconds: 0f, targetId: party.Get(state.At(1, 0))?.GameObjectId));
         // [169.37s] 264|40003352|7B6D|000045DA|1|-0.015|-0.015|-0.015|0.000|10059F54|03d92d19da764e3a
         // [169.37s] 26|B7D|魔法受傷加重|4.96|40003352|歐米茄|10059F54|ShieldHealer|00|73012|44|ecc721f8a12dfc49
-        world.Events.Add(169.37f, () => party.Get(state.At(1, 1))?.AddStatus(StatusId.MagicVulnerabilityUp, 4.960f));
+        // [monitors are their own scenario] world.Events.Add(169.37f, () => party.Get(state.At(1, 1))?.AddStatus(StatusId.MagicVulnerabilityUp, 4.960f));
         // [169.37s] 26|B7D|魔法受傷加重|4.96|40003352|歐米茄|1005909E|CasterDps|00|114747|44|71f49fc6deb7aa33
-        world.Events.Add(169.37f, () => party.Get(state.At(1, 0))?.AddStatus(StatusId.MagicVulnerabilityUp, 4.960f));
+        // [monitors are their own scenario] world.Events.Add(169.37f, () => party.Get(state.At(1, 0))?.AddStatus(StatusId.MagicVulnerabilityUp, 4.960f));
         // [170.00s] 30|B7D|魔法受傷加重|0.00|40003352|歐米茄|10059F54|ShieldHealer|00|73012|44|546c223be9b048dc
-        world.Events.Add(170.00f, () => party.Get(state.At(1, 1))?.RemoveStatus(StatusId.MagicVulnerabilityUp));
+        // [monitors are their own scenario] world.Events.Add(170.00f, () => party.Get(state.At(1, 1))?.RemoveStatus(StatusId.MagicVulnerabilityUp));
         // [170.00s] 30|B7D|魔法受傷加重|0.00|40003352|歐米茄|1005909E|CasterDps|00|114747|44|d64974abf24136cd
-        world.Events.Add(170.00f, () => party.Get(state.At(1, 0))?.RemoveStatus(StatusId.MagicVulnerabilityUp));
+        // [monitors are their own scenario] world.Events.Add(170.00f, () => party.Get(state.At(1, 0))?.RemoveStatus(StatusId.MagicVulnerabilityUp));
     }
 
     private void Run_Omega_40003353()
@@ -2587,12 +2594,12 @@ public sealed class TopP3HelloWorldScenario : IScenario
         // [127.55s] 30|B7D|魔法受傷加重|0.00|40003353|歐米茄|1006F2C9|MeleeDpsB|00|73182|44|b321b89584353a94
         world.Events.Add(127.55f, () => party.Get(state.At(0, 0))?.RemoveStatus(StatusId.MagicVulnerabilityUp));
         // [169.37s] 21|40003353|歐米茄|7B6D|探測式波動砲|1004CB37|PhysRangedDps|750003|B9340000|DC0E|B7D0000|100000E|9E60000|1B|7B6D8000|0|0|0|0|0|0|0|0|79865|79865|10000|10000|||97.49|110.15|0.00|2.90|44|44|0|10000|||114.68|99.73|0.00|-1.58|000045DB|0|1|00||01|7B6D|7B6D|1.100|3F89|464ff906e10f3d0d
-        world.Events.Add(169.37f, () => omega_40003353?.Cast(ActionId.OversampledWaveCannonAoe, castSeconds: 0f, targetId: party.Get(state.At(3, 0))?.GameObjectId));
+        // [monitors are their own scenario] world.Events.Add(169.37f, () => omega_40003353?.Cast(ActionId.OversampledWaveCannonAoe, castSeconds: 0f, targetId: party.Get(state.At(3, 0))?.GameObjectId));
         // [169.37s] 264|40003353|7B6D|000045DB|0||||-1.582|1004CB37|e7ba874f158d513b
         // [169.37s] 26|B7D|魔法受傷加重|4.96|40003353|歐米茄|1004CB37|PhysRangedDps|00|79865|44|e5038e3e2e34b2f9
-        world.Events.Add(169.37f, () => party.Get(state.At(3, 0))?.AddStatus(StatusId.MagicVulnerabilityUp, 4.960f));
+        // [monitors are their own scenario] world.Events.Add(169.37f, () => party.Get(state.At(3, 0))?.AddStatus(StatusId.MagicVulnerabilityUp, 4.960f));
         // [170.00s] 30|B7D|魔法受傷加重|0.00|40003353|歐米茄|1004CB37|PhysRangedDps|00|79865|44|d61f24da0487b233
-        world.Events.Add(170.00f, () => party.Get(state.At(3, 0))?.RemoveStatus(StatusId.MagicVulnerabilityUp));
+        // [monitors are their own scenario] world.Events.Add(170.00f, () => party.Get(state.At(3, 0))?.RemoveStatus(StatusId.MagicVulnerabilityUp));
     }
 
     private void Run_Omega_40003354()
@@ -2809,12 +2816,12 @@ public sealed class TopP3HelloWorldScenario : IScenario
         // [127.55s] 30|B7D|魔法受傷加重|0.00|40003354|歐米茄|10045D8E|RegenHealer|00|72988|44|ab3df4e6f97f2128
         world.Events.Add(127.55f, () => party.Get(state.At(2, 1))?.RemoveStatus(StatusId.MagicVulnerabilityUp));
         // [169.37s] 21|40003354|歐米茄|7B6D|探測式波動砲|10045D8E|RegenHealer|750003|B4540000|DC0E|B7D0000|100000E|9E60000|1B|7B6D8000|0|0|0|0|0|0|0|0|72988|72988|1200|10000|||98.58|118.84|0.00|3.07|44|44|0|10000|||111.37|102.80|0.00|-1.86|000045E0|0|1|00||01|7B6D|7B6D|1.100|344E|a3e4f2e38a9b1929
-        world.Events.Add(169.37f, () => omega_40003354?.Cast(ActionId.OversampledWaveCannonAoe, castSeconds: 0f, targetId: party.Get(state.At(2, 1))?.GameObjectId));
+        // [monitors are their own scenario] world.Events.Add(169.37f, () => omega_40003354?.Cast(ActionId.OversampledWaveCannonAoe, castSeconds: 0f, targetId: party.Get(state.At(2, 1))?.GameObjectId));
         // [169.37s] 264|40003354|7B6D|000045E0|0||||-1.858|10045D8E|ea621721d0d959f6
         // [169.37s] 26|B7D|魔法受傷加重|4.96|40003354|歐米茄|10045D8E|RegenHealer|00|72988|44|521b8efc358ecf10
-        world.Events.Add(169.37f, () => party.Get(state.At(2, 1))?.AddStatus(StatusId.MagicVulnerabilityUp, 4.960f));
+        // [monitors are their own scenario] world.Events.Add(169.37f, () => party.Get(state.At(2, 1))?.AddStatus(StatusId.MagicVulnerabilityUp, 4.960f));
         // [170.00s] 30|B7D|魔法受傷加重|0.00|40003354|歐米茄|10045D8E|RegenHealer|00|72988|44|2d8724e969a94da7
-        world.Events.Add(170.00f, () => party.Get(state.At(2, 1))?.RemoveStatus(StatusId.MagicVulnerabilityUp));
+        // [monitors are their own scenario] world.Events.Add(170.00f, () => party.Get(state.At(2, 1))?.RemoveStatus(StatusId.MagicVulnerabilityUp));
     }
 
     private void Run_Omega_40003355()
@@ -2899,18 +2906,18 @@ public sealed class TopP3HelloWorldScenario : IScenario
         // [136.90s] 30|D6B|潛在錯誤：效能|0.00|40003355|歐米茄|1005C8B8|OffTank|00|79717|44|3597217596677dc4
         world.Events.Add(136.90f, () => party.Get(state.At(2, 0))?.RemoveStatus(StatusId.LatentDefectPerformance));
         // [169.37s] 22|40003355|歐米茄|7B6D|探測式波動砲|1005909E|CasterDps|750003|AFA24006|DC000014|B7D0000|1B|7B6D8000|0|0|0|0|0|0|0|0|0|0|114747|114747|7200|10000|||107.84|94.22|0.00|0.17|44|44|0|10000|||90.10|90.10|0.00|0.79|000045DC|0|2|00||01|7B6D|7B6D|1.100|9FFF|907b4d1f0d9cc282
-        world.Events.Add(169.37f, () => omega_40003355?.Cast(ActionId.OversampledWaveCannonAoe, castSeconds: 0f, targetId: party.Get(state.At(1, 0))?.GameObjectId));
+        // [monitors are their own scenario] world.Events.Add(169.37f, () => omega_40003355?.Cast(ActionId.OversampledWaveCannonAoe, castSeconds: 0f, targetId: party.Get(state.At(1, 0))?.GameObjectId));
         // [169.37s] 22|40003355|歐米茄|7B6D|探測式波動砲|10059F54|ShieldHealer|750003|1710400B|DC000014|B7D0000|1B|7B6D8000|0|0|0|0|0|0|0|0|0|0|73012|73012|5950|10000|||103.87|89.49|0.00|-0.36|44|44|0|10000|||90.10|90.10|0.00|0.79|000045DC|1|2|00||01|7B6D|7B6D|1.100|9FFF|cca844fff7ae1d5b
-        world.Events.Add(169.37f, () => omega_40003355?.Cast(ActionId.OversampledWaveCannonAoe, castSeconds: 0f, targetId: party.Get(state.At(1, 1))?.GameObjectId));
+        // [monitors are their own scenario] world.Events.Add(169.37f, () => omega_40003355?.Cast(ActionId.OversampledWaveCannonAoe, castSeconds: 0f, targetId: party.Get(state.At(1, 1))?.GameObjectId));
         // [169.37s] 264|40003355|7B6D|000045DC|1|-0.015|-0.015|-0.015|0.785|1005909E|e6d9a49b4266e3ba
         // [169.37s] 26|9D7|死亡宣告|2.96|40003355|歐米茄|10059F54|ShieldHealer|00|73012|44|4a6823c305964c37
-        world.Events.Add(169.37f, () => party.Get(state.At(1, 1))?.AddStatus(StatusId.Doom, 2.960f));
+        // [monitors are their own scenario] world.Events.Add(169.37f, () => party.Get(state.At(1, 1))?.AddStatus(StatusId.Doom, 2.960f));
         // [169.37s] 26|9D7|死亡宣告|2.96|40003355|歐米茄|1005909E|CasterDps|00|114747|44|fbe542998fbeabd8
-        world.Events.Add(169.37f, () => party.Get(state.At(1, 0))?.AddStatus(StatusId.Doom, 2.960f));
+        // [monitors are their own scenario] world.Events.Add(169.37f, () => party.Get(state.At(1, 0))?.AddStatus(StatusId.Doom, 2.960f));
         // [170.00s] 30|9D7|死亡宣告|0.00|40003355|歐米茄|10059F54|ShieldHealer|00|73012|44|8795a55a722ee28c
-        world.Events.Add(170.00f, () => party.Get(state.At(1, 1))?.RemoveStatus(StatusId.Doom));
+        // [monitors are their own scenario] world.Events.Add(170.00f, () => party.Get(state.At(1, 1))?.RemoveStatus(StatusId.Doom));
         // [170.00s] 30|9D7|死亡宣告|0.00|40003355|歐米茄|1005909E|CasterDps|00|114747|44|62efcd2376d0f370
-        world.Events.Add(170.00f, () => party.Get(state.At(1, 0))?.RemoveStatus(StatusId.Doom));
+        // [monitors are their own scenario] world.Events.Add(170.00f, () => party.Get(state.At(1, 0))?.RemoveStatus(StatusId.Doom));
         // [172.01s] 25|1005909E|CasterDps|40003355|歐米茄|41261cad142e6594
     }
 
@@ -2987,9 +2994,9 @@ public sealed class TopP3HelloWorldScenario : IScenario
         // [135.02s] 30|D6B|潛在錯誤：效能|0.00|40003356|歐米茄|10045D8E|RegenHealer|00|72988|44|844289e1c46b6ba3
         world.Events.Add(135.02f, () => party.Get(state.At(2, 1))?.RemoveStatus(StatusId.LatentDefectPerformance));
         // [169.37s] 22|40003356|歐米茄|7B6D|探測式波動砲|10059F54|ShieldHealer|750003|D5C0400A|DC000014|B7D0000|114|9E60000|1B|7B6D8000|0|0|0|0|0|0|0|0|73012|73012|5950|10000|||103.87|89.49|0.00|-0.36|44|44|0|10000|||90.10|109.90|0.00|2.36|000045DD|0|2|00||01|7B6D|7B6D|1.100|DFFF|beaa9aa24956e1b7
-        world.Events.Add(169.37f, () => omega_40003356_1?.Cast(ActionId.OversampledWaveCannonAoe, castSeconds: 0f, targetId: party.Get(state.At(1, 1))?.GameObjectId));
+        // [monitors are their own scenario] world.Events.Add(169.37f, () => omega_40003356_1?.Cast(ActionId.OversampledWaveCannonAoe, castSeconds: 0f, targetId: party.Get(state.At(1, 1))?.GameObjectId));
         // [169.37s] 22|40003356|歐米茄|7B6D|探測式波動砲|1005909E|CasterDps|750003|F9D44006|DC000014|B7D0000|114|9E60000|1B|7B6D8000|0|0|0|0|0|0|0|0|114747|114747|7200|10000|||107.84|94.22|0.00|0.17|44|44|0|10000|||90.10|109.90|0.00|2.36|000045DD|1|2|00||01|7B6D|7B6D|1.100|DFFF|988ae2566fe373ef
-        world.Events.Add(169.37f, () => omega_40003356_1?.Cast(ActionId.OversampledWaveCannonAoe, castSeconds: 0f, targetId: party.Get(state.At(1, 0))?.GameObjectId));
+        // [monitors are their own scenario] world.Events.Add(169.37f, () => omega_40003356_1?.Cast(ActionId.OversampledWaveCannonAoe, castSeconds: 0f, targetId: party.Get(state.At(1, 0))?.GameObjectId));
         // [169.37s] 264|40003356|7B6D|000045DD|1|-0.015|-0.015|-0.015|2.356|10059F54|d70695334b89ce94
         // [172.01s] 25|10059F54|ShieldHealer|40003356|歐米茄|f364cdad7345fe7c
     }
@@ -3093,9 +3100,9 @@ public sealed class TopP3HelloWorldScenario : IScenario
         // [127.55s] 30|B7D|魔法受傷加重|0.00|40003351|歐米茄|100484C3|MeleeDpsA|00|79897|44|52cb181032d69b8d
         world.Events.Add(127.55f, () => party.Get(state.At(3, 1))?.RemoveStatus(StatusId.MagicVulnerabilityUp));
         // [169.37s] 22|40003351|歐米茄|7B6D|探測式波動砲|1005909E|CasterDps|750003|BB74007|DC000014|B7D0000|114|9E60000|1B|7B6D8000|0|0|0|0|0|0|0|0|114747|114747|7200|10000|||107.84|94.22|0.00|0.17|44|44|0|10000|||100.00|90.00|0.00|0.00|000045DE|0|2|00||01|7B6D|7B6D|1.100|7FFF|57957475b0e81e9b
-        world.Events.Add(169.37f, () => omega_40003351?.Cast(ActionId.OversampledWaveCannonAoe, castSeconds: 0f, targetId: party.Get(state.At(1, 0))?.GameObjectId));
+        // [monitors are their own scenario] world.Events.Add(169.37f, () => omega_40003351?.Cast(ActionId.OversampledWaveCannonAoe, castSeconds: 0f, targetId: party.Get(state.At(1, 0))?.GameObjectId));
         // [169.37s] 22|40003351|歐米茄|7B6D|探測式波動砲|10059F54|ShieldHealer|750003|56B0400B|DC000014|B7D0000|114|9E60000|1B|7B6D8000|0|0|0|0|0|0|0|0|73012|73012|5950|10000|||103.87|89.49|0.00|-0.36|44|44|0|10000|||100.00|90.00|0.00|0.00|000045DE|1|2|00||01|7B6D|7B6D|1.100|7FFF|f4a67e2ed52806ff
-        world.Events.Add(169.37f, () => omega_40003351?.Cast(ActionId.OversampledWaveCannonAoe, castSeconds: 0f, targetId: party.Get(state.At(1, 1))?.GameObjectId));
+        // [monitors are their own scenario] world.Events.Add(169.37f, () => omega_40003351?.Cast(ActionId.OversampledWaveCannonAoe, castSeconds: 0f, targetId: party.Get(state.At(1, 1))?.GameObjectId));
         // [169.37s] 264|40003351|7B6D|000045DE|1|-0.015|-0.015|-0.015|0.000|1005909E|45cbe79dd37cfbf7
     }
 
@@ -3138,18 +3145,18 @@ public sealed class TopP3HelloWorldScenario : IScenario
         // [-180.98s] 261|Change|4000334F|CastBuffID|0|CastDurationCurrent|0.0000|CastDurationMax|0.0000|IsCasting1|0|IsCasting2|0|aed7d18e2e10b464
         // [168.84s] 261|Change|4000334F|BNpcNameID|1DD4|02594cca135ccdaf
         // [169.37s] 22|4000334F|歐米茄|7B6D|探測式波動砲|1005C8B8|OffTank|A10|F0D0000|750003|ADC30000|DC0E|B7D0000|100000E|9E60000|1B|7B6D8000|0|0|0|0|0|0|79717|79717|10000|10000|||103.59|100.64|-0.02|1.14|44|44|0|10000|||100.00|90.00|0.00|0.00|000045D8|0|2|00||01|7B6D|7B6D|1.100|7FFF|0b79ca9e78ab2156
-        world.Events.Add(169.37f, () => omega_4000334F?.Cast(ActionId.OversampledWaveCannonAoe, castSeconds: 0f, targetId: party.Get(state.At(2, 0))?.GameObjectId));
+        // [monitors are their own scenario] world.Events.Add(169.37f, () => omega_4000334F?.Cast(ActionId.OversampledWaveCannonAoe, castSeconds: 0f, targetId: party.Get(state.At(2, 0))?.GameObjectId));
         // [169.37s] 22|4000334F|歐米茄|7B6D|探測式波動砲|100484C3|MeleeDpsA|750003|BA640000|DC0E|B7D0000|100000E|9E60000|1B|7B6D8000|0|0|0|0|0|0|0|0|79897|79897|10000|10000|||104.69|102.50|0.00|-1.09|44|44|0|10000|||100.00|90.00|0.00|0.00|000045D8|1|2|00||01|7B6D|7B6D|1.100|7FFF|e95a01b1fed2a7e6
-        world.Events.Add(169.37f, () => omega_4000334F?.Cast(ActionId.OversampledWaveCannonAoe, castSeconds: 0f, targetId: party.Get(state.At(3, 1))?.GameObjectId));
+        // [monitors are their own scenario] world.Events.Add(169.37f, () => omega_4000334F?.Cast(ActionId.OversampledWaveCannonAoe, castSeconds: 0f, targetId: party.Get(state.At(3, 1))?.GameObjectId));
         // [169.37s] 264|4000334F|7B6D|000045D8|1|-0.015|-0.015|-0.015|0.000|1005C8B8|d7a19f47d3ae4eeb
         // [169.37s] 26|B7D|魔法受傷加重|4.96|4000334F|歐米茄|1005C8B8|OffTank|00|79717|44|e7f7adca112eee2a
-        world.Events.Add(169.37f, () => party.Get(state.At(2, 0))?.AddStatus(StatusId.MagicVulnerabilityUp, 4.960f));
+        // [monitors are their own scenario] world.Events.Add(169.37f, () => party.Get(state.At(2, 0))?.AddStatus(StatusId.MagicVulnerabilityUp, 4.960f));
         // [169.37s] 26|B7D|魔法受傷加重|4.96|4000334F|歐米茄|100484C3|MeleeDpsA|00|79897|44|9b66b641bd15fae2
-        world.Events.Add(169.37f, () => party.Get(state.At(3, 1))?.AddStatus(StatusId.MagicVulnerabilityUp, 4.960f));
+        // [monitors are their own scenario] world.Events.Add(169.37f, () => party.Get(state.At(3, 1))?.AddStatus(StatusId.MagicVulnerabilityUp, 4.960f));
         // [170.00s] 30|B7D|魔法受傷加重|0.00|4000334F|歐米茄|100484C3|MeleeDpsA|00|79897|44|97d51a0241b30aa6
-        world.Events.Add(170.00f, () => party.Get(state.At(3, 1))?.RemoveStatus(StatusId.MagicVulnerabilityUp));
+        // [monitors are their own scenario] world.Events.Add(170.00f, () => party.Get(state.At(3, 1))?.RemoveStatus(StatusId.MagicVulnerabilityUp));
         // [170.04s] 30|B7D|魔法受傷加重|0.00|4000334F|歐米茄|1005C8B8|OffTank|00|79717|44|26e769d47127fab5
-        world.Events.Add(170.04f, () => party.Get(state.At(2, 0))?.RemoveStatus(StatusId.MagicVulnerabilityUp));
+        // [monitors are their own scenario] world.Events.Add(170.04f, () => party.Get(state.At(2, 0))?.RemoveStatus(StatusId.MagicVulnerabilityUp));
     }
 
     private void Run_Omega_40003350()
@@ -3191,18 +3198,18 @@ public sealed class TopP3HelloWorldScenario : IScenario
         // [-180.98s] 261|Change|40003350|CastBuffID|0|CastDurationCurrent|0.0000|CastDurationMax|0.0000|IsCasting1|0|IsCasting2|0|6e340641552466f5
         // [168.84s] 261|Change|40003350|BNpcNameID|1DD4|f39750a703317839
         // [169.37s] 22|40003350|歐米茄|7B6D|探測式波動砲|100484C3|MeleeDpsA|750003|CB00400B|DC000014|B7D0000|1B|7B6D8000|0|0|0|0|0|0|0|0|0|0|79897|79897|10000|10000|||104.69|102.50|0.00|-1.09|44|44|0|10000|||100.00|90.00|0.00|0.00|000045D9|0|2|00||01|7B6D|7B6D|1.100|7FFF|627ba94f30d767ff
-        world.Events.Add(169.37f, () => omega_40003350?.Cast(ActionId.OversampledWaveCannonAoe, castSeconds: 0f, targetId: party.Get(state.At(3, 1))?.GameObjectId));
+        // [monitors are their own scenario] world.Events.Add(169.37f, () => omega_40003350?.Cast(ActionId.OversampledWaveCannonAoe, castSeconds: 0f, targetId: party.Get(state.At(3, 1))?.GameObjectId));
         // [169.37s] 22|40003350|歐米茄|7B6D|探測式波動砲|1005C8B8|OffTank|750003|B4C0400B|DC000014|B7D0000|1B|7B6D8000|0|0|0|0|0|0|0|0|0|0|79717|79717|10000|10000|||103.59|100.64|-0.02|1.14|44|44|0|10000|||100.00|90.00|0.00|0.00|000045D9|1|2|00||01|7B6D|7B6D|1.100|7FFF|ef8057d9005ecb14
-        world.Events.Add(169.37f, () => omega_40003350?.Cast(ActionId.OversampledWaveCannonAoe, castSeconds: 0f, targetId: party.Get(state.At(2, 0))?.GameObjectId));
+        // [monitors are their own scenario] world.Events.Add(169.37f, () => omega_40003350?.Cast(ActionId.OversampledWaveCannonAoe, castSeconds: 0f, targetId: party.Get(state.At(2, 0))?.GameObjectId));
         // [169.37s] 264|40003350|7B6D|000045D9|1|-0.015|-0.015|-0.015|0.000|100484C3|754a8c0dd776ab8d
         // [169.37s] 26|9D7|死亡宣告|2.96|40003350|歐米茄|1005C8B8|OffTank|00|79717|44|134983d91fab41b7
-        world.Events.Add(169.37f, () => party.Get(state.At(2, 0))?.AddStatus(StatusId.Doom, 2.960f));
+        // [monitors are their own scenario] world.Events.Add(169.37f, () => party.Get(state.At(2, 0))?.AddStatus(StatusId.Doom, 2.960f));
         // [169.37s] 26|9D7|死亡宣告|2.96|40003350|歐米茄|100484C3|MeleeDpsA|00|79897|44|917a385d1aec922d
-        world.Events.Add(169.37f, () => party.Get(state.At(3, 1))?.AddStatus(StatusId.Doom, 2.960f));
+        // [monitors are their own scenario] world.Events.Add(169.37f, () => party.Get(state.At(3, 1))?.AddStatus(StatusId.Doom, 2.960f));
         // [170.00s] 30|9D7|死亡宣告|0.00|40003350|歐米茄|100484C3|MeleeDpsA|00|79897|44|cc74d5713a7421b5
-        world.Events.Add(170.00f, () => party.Get(state.At(3, 1))?.RemoveStatus(StatusId.Doom));
+        // [monitors are their own scenario] world.Events.Add(170.00f, () => party.Get(state.At(3, 1))?.RemoveStatus(StatusId.Doom));
         // [170.04s] 30|9D7|死亡宣告|0.00|40003350|歐米茄|1005C8B8|OffTank|00|79717|44|ebf46e6837937d1c
-        world.Events.Add(170.04f, () => party.Get(state.At(2, 0))?.RemoveStatus(StatusId.Doom));
+        // [monitors are their own scenario] world.Events.Add(170.04f, () => party.Get(state.At(2, 0))?.RemoveStatus(StatusId.Doom));
         // [172.01s] 25|100484C3|MeleeDpsA|40003350|歐米茄|0ea4a67ffc750437
         // [172.05s] 25|1005C8B8|OffTank|40003350|歐米茄|47e469b776e19759
     }
