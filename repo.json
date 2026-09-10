@@ -3,7 +3,7 @@
         "Author": "Anomek",
         "Name": "AnoMech (TC)",
         "InternalName": "AnoMech",
-        "AssemblyVersion": "0.3.16.1",
+        "AssemblyVersion": "0.3.16.0",
         "Punchline": "在旅館單人練習高難副本機制（繁中版 / API13 分支）",
         "Description": "在你的客戶端生出假隊友與假 boss，讓你一個人也能練習高難副本機制。進旅館後打 /anomech 開始。\n\n本分支是 anomek/AnoMech 針對繁體中文版（Dalamud API 13）的非官方移植，介面已繁中化。目前提供絕歐米茄 5 個與絕神兵 1 個場景；Dancing Mad 因為是 7.51 內容，繁中版客戶端沒有資料，故不包含。屬實驗性質，詳見 repo 說明。",
         "ApplicableVersion": "any",
