@@ -155,13 +155,36 @@ public sealed class TopP3HelloWorldAi : IScenarioAi<TopP3HelloWorldState>
         var stack = StackTowers[round];
         return ForEachMember((slot, member) => JobForSlot[round][slot] switch
         {
-            Job.Defamation => defamation[member],
-            Job.Stack => stack[member],
-            Job.NearTether => Rotate(Normalize(defamation[0] + defamation[1]),
-                                     (member == 0 ? -1f : 1f) * MathF.PI / 2f) * 19f,
-            _ => Between(stack) * 0.7f + Perpendicular(stack) * (member == 0 ? -1.8f : 1.8f),
+            Job.Defamation => SpreadStand(defamation, member),
+            Job.Stack => StackStand(stack, member),
+            _ => WaitingSpot(round, slot, member),
         });
     }
+
+    // Both holders stand off-centre inside their own tower. The Stack holder leans the way
+    // the tether pair will come from so the hand-off is a step rather than a run; the
+    // Defamation holder backs away from the middle so their circle covers less of the arena.
+    // Measured off the guide diagram: 4.5 yalms of lean, 3 yalms of standoff, both well
+    // inside a tower about six across.
+    private const float StackLean = 4.5f;
+    private const float SpreadStandOff = 3f;
+
+    private static Vector2 StackStand(Vector2[] stack, int member)
+    {
+        var tower = stack[member];
+        return tower + Normalize(Between(stack) - tower) * StackLean;
+    }
+
+    private static Vector2 SpreadStand(Vector2[] defamation, int member)
+    {
+        var tower = defamation[member];
+        return Normalize(tower) * (tower.Length() + SpreadStandOff);
+    }
+
+    // Round four only: instead of huddling in the middle, both tether pairs post up beside
+    // the Stack towers before the mechanic lands, one of each pair either side.
+    private static Vector2 BesideTheStackTowers(Vector2[] stack, int member) =>
+        Normalize(Between(stack)) * 14.8f + Perpendicular(stack) * (member == 0 ? -3.6f : 3.6f);
 
     // Towers are spent: only now does the Defamation holder step onto the nearest waymark
     // and the tether pairs walk in to collect. Until the towers land, everyone holds the
@@ -178,11 +201,12 @@ public sealed class TopP3HelloWorldAi : IScenarioAi<TopP3HelloWorldState>
         var last = round == 3;
         return ForEachMember((slot, member) => JobForSlot[round][slot] switch
         {
-            Job.Defamation => defamationDone ? Normalize(defamation[member]) * WaymarkRing : defamation[member],
-            Job.Stack => stack[member],
-            // The last round hands nothing on, so the near pair joins the far pair on the
-            // stack side, clear of the Defamation, and breaks its own tether first.
-            Job.NearTether when last => Between(stack) * 0.7f + Perpendicular(stack) * (member == 0 ? -3.5f : 3.5f),
+            Job.Defamation => defamationDone ? Normalize(defamation[member]) * WaymarkRing
+                                             : SpreadStand(defamation, member),
+            Job.Stack => StackStand(stack, member),
+            // The last round hands nothing on, so the near pair holds its spot beside the
+            // Stack towers and breaks its own tether there.
+            Job.NearTether when last => BesideTheStackTowers(stack, member),
             Job.NearTether => defamationDone ? PassTarget(round, slot, member, Job.Defamation)
                                              : WaitingSpot(round, slot, member),
             _ => stackDone ? PassTarget(round, slot, member, Job.Stack)
@@ -246,8 +270,11 @@ public sealed class TopP3HelloWorldAi : IScenarioAi<TopP3HelloWorldState>
     {
         var defamation = DefamationTowers[round];
         var stack = StackTowers[round];
+        if (round == 3) return BesideTheStackTowers(stack, member);
         return JobForSlot[round][slot] == Job.NearTether
-                   ? Rotate(Normalize(defamation[0] + defamation[1]), (member == 0 ? -1f : 1f) * MathF.PI / 2f) * 19f
+                   // The waymark ring, not the wall: the diagram puts the near pair level with
+                   // the towers, and the old radius of 19 had them a yalm off the arena edge.
+                   ? Rotate(Normalize(defamation[0] + defamation[1]), (member == 0 ? -1f : 1f) * MathF.PI / 2f) * WaymarkRing
                    : Between(stack) * 0.7f + Perpendicular(stack) * (member == 0 ? -1.8f : 1.8f);
     }
 
