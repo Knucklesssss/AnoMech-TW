@@ -82,17 +82,17 @@ public sealed class TopP5DeltaSettingsWindow
         SettingsGrid.Row("連線：");
         if (ImGui.RadioButton("自動##tether",        t == PlayerTetherAssignment.Auto))       Overrides.TetherAssignment = PlayerTetherAssignment.Auto;
         ImGui.SameLine();
-        if (ImGui.RadioButton("近-任意##tether",   t == PlayerTetherAssignment.CloseAny))   Overrides.TetherAssignment = PlayerTetherAssignment.CloseAny;
+        if (ImGui.RadioButton("近-任意##tether",   t == PlayerTetherAssignment.FarAny))   Overrides.TetherAssignment = PlayerTetherAssignment.FarAny;
         ImGui.SameLine();
-        if (ImGui.RadioButton("近-內##tether", t == PlayerTetherAssignment.CloseInner)) Overrides.TetherAssignment = PlayerTetherAssignment.CloseInner;
+        if (ImGui.RadioButton("近-內##tether", t == PlayerTetherAssignment.FarInner)) Overrides.TetherAssignment = PlayerTetherAssignment.FarInner;
         ImGui.SameLine();
-        if (ImGui.RadioButton("近-外##tether", t == PlayerTetherAssignment.CloseOuter)) Overrides.TetherAssignment = PlayerTetherAssignment.CloseOuter;
+        if (ImGui.RadioButton("近-外##tether", t == PlayerTetherAssignment.FarOuter)) Overrides.TetherAssignment = PlayerTetherAssignment.FarOuter;
         // Second row: drop the leading SameLine so the Far options wrap within the cell.
-        if (ImGui.RadioButton("遠-任意##tether",     t == PlayerTetherAssignment.FarAny))     Overrides.TetherAssignment = PlayerTetherAssignment.FarAny;
+        if (ImGui.RadioButton("遠-任意##tether",     t == PlayerTetherAssignment.CloseAny))     Overrides.TetherAssignment = PlayerTetherAssignment.CloseAny;
         ImGui.SameLine();
-        if (ImGui.RadioButton("遠-內##tether",   t == PlayerTetherAssignment.FarInner))   Overrides.TetherAssignment = PlayerTetherAssignment.FarInner;
+        if (ImGui.RadioButton("遠-內##tether",   t == PlayerTetherAssignment.CloseInner))   Overrides.TetherAssignment = PlayerTetherAssignment.CloseInner;
         ImGui.SameLine();
-        if (ImGui.RadioButton("遠-外##tether",   t == PlayerTetherAssignment.FarOuter))   Overrides.TetherAssignment = PlayerTetherAssignment.FarOuter;
+        if (ImGui.RadioButton("遠-外##tether",   t == PlayerTetherAssignment.CloseOuter))   Overrides.TetherAssignment = PlayerTetherAssignment.CloseOuter;
     }
 
     private void DrawMonitor()
