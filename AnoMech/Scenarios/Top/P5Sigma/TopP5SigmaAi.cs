@@ -18,7 +18,8 @@ public class TopP5SigmaAi : IScenarioAi<TopP5SigmaState>
     public virtual string? Group => "美服";
 
     protected TopP5SigmaState state = null!;
-    private RoleList markingsOrder = null!;
+    protected RoleList markingsOrder = null!;
+    protected virtual float WaveCannonMoveAt => 20f;
 
     public void Run(TopP5SigmaState s, SimWorld world)
     {
@@ -29,7 +30,7 @@ public class TopP5SigmaAi : IScenarioAi<TopP5SigmaState>
 
         ai.Move(0.5f, InitialPositions);
         ai.Move(14.1f, LineupNextToOmegaM);
-        ai.Move(20f, WaveCannonSpread, arrivalTime: 29f);
+        ai.Move(WaveCannonMoveAt, WaveCannonSpread, arrivalTime: 29f);
         ai.Move(32f, KnockbackPrePosition);
         ai.Move(36f, KnockbackPosition, jitter: 0.1f, arrivalTime: 39.5f);
         ai.Move(41.5f, TowerPositions, jitter: 0.1f);
@@ -95,7 +96,7 @@ public class TopP5SigmaAi : IScenarioAi<TopP5SigmaState>
         .ApplyPositions(FarGlitchWaveCannonAdjustment, state.NewNorthA.Apply);
     }
     
-    protected IReadOnlyList<PartyRole> WaveCannonAssignments()
+    protected virtual IReadOnlyList<PartyRole> WaveCannonAssignments()
     {
         return [
             state.FullPair(0).left,
@@ -187,12 +188,12 @@ public class TopP5SigmaAi : IScenarioAi<TopP5SigmaState>
     // Slot 0-2 are the three sent to Omega F (NW / N / NE); slot 5 guides Distant
     // World from due south. Slots 3-4 and both debuff holders go unmarked, which is
     // what a party actually places by hand.
-    private static readonly (Sign Sign, int Slot)[] HandPlacedPlan =
+    protected virtual (Sign Sign, int Slot)[] HandPlacedPlan =>
     [
         (Sign.Attack1, 0), (Sign.Attack2, 1), (Sign.Attack3, 2), (Sign.Attack4, 5),
     ];
 
-    private Dictionary<PartyRole, Sign> MarkerMapping()
+    protected virtual Dictionary<PartyRole, Sign> MarkerMapping()
     {
         return new Dictionary<PartyRole, Sign>()
         {
@@ -243,7 +244,7 @@ public class TopP5SigmaAi : IScenarioAi<TopP5SigmaState>
     }
 
 
-    private IAiMove HelloWorldPositions()
+    protected virtual IAiMove HelloWorldPositions()
     {
         return AiMove.Create(
             new(-13.5f, -14.2f),
@@ -272,7 +273,7 @@ public class TopP5SigmaAi : IScenarioAi<TopP5SigmaState>
         }
     }
 
-    private void SpinnerRotation(IAiPositions move)
+    protected void SpinnerRotation(IAiPositions move)
     {
         move.MultiplyX(state.SpinnerRotation.Mul);
     }

@@ -4,7 +4,7 @@ namespace AnoMech.Core.Native;
 
 // Feeds the game's RSF (file-level Resolved String) table — the RSV twin that unlocks
 // obfuscated model / VFX / sound *file paths* for duty content the shipped game files
-// hide. AnoMech runs inn-only and never receives these live, so we replay the exact
+// hide. AnoMech runs outside real duties and never receives these live, so we replay the exact
 // 0x48-byte records captured from a duty replay (0xF002 pseudo-packets). Twin of
 // RsvFunctions; the record table lives in the scenario layer (e.g.
 // Scenarios/Umad/UmadReplayData.cs). See memory reference_rsv_action_names and

@@ -6,10 +6,10 @@ using AnoMech.Core.SimObjects;
 
 namespace AnoMech.Scenarios.Top.P4BlueScreen;
 
-public sealed class TopP4BlueScreenAi : IScenarioAi<TopP4BlueScreenState>
+public sealed class TopP4BlueScreenAi(bool moogle = false) : IScenarioAi<TopP4BlueScreenState>
 {
-    public string Name => "tuuufless";
-    public string? Group => "日服";
+    public string Name => moogle ? "B站莫古力" : "tuuufless";
+    public string? Group => moogle ? "陸服" : "日服";
     private TopP4BlueScreenState state = null!;
 
     public void Run(TopP4BlueScreenState s, SimWorld world)

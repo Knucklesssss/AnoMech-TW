@@ -18,7 +18,7 @@ namespace AnoMech.Core.Game.Party;
 // inserted into CharacterManager._battleCharas so row-click targeting and
 // mouseover tooltips resolve through the engine's normal lookup path; the
 // matching unregister lives in SimPartyNpc.Despawn. Scenarios are
-// inn-gated upstream (Game.RunScenarioInternal). Game is the entry point —
+// interior-gated upstream (Game.RunScenarioInternal). Game is the entry point —
 // it computes the origin and delegates here.
 internal static unsafe class PartyCreator
 {

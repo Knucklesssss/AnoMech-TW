@@ -9,9 +9,10 @@ using static AnoMech.Scenarios.Top.TopConstants;
 
 namespace AnoMech.Scenarios.Top.P3HelloWorld;
 
-public sealed class TopP3HelloWorldAi : IScenarioAi<TopP3HelloWorldState>
+public sealed class TopP3HelloWorldAi(bool moogle = false) : IScenarioAi<TopP3HelloWorldState>
 {
-    public string Name => "tuuufless";
+    public string Name => moogle ? "B站莫古力" : "tuuufless";
+    public string? Group => moogle ? "陸服" : "日服";
 
     private TopP3HelloWorldState state = null!;
     private SimWorld world = null!;

@@ -14,6 +14,10 @@ public sealed class TopP3MonitorsSettingsWindow
         {
             DrawBossSide();
             DrawPlayerMonitor();
+            SettingsGrid.Row("莫古力小電視：");
+            if (ImGui.RadioButton("固定式", !Overrides.MoogleMirror)) Overrides.MoogleMirror = false;
+            ImGui.SameLine();
+            if (ImGui.RadioButton("鏡像換邊式", Overrides.MoogleMirror)) Overrides.MoogleMirror = true;
             SettingsGrid.End();
         }
 

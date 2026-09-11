@@ -1,3 +1,8 @@
+StartLocationChecks.Run();
+MapEntryChecks.Run();
+MoogleP5GuideChecks.Run();
+MoogleChecks.Run();
+MoogleTimelineChecks.Run();
 HelloWorldChecks.Run();
 HelloWorldMechanicsChecks.Run();
 TransitionChecks.Run();

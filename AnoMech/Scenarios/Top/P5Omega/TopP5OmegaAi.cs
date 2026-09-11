@@ -11,13 +11,14 @@ namespace AnoMech.Scenarios.Top.P5Omega;
 
 public class TopP5OmegaAi : IScenarioAi<TopP5OmegaState>
 {
-    public string Name => "Standard";
+    public virtual string Name => "Standard";
+    public virtual string? Group => "原有";
 
-    private TopP5OmegaState state = null!;
+    protected TopP5OmegaState state = null!;
     private readonly Random rng = new Random();
 
-    private RoleList? helloWorld1;
-    private RoleList? helloWorld2;
+    protected RoleList? helloWorld1;
+    protected RoleList? helloWorld2;
 
     public void Run(TopP5OmegaState s, SimWorld world)
     {
@@ -74,14 +75,14 @@ public class TopP5OmegaAi : IScenarioAi<TopP5OmegaState>
         (Sign.Attack1, 4), (Sign.Attack2, 5), (Sign.Attack3, 6), (Sign.Attack4, 7),
     ];
 
-    private RoleList? ReadHandPlacedSigns(SimParty party, RoleList? fallback)
+    protected virtual RoleList? ReadHandPlacedSigns(SimParty party, RoleList? fallback)
     {
         return fallback == null
                    ? null
                    : HandPlacedSigns.Reorder(party, fallback, HandPlacedPlan, [fallback[0], fallback[1]]);
     }
 
-    private Dictionary<PartyRole, Sign> HelloWorldMarkers(RoleList? list)
+    protected virtual Dictionary<PartyRole, Sign> HelloWorldMarkers(RoleList? list)
     {
         if (list == null) return [];
         return new Dictionary<PartyRole, Sign>() {
@@ -96,7 +97,7 @@ public class TopP5OmegaAi : IScenarioAi<TopP5OmegaState>
         };
     }
 
-    private IAiMove HelloWorld1Pos()
+    protected virtual IAiMove HelloWorld1Pos()
     {
         return AiMove.Create(
             new(10f, 0),
@@ -166,12 +167,12 @@ public class TopP5OmegaAi : IScenarioAi<TopP5OmegaState>
         return move => move.Multiply(mul);
     }
 
-    private void AdjustForSafeMonitorSide(IAiPositions move)
+    protected void AdjustForSafeMonitorSide(IAiPositions move)
     {
         move.MultiplyX(state.MonitorSide.Mul);
     }
 
-    private RoleList solveHelloWorld1(SimParty party)
+    protected virtual RoleList solveHelloWorld1(SimParty party)
     {
         var monitorTarget = monitorTargets();
         var jumpTargets = RoleList.AllExcept(party, monitorTarget[0], monitorTarget[1], state.HelloWorldTargets[0],
@@ -184,7 +185,7 @@ public class TopP5OmegaAi : IScenarioAi<TopP5OmegaState>
         );
     }
 
-    private RoleList solveHelloWorld2(SimParty party)
+    protected virtual RoleList solveHelloWorld2(SimParty party)
     {
         List<PartyRole> freeAgents = [];
         List<PartyRole> tethers = [];

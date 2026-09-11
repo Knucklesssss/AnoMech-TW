@@ -36,9 +36,11 @@ public sealed class MapController : IDisposable
     public bool IsInInstance { get; private set; }
 
     public bool IsZoneLoaded => zone.IsActive;
-    public bool IsInInn() => ZoneSession.IsInInn();
+    private uint loadedTerritoryId;
 
-    // Load the target territory client-side. Must be called from the Inn.
+    public bool CanLoad(uint territoryId) => !IsZoneLoaded || loadedTerritoryId == territoryId;
+
+    // Load only from a supported interior.
     public void Load(uint territoryId, Vector3 playerPosition, byte levelSync, ushort itemLevelSync) => zone.Enter(territoryId, playerPosition, levelSync, itemLevelSync);
 
     // Apply weather after a zone load (1-second delayed to let the engine settle).
@@ -47,11 +49,12 @@ public sealed class MapController : IDisposable
     // Immediately change the active weather (mid-scenario). transition = fade seconds.
     public void SetWeather(byte weatherId, float transition = 0.5f) => zone.SetWeather(weatherId, transition);
 
-    // Revert to the saved inn territory and restore position.
+    // Revert to the saved origin territory and restore position.
     public void Unload()
     {
-        zone.Revert(false);
+        if (IsZoneLoaded) zone.Revert(false);
         IsInInstance = false;
+        loadedTerritoryId = 0;
         pendingColliderDrops.Clear();
     }
 
@@ -77,19 +80,20 @@ public sealed class MapController : IDisposable
     }
 
     // Enter the scenario's target instance if conditions are met.
-    // Sets IsInInstance when the zone is already active or the Inn load succeeds.
-    // No-op (IsInInstance stays false) when target is null or the player isn't in the Inn.
-    public void TryLoad(TargetInstance? target, byte levelSync, ushort itemLevelSync)
+    // Native entry may fail before mutation; never commence or spawn in that case.
+    public bool TryLoad(TargetInstance? target, byte levelSync, ushort itemLevelSync)
     {
-        if (target == null) return;
-        // Fresh load only when no zone is active yet (must be in the Inn). When a
+        if (target == null || !CanLoad(target.TerritoryId)) return false;
+        // Fresh load only from a supported interior. When a
         // zone is already loaded we're switching scenarios within the same
         // territory — skip the reload but still fall through to re-apply weather.
         bool freshLoad = false;
         if (!IsZoneLoaded)
         {
-            if (!IsInInn()) return;
+            if (!ZoneSession.IsSupportedStartLocation()) return false;
             Load(target.TerritoryId, target.PlayerPosition, levelSync, itemLevelSync);
+            if (!IsZoneLoaded) return false;
+            loadedTerritoryId = target.TerritoryId;
             freshLoad = true;
         }
         if (target.WeatherId is { } wid)
@@ -101,6 +105,7 @@ public sealed class MapController : IDisposable
         effects.Loaded = true;
         InstanceContentDirectorHelper.Commence();
         ArmBarrierDrop(target.PlayerPosition, 10f);
+        return true;
     }
 
     private void ArmBarrierDrop(Vector3 center, float radius)

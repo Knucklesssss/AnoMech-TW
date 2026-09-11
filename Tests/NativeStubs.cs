@@ -62,11 +62,18 @@ namespace AnoMech.Core.SimObjects
         public Vector3 Position { get; set; }
         public uint GameObjectId { get; init; }
         public HashSet<ushort> Statuses { get; } = [];
+        public Dictionary<ushort, int> StatusStacks { get; } = [];
         public bool SimulateMovement { get; set; }
         public string? DeathCause { get; private set; }
         private Vector3? destination;
         public bool HasStatus(ushort id) => Statuses.Contains(id);
-        public void AddStatus(ushort id, float duration = 0, int stacks = 1) => Statuses.Add(id);
+        public void AddStatus(ushort id, float duration = 0, int stacks = 1)
+        {
+            Statuses.Add(id);
+            StatusStacks[id] = StatusStacks.GetValueOrDefault(id) + stacks;
+        }
+        public TestStatus? FindStatus(ushort id) => Statuses.Contains(id) ? new(StatusStacks.GetValueOrDefault(id, 1)) : null;
+        public sealed record TestStatus(int Stacks);
         public void RemoveStatus(ushort id) => Statuses.Remove(id);
         public bool IsAlive() => DeathCause == null;
         public void Die(string cause) => DeathCause ??= cause;
@@ -131,7 +138,7 @@ namespace AnoMech.Core.SimObjects
 
 namespace AnoMech.Core
 {
-    public enum Sign { Attack1, Attack2, Attack3, Attack4, Bind1, Bind2, Triangle, Cross }
+    public enum Sign { Attack1, Attack2, Attack3, Attack4, Attack5, Bind1, Bind2, Bind3, Ignore1, Ignore2, Triangle, Cross, Attack6, Square }
     public static class Markings
     {
         public static void ClearAll() { }
@@ -140,6 +147,15 @@ namespace AnoMech.Core
     public static class ChatOutput
     {
         public static void Coach(string text) { }
+    }
+}
+
+namespace AnoMech
+{
+    public static class Plugin
+    {
+        public static TestLog Log { get; } = new();
+        public sealed class TestLog { public void Info(string text) { } public void Warning(string text) { } }
     }
 }
 
@@ -164,6 +180,7 @@ namespace AnoMech.Scenarios.Top.P3HelloWorld
             PartyRole.ShieldHealer, PartyRole.OffTank, PartyRole.MeleeDpsA];
         public PartyRole At(int slot, int member) => roles[slot * 2 + member];
         public bool TransitionFirstArmsSouth { get; set; }
+        public bool TransitionAutoMarkers { get; set; }
         public PartyRole[]? TransitionRoleOverride { get; set; }
         public PartyRole[] TransitionRoles => TransitionRoleOverride ?? roles;
     }

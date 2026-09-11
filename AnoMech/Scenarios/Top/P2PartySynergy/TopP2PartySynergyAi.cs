@@ -47,7 +47,7 @@ public class TopP2PartySynergyAi : IScenarioAi<TopP2PartySynergyState>
     }
 
 
-    private IAiMove SpreadPositions()
+    protected virtual IAiMove SpreadPositions()
     {
         return AiMove.Create(
                          new(-11, -16),
@@ -64,7 +64,7 @@ public class TopP2PartySynergyAi : IScenarioAi<TopP2PartySynergyState>
                      .ApplyPositions(GlitchGeometry, state.NewNorthA.Apply);
     }
 
-    private IAiMove KnockbackPositions()
+    protected virtual IPositionStep KnockbackPositions()
     {
         return AiMove.Create(
                          new(-2, 0),
@@ -81,7 +81,7 @@ public class TopP2PartySynergyAi : IScenarioAi<TopP2PartySynergyState>
                      .ApplyPositions(AdjustKbForFarGlitch, state.NewNorthB.Apply);
     }
 
-    private IAiMove StackPositions()
+    protected virtual IPositionStep StackPositions()
     {
         return AiMove.Create(
                          new(-15, 0),
@@ -125,7 +125,7 @@ public class TopP2PartySynergyAi : IScenarioAi<TopP2PartySynergyState>
         }
     }
 
-    private void GlitchSwap(IAiRoles s)
+    protected virtual void GlitchSwap(IAiRoles s)
     {
         if (state.Glitch == GlitchType.Far)
             s.ByPosition(1, 7);

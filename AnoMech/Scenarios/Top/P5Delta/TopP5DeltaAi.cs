@@ -12,16 +12,17 @@ namespace AnoMech.Scenarios.Top.P5Delta;
 // First AI strategy for TOP P5 Delta. Reads the shared TopP5DeltaState so its
 // movement decisions stay in sync with the scenario's randomized layout, and
 // schedules movement through World.Events so it can react to fight timestamps.
-public sealed class TopP5DeltaAi : IScenarioAi<TopP5DeltaState>
+public class TopP5DeltaAi : IScenarioAi<TopP5DeltaState>
 {
     // Tether-resolve positions in scenario-local coords (origin (0,0) = world (100,100)).
     // Even slots are caller-specified, odd slots are mirrored across the east-west axis
     // (same X, negated Z) so each pair lands on opposite sides. EyeSpawn==South flips
     // the entire layout 180° (negate both X and Z).
 
-    public string Name => "Standard";
+    public virtual string Name => "Standard";
+    public virtual string? Group => "原有";
 
-    private TopP5DeltaState state = null!;
+    protected TopP5DeltaState state = null!;
 
     public void Run(TopP5DeltaState s, SimWorld world)
     {
@@ -42,13 +43,13 @@ public sealed class TopP5DeltaAi : IScenarioAi<TopP5DeltaState>
         ai.Move(60.0f, BreakLastTether);
     }
 
-    private void Swap01(IAiRoles s)
+    protected virtual void Swap01(IAiRoles s)
     {
         if (state.FistColors[0] == state.FistColors[2])
             s.ByPosition(0, 1);
     }
 
-    private void Swap45(IAiRoles s)
+    protected virtual void Swap45(IAiRoles s)
     {
         if (state.FistColors[4] == state.FistColors[6])
             s.ByPosition(4, 5);
@@ -100,7 +101,7 @@ public sealed class TopP5DeltaAi : IScenarioAi<TopP5DeltaState>
         move.MultiplyY(5, cannonMul);
     }
 
-    private void AdjustEyePosition(IAiPositions move)
+    protected void AdjustEyePosition(IAiPositions move)
     {
         move.MultiplyX(state.EyeSpawn.Mul);
     }
@@ -119,7 +120,7 @@ public sealed class TopP5DeltaAi : IScenarioAi<TopP5DeltaState>
         ).NaturalOrder();
     }
 
-    private IAiMove TetherPrePosition()
+    protected virtual IAiMove TetherPrePosition()
     {
         return AiMove.Create(
             new(-6f, -3f),
@@ -135,7 +136,7 @@ public sealed class TopP5DeltaAi : IScenarioAi<TopP5DeltaState>
         .ApplyPositions(AdjustEyePosition);
     }
 
-    private IAiMove FistResolveSlots()
+    protected virtual IAiMove FistResolveSlots()
     {
         return AiMove.Create(
             new Vector2(-10f, -3f),
@@ -152,7 +153,7 @@ public sealed class TopP5DeltaAi : IScenarioAi<TopP5DeltaState>
         .ApplyPositions(AdjustEyePosition);
     }
 
-    private IAiMove TetherResolveStep()
+    protected virtual IAiMove TetherResolveStep()
     {
         return AiMove.Create(
             null, null,
@@ -164,7 +165,7 @@ public sealed class TopP5DeltaAi : IScenarioAi<TopP5DeltaState>
         .ApplyPositions(AdjustEyePosition);
     }
 
-    private IAiMove HyperPulseBaitArms()
+    protected virtual IAiMove HyperPulseBaitArms()
     {
         return AiMove.Create(
             ArmUnitPlacements.Select((placement, i) =>
@@ -182,7 +183,7 @@ public sealed class TopP5DeltaAi : IScenarioAi<TopP5DeltaState>
         .ApplyPositions(AdjustEyePosition);
     }
 
-    private IAiMove HyperPulseDodge()
+    protected virtual IAiMove HyperPulseDodge()
     {
         return AiMove.Create(
             new(0, 1f), 
@@ -199,7 +200,7 @@ public sealed class TopP5DeltaAi : IScenarioAi<TopP5DeltaState>
         .ApplyPositions(BeyondDefence, PlayerMonitorOffset, OmegaMonitorSafeSide, AdjustEyePosition);
     }
 
-    private IAiMove MonitorPositions()
+    protected virtual IAiMove MonitorPositions()
     {
         return AiMove.Create(
             null, null, null, null,
@@ -225,7 +226,7 @@ public sealed class TopP5DeltaAi : IScenarioAi<TopP5DeltaState>
         );
     }
 
-    private IAiMove SwivelDodge()
+    protected virtual IAiMove SwivelDodge()
     {
         return AiMove.Create(
             new(0f, 19f), // far
@@ -242,7 +243,7 @@ public sealed class TopP5DeltaAi : IScenarioAi<TopP5DeltaState>
         .ApplyPositions(SwivelCannonAdjust, SwivelSafeSide, AdjustEyePosition);
     }
 
-    private IAiMove RescueUnsafe()
+    protected virtual IAiMove RescueUnsafe()
     {
         return AiMove.Single(
             state.SwivelCannonSide.Mul * state.EyeSpawn.Mul > 0 ? 4 : 5,
@@ -253,7 +254,7 @@ public sealed class TopP5DeltaAi : IScenarioAi<TopP5DeltaState>
         .ApplyPositions(SwivelSafeSide, AdjustEyePosition);
     }
 
-    private IAiMove ReturnToMiddle()
+    protected virtual IAiMove ReturnToMiddle()
     {
         return AiMove.Create(
             new(-0.7f, 5.7f),
@@ -276,7 +277,7 @@ public sealed class TopP5DeltaAi : IScenarioAi<TopP5DeltaState>
             .ApplyPositions(SwivelSafeSide, AdjustEyePosition);
     }
 
-    private IAiMove BreakLastTether()
+    protected virtual IAiMove BreakLastTether()
     {
         return AiMove.Create(
             null, null, null, null, null, null,

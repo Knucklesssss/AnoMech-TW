@@ -25,7 +25,7 @@ public class ConfigWindow : Window, IDisposable
     public override void Draw()
     {
         var onInn = configuration.OpenSimMenuOnInn;
-        if (ImGui.Checkbox("進入旅館時自動開啟模擬選單##openoninn", ref onInn))
+        if (ImGui.Checkbox("進入旅館／住宅室內時開啟選單##openoninn", ref onInn))
         {
             configuration.OpenSimMenuOnInn = onInn;
             configuration.Save();

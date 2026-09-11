@@ -22,11 +22,13 @@ public sealed class TopP3HelloWorldState
 
     public PartyRole[] TransitionRoles { get; }
     public bool TransitionFirstArmsSouth { get; }
+    public bool TransitionAutoMarkers { get; }
 
     public TopP3HelloWorldState(SimParty party, TopP3HelloWorldStateOverrides overrides)
     {
-        TransitionRoles = TopP3TransitionRules.Assign(RoleList.Random(party).List);
+        TransitionRoles = TopP3TransitionRules.Assign(RoleList.Random(party).List, party.PlayerRole, overrides.TransitionPlayerSlot);
         TransitionFirstArmsSouth = overrides.TransitionFirstArmsSouth;
+        TransitionAutoMarkers = overrides.TransitionAutoMarkers;
         cycle = new RoleListBuilder
         {
             ForcePlayerIndex = overrides.PlayerSlot is { } slot ? [slot * 2, slot * 2 + 1] : [],

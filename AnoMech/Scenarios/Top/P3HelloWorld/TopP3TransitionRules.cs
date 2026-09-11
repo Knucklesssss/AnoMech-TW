@@ -28,13 +28,19 @@ public static class TopP3TransitionRules
     private static readonly float[] NorthFirstWait = [-38, -38, 38, 38, -82, -158, 158, 82];
     private static readonly float[] NorthFirstResolve = [-13, -13, 13, 13, -105, -135, 135, 105];
 
-    public static PartyRole[] Assign(IReadOnlyList<PartyRole> shuffled)
+    public static PartyRole[] Assign(IReadOnlyList<PartyRole> shuffled, PartyRole? player = null, int? forcedSlot = null)
     {
         PartyRole[] Ordered(int start, int count) => shuffled.Skip(start).Take(count)
             .OrderBy(role => Array.IndexOf(Priority, role)).ToArray();
         var high = Ordered(0, 2);
         var unmarked = Ordered(2, 2);
-        return [high[0], unmarked[0], high[1], unmarked[1], .. Ordered(4, 4)];
+        PartyRole[] result = [high[0], unmarked[0], high[1], unmarked[1], .. Ordered(4, 4)];
+        if (player is { } role && forcedSlot is >= 0 and < 8)
+        {
+            var current = Array.IndexOf(result, role);
+            (result[current], result[forcedSlot.Value]) = (result[forcedSlot.Value], result[current]);
+        }
+        return result;
     }
 
     public static Vector2 PositionFor(int slot, bool firstArmsSouth, TopP3TransitionStep step)

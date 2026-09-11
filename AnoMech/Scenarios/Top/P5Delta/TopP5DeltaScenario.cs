@@ -18,7 +18,7 @@ public sealed class TopP5DeltaScenario : IScenario
     public void DrawSettings() => settingsWindow.Draw();
     private readonly TopP5DeltaSettingsWindow settingsWindow = new();
 
-    public IReadOnlyList<IScenarioAi> AiStrats => [new TopP5DeltaAi()];
+    public IReadOnlyList<IScenarioAi> AiStrats => [new TopP5DeltaAi(), new TopP5DeltaMoogleAi()];
 
     private TopUtils topUtils = null!;
 

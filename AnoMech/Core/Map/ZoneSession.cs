@@ -25,13 +25,14 @@ using AnoMech.Core.Native;
 namespace AnoMech.Core.Map;
 
 // Client-side zone loading and packet firewall. Ported from Hyperborea (Memory.cs
-// + Utils.cs). Must be in the Inn before calling Enter(); Leave() reloads the inn.
+// + Utils.cs). Enter only from supported interiors; Revert reloads the origin.
 // All public methods must be called from the framework thread.
 public sealed unsafe class ZoneSession : IDisposable
 {
     private class SessionSave
     {
         public uint TerritoryId { get; set; }
+        public bool IsHousing { get; set; }
         public Vector3 Position { get; set; }
         public float Rotation { get; set; }
         public int Exp { get; set; }
@@ -41,9 +42,6 @@ public sealed unsafe class ZoneSession : IDisposable
         public bool ItemLevelSync { get; set; }
         public Dictionary<int, int> Attributes { get; } = new();
     }
-
-    // TerritoryIntendedUse.Inn = 2 (from ECommons TerritoryIntendedUseEnum)
-    private const uint InnIntendedUse = 2;
 
     // ── Native delegates ──────────────────────────────────────────────────────
 
@@ -98,12 +96,16 @@ public sealed unsafe class ZoneSession : IDisposable
 
     // ── Public API ────────────────────────────────────────────────────────────
 
-    public static bool IsInInn()
+    public static bool IsSupportedStartLocation()
     {
         var row = Plugin.DataManager.GetExcelSheet<TerritoryType>()
             ?.GetRowOrDefault(Plugin.ClientState.TerritoryType);
-        return row?.TerritoryIntendedUse.RowId == InnIntendedUse;
+        return row is { } territory && StartLocationRules.IsAllowed(
+            territory.TerritoryIntendedUse.RowId, territory.Name.ToString());
     }
+
+    public static bool CanStartHere()
+        => Plugin.GameInstance?.World.Map.IsZoneLoaded == true || IsSupportedStartLocation();
 
     // Any state in which the local player can't freely act. Used as a second
     // gate before starting a scenario from an inn so we don't kick off mid-
@@ -142,9 +144,21 @@ public sealed unsafe class ZoneSession : IDisposable
     // Firewall is enabled before the zone load (matching Hyperborea's sequence).
     public void Enter(uint territoryId, Vector3 playerSpawn, byte levelSync, ushort itemLevelSync)
     {
-        var localPlayer = Plugin.ObjectTable.LocalPlayer!;
+        var localPlayer = Plugin.ObjectTable.LocalPlayer;
+        if (IsActive || !IsSupportedStartLocation() || IsPlayerBusy() || localPlayer == null)
+            return;
+        if (sendPacketHook == null || receivePacketHook == null || heartbeatOpcode == 0
+            || GameMainPointers.LoadZone == null || EventFramework.Instance() == null
+            || GameMain.Instance() == null || GetContentFinderCondition(territoryId) == null)
+        {
+            Plugin.Log.Error("[ZoneSession] Required zone loading or packet isolation is unavailable; entry cancelled.");
+            Plugin.ChatGui.PrintError("[AnoMech] 場景載入或通訊隔離未就緒，已取消開始。");
+            return;
+        }
 
         sessionSave.TerritoryId = Plugin.ClientState.TerritoryType;
+        sessionSave.IsHousing = Plugin.DataManager.GetExcelSheet<TerritoryType>()
+            .GetRowOrDefault(sessionSave.TerritoryId)?.TerritoryIntendedUse.RowId == 14;
         sessionSave.Position = localPlayer.Position;
         sessionSave.Rotation = localPlayer.Rotation;
         sessionSave.Exp = Plugin.PlayerState.GetClassJobExperience(Plugin.PlayerState.ClassJob.Value);
@@ -174,7 +188,7 @@ public sealed unsafe class ZoneSession : IDisposable
     public void ApplyWeather(byte weatherId)
         => ThreadingTask.Delay(1000).ContinueWith(_ => Plugin.Framework.Run(() => SetWeather(weatherId)));
 
-    // Reload the saved inn territory and restore position; disable firewall.
+    // Reload the saved origin territory and restore position; disable firewall.
     public void Revert(bool dispose)
     {
         // We need to wait before calling DisableFirewall(), so we'll set the Occupied condition to be sure the Player doesn't do anything in the meantime. 
@@ -187,20 +201,20 @@ public sealed unsafe class ZoneSession : IDisposable
         sessionSave.TerritoryId = 0;
 
         IsActive = false;
-        Plugin.Log.Information("[ZoneSession] Reverted to inn.");
+        Plugin.Log.Information("[ZoneSession] Reverted to origin.");
 
         // If this is getting called on Dispose(), then these Tasks will not be properly executed, so we'll gate them to be safe
         if (!dispose)
         {
             // If this isn't delayed, a Packet will be sent to the server!!!
-            ThreadingTask.Delay(1000).ContinueWith(_ =>
+            ThreadingTask.Delay(1000).ContinueWith(_ => Plugin.Framework.Run(() =>
             {
                 // The Player could do something like jump, so to be extremely sure we are where we are supposed to, we set the Position and Rotation again.
                 SetLocalPlayerPosition(sessionSave.Position, sessionSave.Rotation);
                 condition->Occupied = false;
 
                 DisableFirewall();
-            });
+            }));
 
             // Resync the real party HUD once the inn reload has settled. A bare
             // InfoProxyPartyMember.RequestData() sends the same request the Social window
@@ -782,7 +796,7 @@ public sealed unsafe class ZoneSession : IDisposable
 #else
             const bool safeMode = true;
 #endif
-            if (!safeMode || Plugin.Config.ZoneDownOpcodes.Contains(*(ushort*)(a3 + 2)))
+            if ((!safeMode && !sessionSave.IsHousing) || Plugin.Config.ZoneDownOpcodes.Contains(*(ushort*)(a3 + 2)))
                 receivePacketHook!.Original(a1, a2, a3);
         }
         catch (Exception e)

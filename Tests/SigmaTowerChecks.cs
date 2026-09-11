@@ -11,6 +11,7 @@ internal static class SigmaTowerChecks
     public static void Run()
     {
         var cases = 0;
+        foreach (var moogle in new[] { false, true })
         foreach (var glitch in new[] { GlitchType.Far, GlitchType.Mid })
         foreach (var north in Direction.All)
         foreach (var flip in new[] { false, true })
@@ -23,7 +24,7 @@ internal static class SigmaTowerChecks
             {
                 CloseFarTether = glitch, NewNorthA = north, TowerNorthFlip = flip,
             }) { FirstMissing = first, SecondMissing = second };
-            var ai = new TopP5SigmaTuuuflessAi();
+            TopP5SigmaTuuuflessAi ai = moogle ? new TopP5SigmaMoogleAi() : new TopP5SigmaTuuuflessAi();
             ai.Run(state, world);
             var move = Move(ai, "TowerPositions");
             var points = Enumerable.Range(0, 8).Select(i => move[i]!.Value).ToArray();

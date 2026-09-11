@@ -31,7 +31,7 @@ public sealed class TopP3HelloWorldScenario : IScenario
     public string Name => "Hello, World";
     public IPhase Phase => TopZone.P3;
 
-    public IReadOnlyList<IScenarioAi> AiStrats => [new TopP3HelloWorldAi()];
+    public IReadOnlyList<IScenarioAi> AiStrats => [new TopP3HelloWorldAi(), new TopP3HelloWorldAi(moogle: true)];
 
     public void DrawSettings() => settingsWindow.Draw();
     private readonly TopP3HelloWorldSettingsWindow settingsWindow = new();

@@ -25,7 +25,7 @@ public sealed class TopP5OmegaScenario : IScenario
     public void DrawSettings() => settingsWindow.Draw();
     private readonly TopP5OmegaSettingsWindow settingsWindow = new();
 
-    public IReadOnlyList<IScenarioAi> AiStrats => [new TopP5OmegaAi()];
+    public IReadOnlyList<IScenarioAi> AiStrats => [new TopP5OmegaAi(), new TopP5OmegaMoogleAi()];
 
     public void Run(SimWorld worldParam, int? selectedAi)
     {

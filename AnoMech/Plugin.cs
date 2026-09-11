@@ -85,7 +85,7 @@ public sealed class Plugin : IDalamudPlugin
         WindowSystem.AddWindow(DamageDebugWindow);
 #endif
 
-        if (Config.OpenSimMenuOnInn && ZoneSession.IsInInn())
+        if (Config.OpenSimMenuOnInn && ZoneSession.IsSupportedStartLocation())
             MainWindow.IsOpen = true;
 
         CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
@@ -176,7 +176,8 @@ public sealed class Plugin : IDalamudPlugin
     private void OnTerritoryChanged(ushort territory)
     {
         var row = DataManager.GetExcelSheet<TerritoryType>()?.GetRowOrDefault(territory);
-        var isInn = row?.TerritoryIntendedUse.RowId == 2; // TerritoryIntendedUse.Inn
+        var isInn = row is { } location && StartLocationRules.IsAllowed(
+            location.TerritoryIntendedUse.RowId, location.Name.ToString());
         if (!isInn)
         {
             var name = row?.PlaceName.ValueNullable?.Name.ExtractText() ?? string.Empty;
@@ -330,9 +331,9 @@ public sealed class Plugin : IDalamudPlugin
 
     private void StartSelectedScenario(bool solo)
     {
-        if (!ZoneSession.IsInInn())
+        if (!ZoneSession.CanStartHere())
         {
-            Log.Warning("Scenarios can only be started from an inn.");
+            Log.Warning("Scenarios can only be started from an inn or supported residential interior.");
             return;
         }
         if (ZoneSession.IsPlayerBusy())

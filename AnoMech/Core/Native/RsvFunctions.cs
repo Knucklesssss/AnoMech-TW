@@ -7,7 +7,7 @@ namespace AnoMech.Core.Native;
 // recent savage — e.g. UMAD/Kefka) stores action/status names in the Excel sheets
 // as "_rsv_<id>_..." placeholder tokens; the real localized text is delivered at
 // runtime by the server via LayoutWorld::AddRsvString, but ONLY while you are
-// inside the duty. AnoMech runs scenarios inn-only, so it never receives those
+// inside the duty. AnoMech runs scenarios outside real duties, so it never receives those
 // packets and the cast bar / tooltip name resolution falls back to the raw
 // placeholder (blank name). Writing the mappings directly via AddRsvString
 // populates both the game's native RSV map (native cast bars resolve) and — because

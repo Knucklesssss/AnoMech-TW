@@ -26,6 +26,7 @@ public enum TopP3PlayerMonitorOption
 
 public sealed class TopP3MonitorsOverrides
 {
+    public bool MoogleMirror { get; set; }
     public TopP3BossSideOption BossSide { get; set; } = TopP3BossSideOption.Auto;
     public TopP3PlayerMonitorOption PlayerMonitor { get; set; } = TopP3PlayerMonitorOption.Auto;
 }
@@ -36,6 +37,7 @@ public sealed class TopP3MonitorsState
     private readonly Dictionary<PartyRole, TopP3MonitorStatus> statuses = new();
 
     public PartyRole PlayerRole { get; }
+    public bool MoogleMirror { get; }
     public TopP3BossSide BossSide { get; }
     public TopP3MonitorAssignment Assignment { get; }
     public IReadOnlyList<PartyRole> MonitorRoles => Assignment.MonitorRoles;
@@ -48,6 +50,7 @@ public sealed class TopP3MonitorsState
     public TopP3MonitorsState(SimParty party, TopP3MonitorsOverrides overrides)
     {
         PlayerRole = party.PlayerRole;
+        MoogleMirror = overrides.MoogleMirror;
         BossSide = overrides.BossSide switch
         {
             TopP3BossSideOption.Left => TopP3BossSide.Left,
@@ -118,7 +121,7 @@ public sealed class TopP3MonitorsScenario : IScenario
 
     public string Name => "螢幕砲";
     public IPhase Phase => TopZone.P3;
-    public IReadOnlyList<IScenarioAi> AiStrats => [new TopP3MonitorsAi()];
+    public IReadOnlyList<IScenarioAi> AiStrats => [new TopP3MonitorsAi(), new TopP3MonitorsAi(moogle: true)];
 
     private readonly TopP3MonitorsSettingsWindow settingsWindow = new();
     private SimWorld world = null!;

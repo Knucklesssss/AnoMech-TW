@@ -4,23 +4,25 @@ using AnoMech.Core.SimObjects;
 
 namespace AnoMech.Scenarios.Top.P3Monitors;
 
-public sealed class TopP3MonitorsAi : IScenarioAi<TopP3MonitorsState>
+public sealed class TopP3MonitorsAi(bool moogle = false) : IScenarioAi<TopP3MonitorsState>
 {
     private const float MoveSpeed = TopP3MonitorRules.MoveSpeed;
 
-    public string Name => "標準AI";
+    public string Name => moogle ? "B站莫古力" : "標準AI";
+    public string? Group => moogle ? "陸服" : "原有";
 
     public void Run(TopP3MonitorsState state, SimWorld world)
     {
         var localRole = world.Party.PlayerRole;
-        var queueMoves = TopP3MonitorRules.PlanQueueMoves(localRole);
+        var queueMoves = TopP3MonitorRules.PlanQueueMoves(localRole, moogle);
         world.Events.Add(TopP3MonitorRules.QueueAt, () => ApplyQueueMoves(queueMoves, world));
 
         var moves = TopP3MonitorRules.PlanMoves(
             state.Assignment,
             state.BossSide,
             state.MonitorStatuses,
-            localRole);
+            localRole,
+            moogle ? state.MoogleMirror : null);
         // Movement starts 0.25s after the recorded buff/VFX. MoveTo retains each
         // monitor's finalRotation until arrival instead of a timer-based SetRotation.
         world.Events.Add(TopP3MonitorRules.MoveStartAt, () => ApplyMoves(moves, world));

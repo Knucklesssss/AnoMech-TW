@@ -132,12 +132,15 @@ public sealed class Game : IDisposable
         var solo = selectedAi is null;
         var phase = scenario.Phase;
         var zone = phase.Zone;
-        // Hard gate: scenarios are only ever run from an inn. Everything
-        // downstream (CharacterManager registration, zone load, doppel spawn)
-        // assumes that invariant.
-        if (!ZoneSession.IsInInn())
+        if (!ZoneSession.CanStartHere() || ZoneSession.IsPlayerBusy())
         {
-            Plugin.Log.Warning("Game: scenarios can only run from an inn; aborting.");
+            Plugin.Log.Warning("Game: start requires an idle player in an inn or supported residential interior.");
+            return;
+        }
+
+        if (!World.Map.CanLoad(zone.TerritoryId))
+        {
+            Plugin.ChatGui.PrintError("[AnoMech] 切換不同副本前，請先按「離開」返回原房間。");
             return;
         }
 
@@ -150,14 +153,14 @@ public sealed class Game : IDisposable
             return;
         }
 
-        // Captured before TryLoad: false only on the first start from the inn (a true
+        // Captured before TryLoad: false only on the first start from the origin (a true
         // zone entry), true for any restart/switch within the already-loaded zone.
         var freshLoad = !World.Map.IsZoneLoaded;
 
         World.HideObject(ExitObjectBaseId);
-        World.Map.TryLoad(
+        if (!World.Map.TryLoad(
             new TargetInstance(zone.TerritoryId, zone.Origin, zone.Origin + PlayerSpawnLocal, phase.Weather),
-            zone.Level, zone.ItemLevel);
+            zone.Level, zone.ItemLevel)) return;
         World.ScenarioOrigin = zone.Origin;
         World.Map.ArmColliderDrops(zone.ColliderRemovalPoints.Select(World.Coordinates.ToGlobal));
         World.PlaceWaymarks(ResolveWaymarks(zone, selectedWaymark));
@@ -334,7 +337,7 @@ public sealed class Game : IDisposable
     public static string FullName(IScenario scenario)
         => $"{scenario.Phase.Zone.Name} — {DisplayName(scenario)}";
 
-    // Leave returns to the inn. Only meaningful when IsInInstance is true.
+    // Leave returns to the original room. Only meaningful when IsInInstance is true.
     // Resets the encounter first, then reverts the zone — Reset stays in-zone.
     public void Leave()
     {

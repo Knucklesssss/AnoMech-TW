@@ -227,7 +227,7 @@ public unsafe class MainWindow : Window, IDisposable
         DrawStratSelector();
         DrawWaymarkSelector();
 
-        var inInn = ZoneSession.IsInInn();
+        var inInn = ZoneSession.CanStartHere();
         var busy = ZoneSession.IsPlayerBusy();
         var envReady = inInn && !busy;
         var hasStrat = HasStartableStrat();
@@ -238,7 +238,7 @@ public unsafe class MainWindow : Window, IDisposable
         if (!canStart && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
         {
             ImGui.SetTooltip(!inInn
-                ? "場景只能在旅館中開始。"
+                ? "場景只能在旅館、個人／公會住宅或個人房間內開始。"
                 : busy
                     ? "忙碌中無法開始（過場動畫、NPC 事件、製作、交易、區域切換等）。"
                     : "這個地區目前還沒有可用的戰術。");
@@ -259,7 +259,7 @@ public unsafe class MainWindow : Window, IDisposable
             if (!envReady && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
             {
                 ImGui.SetTooltip(!inInn
-                    ? "場景只能在旅館中開始。"
+                    ? "場景只能在旅館、個人／公會住宅或個人房間內開始。"
                     : "忙碌中無法開始（過場動畫、NPC 事件、製作、交易、區域切換等）。");
             }
         }
@@ -413,9 +413,9 @@ public unsafe class MainWindow : Window, IDisposable
 
     private void DrawLocationHint()
     {
-        if (ZoneSession.IsInInn()) return;
-        ImGui.TextDisabled("場景只能在旅館中執行");
+        if (ZoneSession.CanStartHere()) return;
+        ImGui.TextDisabled("請進入旅館或住宅室內開始");
         ImGui.SameLine();
-        ImGuiComponents.HelpMarker("場景只能從旅館開始 —— 回到旅館才能執行場景。");
+        ImGuiComponents.HelpMarker("支援旅館、個人／公會住宅與個人房間。不支援屋外住宅區、工房或公寓大廳。");
     }
 }

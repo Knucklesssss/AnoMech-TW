@@ -17,6 +17,11 @@ public sealed class TopP3Transition(SimWorld world, TopP3HelloWorldState state)
     {
         world.Events.Add(3.67f, SpawnArms);
         world.Events.Add(6.90f, ApplyCannons);
+        if (state.TransitionAutoMarkers)
+        {
+            world.Events.Add(7f, ApplyMarkers);
+            world.Events.Add(28.5f, Markings.ClearAll);
+        }
         world.Events.Add(9.64f, () => ShowArms(0));
         world.Events.Add(11.95f, () => ResolveRing(0));
         world.Events.Add(12.46f, () => centerActive = true);
@@ -57,6 +62,16 @@ public sealed class TopP3Transition(SimWorld world, TopP3HelloWorldState state)
             centerHit[i] = true;
             member.Die("P3 轉場：踏入中央危險區");
         }
+    }
+
+    private void ApplyMarkers()
+    {
+        Sign[] signs = [Sign.Bind1, Sign.Ignore1, Sign.Bind2, Sign.Ignore2,
+            Sign.Attack1, Sign.Attack2, Sign.Attack3, Sign.Attack4];
+        Markings.ClearAll();
+        for (var slot = 0; slot < 8; slot++)
+            if (world.Party.Get(state.TransitionRoles[slot]) is { } member && member.IsAlive())
+                Markings.Set(signs[slot], member.GameObjectId);
     }
 
     private void SpawnArms()

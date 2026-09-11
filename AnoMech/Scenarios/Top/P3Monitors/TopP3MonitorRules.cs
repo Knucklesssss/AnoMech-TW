@@ -201,10 +201,13 @@ public static class TopP3MonitorRules
         return QueueSlotPositions[index];
     }
 
-    public static IReadOnlyList<TopP3MonitorMove> PlanQueueMoves(PartyRole localRole)
+    public static Vector3 MoogleQueuePositionFor(PartyRole role) =>
+        new(-9.638f, 0, -9.638f + PriorityIndex(role) * (19.276f / 7));
+
+    public static IReadOnlyList<TopP3MonitorMove> PlanQueueMoves(PartyRole localRole, bool moogle = false)
         => Priority
             .Where(role => role != localRole)
-            .Select(role => new TopP3MonitorMove(role, QueuePositionFor(role), null))
+            .Select(role => new TopP3MonitorMove(role, moogle ? MoogleQueuePositionFor(role) : QueuePositionFor(role), null))
             .ToArray();
 
     public static Vector3 PositionFor(TopP3MonitorSlot slot, TopP3BossSide bossSide)
@@ -258,7 +261,8 @@ public static class TopP3MonitorRules
         TopP3MonitorAssignment assignment,
         TopP3BossSide bossSide,
         IReadOnlyDictionary<PartyRole, TopP3MonitorStatus> statuses,
-        PartyRole localRole)
+        PartyRole localRole,
+        bool? moogleMirror = null)
     {
         var moves = new List<TopP3MonitorMove>(7);
         foreach (var role in Priority)
@@ -267,7 +271,7 @@ public static class TopP3MonitorRules
             var slot = assignment.SlotOf(role);
             if (slot < 0) continue;
 
-            var target = slot < 3
+            var target = moogleMirror is { } mirror ? MooglePositionFor(slot, bossSide, mirror) : slot < 3
                 ? PositionFor((TopP3MonitorSlot)slot, bossSide)
                 : NormalPositionFor(slot - 3, bossSide);
             float? finalRotation = null;
@@ -275,11 +279,44 @@ public static class TopP3MonitorRules
             {
                 if (!statuses.TryGetValue(role, out var status))
                     throw new ArgumentException($"Missing status for monitor role {role}.", nameof(statuses));
-                finalRotation = FacingFor((TopP3MonitorSlot)slot, bossSide, status);
+                finalRotation = moogleMirror is { } mirrored
+                    ? MoogleFacingFor(slot, bossSide, mirrored, status)
+                    : FacingFor((TopP3MonitorSlot)slot, bossSide, status);
             }
             moves.Add(new TopP3MonitorMove(role, target, finalRotation));
         }
         return moves;
+    }
+
+    public static Vector3 MooglePositionFor(int slot, TopP3BossSide bossSide, bool mirror)
+    {
+        var safe = bossSide == TopP3BossSide.Right ? -1 : 1;
+        return slot switch
+        {
+            0 => new(6 * safe, 0, -18.5f),
+            1 => new(mirror ? 15 * safe : -15, 0, -5.5f),
+            2 => new(mirror ? 15 * safe : -15, 0, 5.5f),
+            3 => new(safe, 0, -10),
+            4 => new(mirror ? -3 * safe : 10, 0, 0),
+            5 => new(mirror ? -13 * safe : 19, 0, 0),
+            6 => new(safe, 0, 10),
+            7 => new(safe, 0, 19),
+            _ => throw new ArgumentOutOfRangeException(nameof(slot)),
+        };
+    }
+
+    public static float MoogleFacingFor(int slot, TopP3BossSide bossSide, bool mirror, TopP3MonitorStatus status)
+    {
+        var flip = bossSide == TopP3BossSide.Right ? 1 : -1;
+        var normal = slot switch
+        {
+            0 => new Vector2(-flip, 0),
+            1 => new Vector2(mirror ? .1f * flip : .1f, -1),
+            2 => new Vector2(mirror ? .1f * flip : .1f, 1),
+            _ => throw new ArgumentOutOfRangeException(nameof(slot)),
+        };
+        return NormalizeRotation(MathF.Atan2(normal.X, normal.Y) +
+            (status == TopP3MonitorStatus.Right ? MathF.PI / 2 : -MathF.PI / 2));
     }
 
     public static IReadOnlyList<PartyRole> MembersInsideCircle(

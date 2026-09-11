@@ -9,7 +9,7 @@ public sealed class TopP4BlueScreenScenario : IScenario
 {
     public string Name => "藍屏";
     public IPhase Phase => TopZone.P4;
-    public IReadOnlyList<IScenarioAi> AiStrats { get; } = [new TopP4BlueScreenAi()];
+    public IReadOnlyList<IScenarioAi> AiStrats { get; } = [new TopP4BlueScreenAi(), new TopP4BlueScreenAi(moogle: true)];
     private bool? playerStackTarget;
     private TopP4BlueScreenMechanics? mechanics;
 

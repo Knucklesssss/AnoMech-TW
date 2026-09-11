@@ -8,7 +8,7 @@ using AnoMech.Core.SimObjects;
 
 namespace AnoMech.Scenarios.Top.P5Sigma;
 
-public sealed class TopP5SigmaTuuuflessAi : TopP5SigmaAi
+public class TopP5SigmaTuuuflessAi : TopP5SigmaAi
 {
     public override string Name => "tuuufless";
     public override string? Group => "日服";
