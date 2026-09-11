@@ -14,6 +14,7 @@ public sealed class TopZone : IZone
     // P2's arena weather and plays no music. The phase's look comes mostly from the
     // MapEffect packets the scenario replays, not from this.
     public static readonly Phase P3 = new(Instance, "P3", 78, 0);
+    public static readonly Phase P4 = new(Instance, "P4", 78, 0);
     public static readonly Phase P5 = new(Instance, "P5", 174, BgmId.TopP5);
     public static readonly Phase P6 = new(Instance, "P6", 175, BgmId.TopP6);
 

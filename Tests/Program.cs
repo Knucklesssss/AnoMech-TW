@@ -5,3 +5,4 @@ TransitionScenarioChecks.Run();
 Console.WriteLine("P3 regression checks passed.");
 SigmaTowerChecks.Run();
 DeltaSettingsChecks.Run();
+BlueScreenChecks.Run();

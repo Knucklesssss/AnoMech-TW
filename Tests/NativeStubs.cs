@@ -88,15 +88,17 @@ namespace AnoMech.Core.SimObjects
         }
     }
 
-    public enum EnemyListMode { Never }
+    public enum EnemyListMode { Never, Always }
     public sealed record EnemySpawnConfig(uint BNpcBaseId, uint NameId = 0, int Level = 1,
-        bool Targetable = true, EnemyListMode EnemyList = EnemyListMode.Never,
-        bool IsVisible = true, Placement? Placement = null);
+        bool Targetable = false, EnemyListMode EnemyList = EnemyListMode.Always,
+        bool IsVisible = true, Placement? Placement = null, uint? ModelCharaId = null,
+        float? Scale = null, float? HitboxRadius = null);
     public sealed record RecordedCast(float Time, uint ActionId, Vector3 SourcePosition,
         ulong? TargetId, float CastSeconds, float FireDelay);
 
     public sealed class SimEnemy(SimWorld world, EnemySpawnConfig config, uint id)
     {
+        public bool Targetable => config.Targetable;
         public Vector3 Position => config.Placement!.Value.Position;
         public uint GameObjectId => id;
         public bool Visible { get; private set; } = config.IsVisible;
@@ -134,6 +136,10 @@ namespace AnoMech.Core
     {
         public static void ClearAll() { }
         public static void Set(Sign sign, uint id) { }
+    }
+    public static class ChatOutput
+    {
+        public static void Coach(string text) { }
     }
 }
 

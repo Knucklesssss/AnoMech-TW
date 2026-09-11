@@ -10,6 +10,7 @@ using AnoMech.Scenarios;
 using AnoMech.Scenarios.Top.P2PartySynergy;
 using AnoMech.Scenarios.Top.P3HelloWorld;
 using AnoMech.Scenarios.Top.P3Monitors;
+using AnoMech.Scenarios.Top.P4BlueScreen;
 using AnoMech.Scenarios.Top.P5Delta;
 using AnoMech.Scenarios.Top.P5Omega;
 using AnoMech.Scenarios.Top.P5Sigma;
@@ -74,6 +75,7 @@ public sealed class Game : IDisposable
             new TopP2PartySynergyScenario(),
             new TopP3HelloWorldScenario(),
             new TopP3MonitorsScenario(),
+            new TopP4BlueScreenScenario(),
             new TopP5DeltaScenario(),
             new TopP5SigmaScenario(),
             new TopP5OmegaScenario(),

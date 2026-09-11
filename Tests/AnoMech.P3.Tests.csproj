@@ -6,6 +6,10 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../AnoMech/Scenarios/Top/P4BlueScreen/TopP4BlueScreenRules.cs" Link="Production/TopP4BlueScreenRules.cs" />
+    <Compile Include="../AnoMech/Scenarios/Top/P4BlueScreen/TopP4BlueScreenState.cs" Link="Production/TopP4BlueScreenState.cs" />
+    <Compile Include="../AnoMech/Scenarios/Top/P4BlueScreen/TopP4BlueScreenAi.cs" Link="Production/TopP4BlueScreenAi.cs" />
+    <Compile Include="../AnoMech/Scenarios/Top/P4BlueScreen/TopP4BlueScreenMechanics.cs" Link="Production/TopP4BlueScreenMechanics.cs" />
     <Compile Include="../AnoMech/Scenarios/Top/P5Delta/TopP5DeltaState.cs" Link="Production/TopP5DeltaState.cs" />
     <Compile Include="../AnoMech/Scenarios/Top/P5Delta/TopP5DeltaStateOverrides.cs" Link="Production/TopP5DeltaStateOverrides.cs" />
     <Compile Include="../AnoMech/Scenarios/Top/P5Delta/TopP5DeltaSettingsWindow.cs" Link="Production/TopP5DeltaSettingsWindow.cs" />

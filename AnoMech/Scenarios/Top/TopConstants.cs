@@ -245,6 +245,18 @@ public static class TopConstants
         public const uint OmegaArmourGuard = 0x7B44U;   // 歐米茄武裝戍衛
         public const uint LaserShower = 0x7B45U;   // 雷射驟雨
         public const uint Unknown7b46 = 0x7B46U;
+        // P4: awgil/ffxiv_bossmod TOPEnums; all cannons are 100y x 6y rectangles.
+        public const uint P4StackTarget = 22393;
+        public const uint P4Spread = 31614;
+        public const uint P4Stack = 31615;
+        public const uint P4SpreadRepeat = WaveCannon_7B80;
+        public const uint P4WaveCannonCast = 31617;
+        public const uint P4WaveCannonVisual1 = 31618;
+        public const uint P4WaveCannonVisual2 = 32534;
+        public const uint P4WaveCannonVisual3 = 31619;
+        public const uint P4WaveCannonVisual4 = 31620;
+        public const uint P4BlueScreen = 31611;
+        public const uint P4BlueScreenSuccess = 31612;
         public const uint IonEfflux = 0x7B48U;   // 離子流出
         public const uint Unknown7b49 = 0x7B49U;
         public const uint Unknown7b4a = 0x7B4AU;
