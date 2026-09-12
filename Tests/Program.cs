@@ -1,3 +1,4 @@
+CombatTimingChecks.Run();
 StartLocationChecks.Run();
 MapEntryChecks.Run();
 MoogleP5GuideChecks.Run();

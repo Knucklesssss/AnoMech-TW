@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../AnoMech/Core/Combat/CombatTiming.cs" />
     <Compile Include="../AnoMech/Core/Map/StartLocationRules.cs" />
     <Compile Include="../AnoMech/Core/Map/MapController.cs" />
     <Compile Include="../AnoMech/Core/Map/TargetInstance.cs" />
