@@ -12,6 +12,8 @@ internal static class CombatTimingChecks
         LargeAdvanceRecoversEveryDueCharge();
         InvalidInputsAreRejectedBeforeMutation();
         ChargeGroupContractCannotChange();
+        ReadinessInspectionDoesNotRegisterGroups();
+        RechargeReductionRecoversSerialChargesWithoutFutureCredit();
         Console.WriteLine("PASS: shared combat timing serial charges, lock boundaries, reset, validation and large steps.");
     }
 
@@ -26,7 +28,10 @@ internal static class CombatTimingChecks
         if (!timing.TryUse(7, 30, 3, 0.6)) throw new Exception("The second charge must be usable after the lock.");
         timing.Advance(0.6);
         if (!timing.TryUse(7, 30, 3, 0.6)) throw new Exception("The third charge must be usable after the lock.");
-        timing.Advance(28.8);
+        timing.Advance(28.799);
+        if (timing.Charges(7, 30, 3) != 0 || Math.Abs(timing.Remaining(7) - 0.001) > 1e-9)
+            throw new Exception("A serial charge must remain unavailable immediately before its 30-second recovery boundary.");
+        timing.Advance(0.001);
         if (timing.Charges(7, 30, 3) != 1 || timing.Remaining(7) != 30)
             throw new Exception("Serial recovery must grant the first charge at 30 seconds and queue the next for 60.");
         timing.Advance(30);
@@ -104,6 +109,53 @@ internal static class CombatTimingChecks
         ExpectContractRejected(() => timing.TryUse(7, 29, 3, 0));
         if (timing.Charges(7, 30, 3) != 2 || timing.Remaining(7) != 30)
             throw new Exception("A rejected group contract change must not reset or mutate its recovery.");
+    }
+
+    private static void ReadinessInspectionDoesNotRegisterGroups()
+    {
+        var timing = new CombatTiming();
+        if (!timing.IsAvailable(7, 30, 3) || !timing.IsAvailable(7, 30, 3))
+            throw new Exception("An unseen full charge group must report available without being registered.");
+        if (!timing.TryUse(7, 20, 2, 0.6))
+            throw new Exception("Read-only availability checks must not register an unseen group contract.");
+        if (timing.LockRemaining != 0.6 || timing.IsAvailable(8, 10, 1))
+            throw new Exception("Availability must include the shared animation lock without registering the queried group.");
+        timing.Advance(0.599);
+        if (timing.LockRemaining <= 0)
+            throw new Exception("Animation lock must remain immediately before its exact boundary.");
+        timing.Advance(0.001);
+        if (timing.LockRemaining != 0 || !timing.IsAvailable(8, 10, 1))
+            throw new Exception("Animation lock must recover exactly at its boundary.");
+    }
+
+    private static void RechargeReductionRecoversSerialChargesWithoutFutureCredit()
+    {
+        var timing = new CombatTiming();
+        timing.TryUse(20, 60, 2, 0.6);
+        timing.Advance(0.6);
+        timing.TryUse(20, 60, 2, 0.6);
+        timing.Advance(9.4);
+        timing.Reduce(20, 5);
+        if (timing.Charges(20, 60, 2) != 0 || timing.Remaining(20) != 45)
+            throw new Exception("Recharge reduction at 10 seconds must move the next Infuriate charge from 50 to 45 seconds remaining.");
+        timing.Reduce(20, 50);
+        if (timing.Charges(20, 60, 2) != 1 || timing.Remaining(20) != 55)
+            throw new Exception("Reduction crossing a serial boundary must restore one charge and carry the excess into the next recharge.");
+        timing.Reduce(20, 55);
+        timing.Reduce(20, 100);
+        if (timing.Charges(20, 60, 2) != 2 || timing.Remaining(20) != 0)
+            throw new Exception("Reduction at full charges must not bank future credit.");
+        if (!timing.TryUse(20, 60, 2, 0) || timing.Remaining(20) != 60)
+            throw new Exception("A use after full-cap reduction must begin a fresh full recharge.");
+
+        timing.Reduce(99, 100);
+        if (timing.Charges(99, 10, 1) != 1)
+            throw new Exception("Reducing an unseen group must not register or alter it.");
+        foreach (var seconds in new[] { -1d, double.NaN, double.PositiveInfinity, double.NegativeInfinity })
+            ExpectRejected(() => timing.Reduce(20, seconds), "invalid recharge reduction");
+        ExpectRejected(() => timing.Reduce(-1, 1), "negative reduced group");
+        if (timing.Remaining(20) != 60)
+            throw new Exception("Rejected recharge reductions must not mutate recovery.");
     }
 
     private static void ExpectRejected(Action action, string description)

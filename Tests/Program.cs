@@ -1,4 +1,5 @@
 CombatTimingChecks.Run();
+WarriorCombatChecks.Run();
 WarriorDamageChecks.Run();
 StartLocationChecks.Run();
 MapEntryChecks.Run();

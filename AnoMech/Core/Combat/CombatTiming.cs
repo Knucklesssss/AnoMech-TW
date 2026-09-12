@@ -9,6 +9,8 @@ public sealed class CombatTiming
     private double now;
     private double lockedUntil;
 
+    public double LockRemaining => Math.Max(0, lockedUntil - now);
+
     public void Advance(double seconds)
     {
         Validate(seconds, nameof(seconds));
@@ -50,6 +52,24 @@ public sealed class CombatTiming
         Validate(group, nameof(group));
         if (!groups.TryGetValue(group, out var state) || state.Charges == state.MaxCharges) return 0;
         return state.NextChargeAt - now;
+    }
+
+    public bool IsAvailable(int group, double recast, int maxCharges)
+    {
+        Validate(group, nameof(group));
+        Validate(recast, nameof(recast));
+        Validate(maxCharges, nameof(maxCharges));
+        ValidateContract(group, recast, maxCharges);
+        return now >= lockedUntil && (!groups.TryGetValue(group, out var state) ? maxCharges > 0 : state.Charges > 0);
+    }
+
+    public void Reduce(int group, double seconds)
+    {
+        Validate(group, nameof(group));
+        Validate(seconds, nameof(seconds));
+        if (!groups.TryGetValue(group, out var state) || state.Charges == state.MaxCharges) return;
+        state.NextChargeAt -= seconds;
+        Recover(state);
     }
 
     public void Reset()
