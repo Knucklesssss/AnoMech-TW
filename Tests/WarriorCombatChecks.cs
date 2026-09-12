@@ -6,6 +6,8 @@ internal static class WarriorCombatChecks
     {
         if (typeof(WarriorCombatChecks).Assembly.GetType("AnoMech.Core.Combat.WarriorCombat") == null)
             throw new Exception("Warrior offensive state is missing.");
+        PublicCooldownContractsAreAdjustedAndReadOnly();
+        ManualPreflightSkipsOnlyTiming();
         SingleTargetComboUsesLiteralPotenciesAndBeast();
         ComboOnlyChangesOnSuccessfulRelevantHits();
         TempestCombosUsePreActivationMultiplier();
@@ -22,6 +24,72 @@ internal static class WarriorCombatChecks
         InvalidTimeAndResetAreAtomic();
         OldActionsTranslateAndUnsupportedActionsDoNothing();
         Console.WriteLine("PASS: Warrior offensive action state, resources, cooldowns and rejection boundaries.");
+    }
+
+    private static void ManualPreflightSkipsOnlyTiming()
+    {
+        var type = typeof(WarriorCombat);
+        var canUse = type.GetMethod("CanUse", [typeof(uint), typeof(bool), typeof(bool), typeof(bool), typeof(bool), typeof(bool), typeof(bool)])
+            ?? throw new Exception("Warrior manual-input timing bypass is missing.");
+        bool Check(WarriorCombat warrior, uint actionId, bool hasTarget, bool inRange, bool inCombat, bool alive = true, bool bound = false, bool checkTiming = true)
+            => (bool)canUse.Invoke(warrior, [actionId, hasTarget, inRange, inCombat, alive, bound, checkTiming])!;
+
+        var warrior = new WarriorCombat();
+        AssertHit(warrior.TryUse(31, true, true, false), 31, 200);
+        if (Check(warrior, 37, true, true, false) || !Check(warrior, 37, true, true, false, checkTiming: false))
+            throw new Exception("Manual preflight must skip the active GCD while normal readiness still enforces it.");
+        if (Check(warrior, 37, false, true, false, checkTiming: false) ||
+            Check(warrior, 37, true, true, false, alive: false, checkTiming: false) ||
+            Check(warrior, 3549, true, true, true, checkTiming: false) ||
+            Check(warrior, 52, false, false, false, checkTiming: false) ||
+            Check(warrior, 7386, true, true, false, bound: true, checkTiming: false) ||
+            Check(warrior, 999999, true, true, true, checkTiming: false))
+            throw new Exception("Manual preflight must retain support, target, death, resource, combat and bind gates.");
+        if (warrior.TryUse(37, true, true, false) != null || warrior.ComboAction != 31 || warrior.Beast != 0 || warrior.Timing.Remaining(58) != 2.5)
+            throw new Exception("Preflight queries and a timing-rejected use must not mutate combo, Beast or cooldown state.");
+    }
+
+    private static void PublicCooldownContractsAreAdjustedAndReadOnly()
+    {
+        var type = typeof(WarriorCombat);
+        var supports = type.GetMethod("Supports", [typeof(uint)])
+            ?? throw new Exception("Warrior action support query is missing.");
+        var getCooldown = type.GetMethod("GetCooldown", [typeof(uint)])
+            ?? throw new Exception("Warrior cooldown contract query is missing.");
+        bool Supports(WarriorCombat warrior, uint actionId) => (bool)supports.Invoke(warrior, [actionId])!;
+        (int Group, double Recast, int Charges) Cooldown(WarriorCombat warrior, uint actionId)
+            => ((int Group, double Recast, int Charges))getCooldown.Invoke(warrior, [actionId])!;
+
+        var warrior = new WarriorCombat(2.35);
+        if (!Supports(warrior, 49) || Supports(warrior, 999999))
+            throw new Exception("Support queries must adjust legacy actions and reject unknown actions.");
+        if (Cooldown(warrior, 49) != Cooldown(warrior, 3549) || Cooldown(warrior, 49) != (58, 2.35, 1) ||
+            Cooldown(warrior, 31) != (58, 2.35, 1) || Cooldown(warrior, 7386) != (8, 30, 3) ||
+            Cooldown(warrior, 52) != (20, 60, 2))
+            throw new Exception("Cooldown queries must expose adjusted spender, chosen GCD, Onslaught and Infuriate contracts.");
+        try
+        {
+            _ = Cooldown(warrior, 999999);
+            throw new Exception("Unsupported cooldown queries must be rejected.");
+        }
+        catch (System.Reflection.TargetInvocationException exception) when (exception.InnerException is ArgumentOutOfRangeException)
+        {
+        }
+        if (!warrior.Timing.TryUse(8, 20, 2, 0))
+            throw new Exception("Support and cooldown queries must not register cooldown groups.");
+
+        warrior = new WarriorCombat();
+        if (Cooldown(warrior, 7387) != (9, 30, 1) || Cooldown(warrior, 25752) != Cooldown(warrior, 7387))
+            throw new Exception("Upheaval and Orogeny must expose the same cooldown contract.");
+        AssertHit(warrior.TryUse(7387, true, true, false), 7387, 400);
+        warrior.Advance(0.6);
+        if (warrior.CanUse(25752, false, false, false))
+            throw new Exception("Consuming Upheaval must make Orogeny unavailable through their exposed shared group.");
+        warrior.Reset();
+        AssertHit(warrior.TryUse(25752, true, false, false), 25752, 150, aoe: true);
+        warrior.Advance(0.6);
+        if (warrior.CanUse(7387, true, true, false))
+            throw new Exception("Consuming Orogeny must make Upheaval unavailable through their exposed shared group.");
     }
 
     private static void BeastGainsNeverExceedTheGaugeCap()

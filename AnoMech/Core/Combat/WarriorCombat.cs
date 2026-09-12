@@ -51,7 +51,16 @@ public sealed class WarriorCombat
         return actionId;
     }
 
-    public bool CanUse(uint actionId, bool hasTarget, bool inRange, bool inCombat, bool alive = true, bool bound = false)
+    public bool Supports(uint actionId) => IsSupported(Adjust(actionId));
+
+    public (int Group, double Recast, int Charges) GetCooldown(uint actionId)
+    {
+        actionId = Adjust(actionId);
+        if (!IsSupported(actionId)) throw new ArgumentOutOfRangeException(nameof(actionId));
+        return TimingContract(actionId);
+    }
+
+    public bool CanUse(uint actionId, bool hasTarget, bool inRange, bool inCombat, bool alive = true, bool bound = false, bool checkTiming = true)
     {
         actionId = Adjust(actionId);
         if (!IsSupported(actionId) || !alive) return false;
@@ -62,7 +71,7 @@ public sealed class WarriorCombat
         if (actionId is 16465 or 16463 && (chaosRemaining <= 0 || beast < 50)) return false;
         if (actionId is 3549 or 3550 && beast < 50 && innerReleaseStacks == 0) return false;
         var (group, recast, charges) = TimingContract(actionId);
-        return Timing.IsAvailable(group, recast, charges);
+        return !checkTiming || Timing.IsAvailable(group, recast, charges);
     }
 
     public WarriorHit? TryUse(uint actionId, bool hasTarget, bool inRange, bool inCombat, bool alive = true, bool bound = false)
