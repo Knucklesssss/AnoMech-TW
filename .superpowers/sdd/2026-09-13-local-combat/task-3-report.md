@@ -44,3 +44,8 @@ GREEN evidence:
 ## Verification note
 
 The standalone regression project builds and runs cleanly. The full plugin build is verified with the installed FFXIVSimpleLauncher Dalamud injector path supplied explicitly, avoiding the incompatible default XIVLauncher development path.
+
+## Review fix round 1
+
+- RED: after Heavy Swing established combo action 31, an empty Overpower activation left combo action 31 active. `dotnet run --project Tests/AnoMech.P3.Tests.csproj --no-restore` exited 1 at `AoeCombosRequireAnEnemyHitForGains` with `An empty Overpower must clear a nonmatching combo...`.
+- GREEN: empty Overpower and empty Mythril Tempest now clear any prior combo before returning no hit; neither starts/advances a combo nor grants Beast or Tempest. The same regression command exits 0 with the Warrior offensive-state check and the complete existing suite passing.

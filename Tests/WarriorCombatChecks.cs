@@ -294,6 +294,18 @@ internal static class WarriorCombatChecks
         warrior.Advance(2.5);
         if (warrior.TryUse(16462, false, false, false) != null || warrior.Beast != 0 || warrior.ComboAction != 0 || warrior.TempestRemaining != 0)
             throw new Exception("An empty Mythril Tempest must not grant hit-dependent combo, Beast or Tempest state.");
+
+        warrior.Reset();
+        warrior.TryUse(31, true, true, false);
+        warrior.Advance(2.5);
+        if (warrior.TryUse(41, false, false, false) != null || warrior.ComboAction != 0 || warrior.Beast != 0 || warrior.TempestRemaining != 0)
+            throw new Exception("An empty Overpower must clear a nonmatching combo without starting its own combo or granting hit state.");
+
+        warrior.Reset();
+        warrior.TryUse(31, true, true, false);
+        warrior.Advance(2.5);
+        if (warrior.TryUse(16462, false, false, false) != null || warrior.ComboAction != 0 || warrior.Beast != 0 || warrior.TempestRemaining != 0)
+            throw new Exception("An empty Mythril Tempest must clear a nonmatching combo without advancing or granting hit state.");
     }
 
     private static void SingleTargetComboUsesLiteralPotenciesAndBeast()

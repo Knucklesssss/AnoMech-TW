@@ -109,7 +109,11 @@ public sealed class WarriorCombat
             }
         }
         if (actionId == 25753) rendRemaining = 0;
-        if (isAoe && !hasTarget) return null;
+        if (isAoe && !hasTarget)
+        {
+            if (actionId is 41 or 16462) ClearCombo();
+            return null;
+        }
 
         var multiplier = tempestRemaining > 0 ? 1.1 : 1;
         var potency = actionId switch
