@@ -9,6 +9,7 @@
     <Compile Include="../AnoMech/Core/Combat/CombatTiming.cs" />
     <Compile Include="../AnoMech/Core/Combat/WarriorCombat.cs" />
     <Compile Include="../AnoMech/Core/Combat/WarriorDamageMath.cs" />
+    <Compile Include="../AnoMech/Core/Combat/CombatStatMath.cs" />
     <Compile Include="../AnoMech/Core/Map/StartLocationRules.cs" />
     <Compile Include="../AnoMech/Core/Map/MapController.cs" />
     <Compile Include="../AnoMech/Core/Map/TargetInstance.cs" />

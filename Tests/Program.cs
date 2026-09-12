@@ -1,6 +1,7 @@
 CombatTimingChecks.Run();
 WarriorCombatChecks.Run();
 WarriorDamageChecks.Run();
+CombatStatChecks.Run();
 StartLocationChecks.Run();
 MapEntryChecks.Run();
 MoogleP5GuideChecks.Run();
