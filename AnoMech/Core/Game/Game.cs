@@ -179,6 +179,7 @@ public sealed class Game : IDisposable
             TeleportPlayerToSpawnIfOutsideArena();
         ResetSprintCooldown();
         activeScenario = scenario;
+        World.StartCombat(zone.Level, zone.ItemLevel);
         scenarioElapsed = 0f;
 
         // Reconcile BGM to the new scenario. Bgm.Play is idempotent, so switching

@@ -1,4 +1,5 @@
 using Dalamud.Bindings.ImGui;
+using System.Linq;
 
 namespace AnoMech.Scenarios.Top.P3Monitors;
 
@@ -6,6 +7,7 @@ public sealed class TopP3MonitorsSettingsWindow
 {
     public TopP3MonitorsOverrides Overrides { get; } = new();
     public TopP3MonitorsState? CurrentState { get; set; }
+    public bool CrossStrategy { get; set; }
 
     public void Draw()
     {
@@ -23,6 +25,11 @@ public sealed class TopP3MonitorsSettingsWindow
 
         if (CurrentState is not { } state) return;
         ImGui.Separator();
+        if (CrossStrategy)
+        {
+            DrawCross(state);
+            return;
+        }
         if (!state.BuffStarted)
         {
             ImGui.TextUnformatted($"排隊順序：{TopP3MonitorRules.PriorityLabel}");
@@ -38,6 +45,27 @@ public sealed class TopP3MonitorsSettingsWindow
         ImGui.TextUnformatted($"固定優先序：第 {state.PlayerPriority + 1} 位（{TopP3MonitorRules.RoleLabel(state.PlayerRole)}）");
         if (state.PlayerHasMonitor)
             ImGui.TextUnformatted($"自身螢幕方向：{state.PlayerStatusLabel}");
+    }
+
+    private static void DrawCross(TopP3MonitorsState state)
+    {
+        ImGui.TextUnformatted("十字法：TN 北／東，DPS 南／西；內外各自換位。");
+        ImGui.TextUnformatted("北：H1 外、MT 內；東：ST 內、H2 外；南：D1 內、D3 外；西：D2 內、D4 外。");
+        var initial = TopP3MonitorsCrossRules.InitialPositionFor(state.PlayerRole);
+        ImGui.TextUnformatted($"自身分工：{TopP3MonitorRules.RoleLabel(state.PlayerRole)}，起點 {TopP3MonitorsCrossRules.PositionLabel(initial)}");
+        if (!state.BuffStarted)
+        {
+            ImGui.TextUnformatted("準備中：AI先站十字，約等待 5 秒；真人請自行站位。");
+            return;
+        }
+        var move = TopP3MonitorsCrossRules.PlanMoves(state.Assignment, state.BossSide, state.MonitorStatuses,
+            (Core.Game.Party.PartyRole)(-1)).Single(m => m.Role == state.PlayerRole);
+        ImGui.TextUnformatted($"本輪王側：{state.BossSideLabel}；自身終點：{TopP3MonitorsCrossRules.PositionLabel(move.Target)}");
+        ImGui.TextUnformatted("每組 0 螢幕不換；1 螢幕放橫線；2 螢幕同軸時內側換；3 螢幕讓無螢幕留直線。");
+        ImGui.TextUnformatted("橫線無螢幕留軸上；兩名橫線螢幕相較：靠左向北挪並朝北、靠右向南挪並朝南。");
+        ImGui.TextUnformatted("直線往王安全半場移：無螢幕一步、有螢幕兩步；螢幕面朝安全側。");
+        if (state.PlayerHasMonitor)
+            ImGui.TextUnformatted($"自身螢幕狀態：{state.PlayerStatusLabel}（依螢幕面調整人物朝向）");
     }
 
     private void ResetAll()

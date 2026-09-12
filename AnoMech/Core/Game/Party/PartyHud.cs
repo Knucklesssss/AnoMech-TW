@@ -17,6 +17,9 @@ namespace AnoMech.Core.Game.Party;
 // upstream) and drives status icons + timer text natively from that resolution.
 internal sealed unsafe class PartyHud
 {
+    private readonly PartyListLayout layout = new();
+
+    public void Dispose() => layout.Dispose();
     private const int MaxSlots = 8;
 
     // Snapshot of real MainGroup taken on the first Refresh of a sim run, restored
@@ -32,6 +35,7 @@ internal sealed unsafe class PartyHud
 
     public void Refresh(SimParty party)
     {
+        layout.Refresh(party);
         if (party.AllMembers().Count() < 2) return;
 
         var gm = GroupManager.Instance();
@@ -79,6 +83,7 @@ internal sealed unsafe class PartyHud
 
     public void Clear()
     {
+        layout.Clear();
         hasLastWritten = false;
 
         // No snapshot means we never wrote to MainGroup this session, so the

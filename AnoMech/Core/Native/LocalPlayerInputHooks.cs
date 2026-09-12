@@ -1,4 +1,5 @@
 using System;
+using AnoMech.Core.Combat;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using Dalamud.Game.ClientState.Conditions;
@@ -78,6 +79,12 @@ public sealed unsafe class LocalPlayerInputHooks : IDisposable
     private readonly Hook<ActionManager.Delegates.Update>? updateHook;
     private readonly Hook<ActionManager.Delegates.UseAction>? useActionHook;
     private readonly Hook<ActionManager.Delegates.UseActionLocation>? useActionLocationHook;
+    private readonly Hook<ActionManager.Delegates.GetAdjustedActionId>? adjustedActionHook;
+    private readonly Hook<ActionManager.Delegates.GetActionStatus>? actionStatusHook;
+    public bool CombatHooksReady => updateHook?.IsEnabled == true && useActionHook?.IsEnabled == true
+        && useActionLocationHook?.IsEnabled == true && adjustedActionHook?.IsEnabled == true && actionStatusHook?.IsEnabled == true;
+    private static LocalCombatSession? Combat => Plugin.GameInstance?.World.Combat is { Active: true } session ? session : null;
+    internal void RecordLocalAction() => actionUsedSincePoll = true;
 
     public LocalPlayerInputHooks(IGameInteropProvider hook)
     {
@@ -102,6 +109,14 @@ public sealed unsafe class LocalPlayerInputHooks : IDisposable
         if (useActionLocationAddr != 0)
             useActionLocationHook = hook.HookFromAddress<ActionManager.Delegates.UseActionLocation>(useActionLocationAddr, UseActionLocationDetour);
 
+        var adjustedAddr = SignatureReport.TrackAddress("ActionManager.GetAdjustedActionId", ActionManager.Addresses.GetAdjustedActionId.Value);
+        if (adjustedAddr != 0)
+            adjustedActionHook = hook.HookFromAddress<ActionManager.Delegates.GetAdjustedActionId>(adjustedAddr, AdjustedActionDetour);
+        var statusAddr = SignatureReport.TrackAddress("ActionManager.GetActionStatus", ActionManager.Addresses.GetActionStatus.Value);
+        if (statusAddr != 0)
+            actionStatusHook = hook.HookFromAddress<ActionManager.Delegates.GetActionStatus>(statusAddr, ActionStatusDetour);
+        adjustedActionHook?.Enable();
+        actionStatusHook?.Enable();
         rmiWalkHook?.Enable();
         checkStrafeKeybindHook?.Enable();
         isInputIdPressedHook?.Enable();
@@ -118,6 +133,8 @@ public sealed unsafe class LocalPlayerInputHooks : IDisposable
         updateHook?.Dispose();
         useActionHook?.Dispose();
         useActionLocationHook?.Dispose();
+        adjustedActionHook?.Dispose();
+        actionStatusHook?.Dispose();
     }
 
     private void RMIWalkDetour(void* self, float* sumLeft, float* sumForward, float* sumTurnLeft, byte* haveBackwardOrStrafe, byte* a6, byte bAdditiveUnk)
@@ -150,31 +167,91 @@ public sealed unsafe class LocalPlayerInputHooks : IDisposable
     // doesn't keep swinging mid-stun; mirrors raid-rewritten's UpdateDetour.
     private void UpdateDetour(ActionManager* self)
     {
-        updateHook!.Original(self);
-        if (!DisableAllActions) return;
-        var autosOn = UIState.Instance()->WeaponState.AutoAttackState.IsAutoAttacking;
-        if (autosOn) self->UseAction(ActionType.GeneralAction, 1);
+        var session = Combat;
+        try
+        {
+            session?.Tick();
+            session?.BeforeNativeUpdate();
+            updateHook!.Original(self);
+            if (session?.Active != true && DisableAllActions)
+            {
+                var autosOn = UIState.Instance()->WeaponState.AutoAttackState.IsAutoAttacking;
+                if (autosOn) self->UseAction(ActionType.GeneralAction, 1);
+            }
+        }
+        catch (Exception ex) { StopCombat(session, ex); }
+        finally
+        {
+            try { session?.AfterNativeUpdate(); }
+            catch (Exception ex) { StopCombat(session, ex); }
+        }
     }
 
     private bool UseActionDetour(ActionManager* self, ActionType actionType, uint actionId, ulong targetId, uint extraParam, ActionManager.UseActionMode mode, uint comboRouteId, bool* outOptAreaTargeted)
     {
-        if (DisableAllActions && !IsStopAutosAction(actionType, actionId)) return false;
-        var result = useActionHook!.Original(self, actionType, actionId, targetId, extraParam, mode, comboRouteId, outOptAreaTargeted);
-        // Record a real action use for Party.Player.IsActing — but ignore the auto-attack-cancel
-        // general action that UpdateDetour issues while stunned.
-        if (result && !IsStopAutosAction(actionType, actionId))
-            actionUsedSincePoll = true;
-        if (result && actionType == ActionType.Action && actionId == SprintActionId)
-            Plugin.GameInstance?.Player?.AddStatus(SprintStatusId, SprintDuration, SprintStatusParam);
-        return result;
+        var session = Combat;
+        try
+        {
+            if (session != null && session.TryInput(actionType, actionId, targetId, out var accepted))
+            {
+                if (outOptAreaTargeted != null) *outOptAreaTargeted = false;
+                return accepted;
+            }
+            if (DisableAllActions && !IsStopAutosAction(actionType, actionId)) return false;
+            var result = useActionHook!.Original(self, actionType, actionId, targetId, extraParam, mode, comboRouteId, outOptAreaTargeted);
+            // Preserve the existing Sprint path and real-action activity latch.
+            if (result && !IsStopAutosAction(actionType, actionId)) actionUsedSincePoll = true;
+            if (result && actionType == ActionType.Action && actionId == SprintActionId)
+                Plugin.GameInstance?.Player?.AddStatus(SprintStatusId, SprintDuration, SprintStatusParam);
+            return result;
+        }
+        catch (Exception ex) { StopCombat(session, ex); return false; }
     }
 
     private bool UseActionLocationDetour(ActionManager* self, ActionType actionType, uint actionId, ulong targetId, Vector3* location, uint extraParam, byte a7)
     {
-        if (DisableAllActions && !IsStopAutosAction(actionType, actionId)) return false;
-        var result = useActionLocationHook!.Original(self, actionType, actionId, targetId, location, extraParam, a7);
-        if (result) actionUsedSincePoll = true;
-        return result;
+        var session = Combat;
+        try
+        {
+            if (session != null && session.TryInput(actionType, actionId, targetId, out var accepted)) return accepted;
+            if (DisableAllActions && !IsStopAutosAction(actionType, actionId)) return false;
+            var result = useActionLocationHook!.Original(self, actionType, actionId, targetId, location, extraParam, a7);
+            if (result) actionUsedSincePoll = true;
+            return result;
+        }
+        catch (Exception ex) { StopCombat(session, ex); return false; }
+    }
+
+    private uint AdjustedActionDetour(ActionManager* self, uint id)
+    {
+        var session = Combat;
+        try
+        {
+            return session != null && session.CheckIdentity() && session.Supports(id)
+                ? session.Adjust(id) : adjustedActionHook!.Original(self, id);
+        }
+        catch (Exception ex) { StopCombat(session, ex); return id; }
+    }
+
+    private uint ActionStatusDetour(ActionManager* self, ActionType type, uint id, ulong target, bool checkRecast, bool checkCasting, uint* extra)
+    {
+        var session = Combat;
+        try
+        {
+            if (session != null && (type == ActionType.Item || (type == ActionType.Action && id != SprintActionId)))
+            {
+                if (extra != null) *extra = 0;
+                return type == ActionType.Item ? 573u : session.ActionStatus(id, target, checkRecast);
+            }
+            return actionStatusHook!.Original(self, type, id, target, checkRecast, checkCasting, extra);
+        }
+        catch (Exception ex) { StopCombat(session, ex); if (extra != null) *extra = 0; return 572; }
+    }
+
+    private static void StopCombat(LocalCombatSession? session, Exception ex)
+    {
+        try { Plugin.Log.Error(ex, "Local combat native detour failed"); session?.Stop($"本機戰鬥已停止：{ex.Message}"); }
+        catch (Exception cleanup) { Plugin.Log.Error(cleanup, "Local combat restoration failed"); }
     }
 
     // Lets the auto-cancel UseAction from UpdateDetour through; everything else

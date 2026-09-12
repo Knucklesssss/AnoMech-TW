@@ -121,7 +121,7 @@ public sealed class TopP3MonitorsScenario : IScenario
 
     public string Name => "螢幕砲";
     public IPhase Phase => TopZone.P3;
-    public IReadOnlyList<IScenarioAi> AiStrats => [new TopP3MonitorsAi(), new TopP3MonitorsAi(moogle: true)];
+    public IReadOnlyList<IScenarioAi> AiStrats => [new TopP3MonitorsAi(), new TopP3MonitorsAi(moogle: true), new TopP3MonitorsCrossAi()];
 
     private readonly TopP3MonitorsSettingsWindow settingsWindow = new();
     private SimWorld world = null!;
@@ -138,6 +138,7 @@ public sealed class TopP3MonitorsScenario : IScenario
         party = worldParam.Party;
         state = new TopP3MonitorsState(party, settingsWindow.Overrides);
         settingsWindow.CurrentState = state;
+        settingsWindow.CrossStrategy = selectedAi is { } choice && choice >= 0 && choice < AiStrats.Count && AiStrats[choice] is TopP3MonitorsCrossAi;
         topUtils = new TopUtils(world);
 
         if (selectedAi is { } index && index < AiStrats.Count)

@@ -17,6 +17,14 @@ namespace AnoMech.Core.SimObjects;
 // Zone loading and map effects go through world.Map.
 public sealed class SimWorld : ISimObject, IDisposable
 {
+    public AnoMech.Core.Combat.LocalCombatSession? Combat { get; private set; }
+    private string combatReason = "本機戰鬥未啟用";
+    public string CombatReason => Combat?.Reason ?? combatReason;
+    public void StartCombat(byte level, ushort itemLevel)
+    {
+        Combat?.Dispose();
+        Combat = AnoMech.Core.Combat.LocalCombatSession.Start(this, level, itemLevel, out combatReason);
+    }
     // Ownership
     private readonly List<ISimObject> children = new();
     private readonly EnmityHud enmityHud = new();
@@ -161,6 +169,7 @@ public sealed class SimWorld : ISimObject, IDisposable
 
     public void Despawn()
     {
+        Combat?.Dispose();
         children.Despawn();
         Party = SimParty.Empty;
         enmityHud.Clear();
@@ -175,6 +184,7 @@ public sealed class SimWorld : ISimObject, IDisposable
     {
         Despawn();
         enmityHud.Dispose();
+        partyHud.Dispose();
         Map.Dispose();
     }
 }

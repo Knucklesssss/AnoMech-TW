@@ -1,3 +1,7 @@
+PartyListOrderChecks.Run();
+CrossMonitorChecks.Run();
+if (args.Contains("--combat-recast-only")) { CombatRecastChecks.Run(); return; }
+CombatRecastChecks.Run();
 CombatTimingChecks.Run();
 WarriorCombatChecks.Run();
 WarriorDamageChecks.Run();

@@ -1,5 +1,6 @@
 using Dalamud.Configuration;
 using System;
+using AnoMech.Core.Game.Party;
 
 namespace AnoMech;
 
@@ -11,7 +12,10 @@ public class Configuration : IPluginConfiguration
     public bool OpenSimMenuOnInn { get; set; } = true;
     public bool OpenSimMenuOnSupportedInstanceSolo { get; set; } = false;
     public bool EnableEventLogging { get; set; } = false;
+    public bool EnableLocalCombat { get; set; } = false;
     public bool SuppressBgm { get; set; } = true;
+    public bool CustomPartyListOrder { get; set; }
+    public PartyRole[] PartyListOrder { get; set; } = Enum.GetValues<PartyRole>();
 
     // Firewall opcode config — updated automatically by OpcodeUpdater on game version change.
     public uint[] ZoneDownOpcodes { get; set; } = [];
