@@ -25,7 +25,8 @@ public static class WarriorDamageMath
         ValidateRoll(directRoll);
         if (!double.IsFinite(variance) || variance < .95 || variance > 1.05)
             throw new ArgumentOutOfRangeException(nameof(variance));
-        if (potency == 0 || multiplier == 0) return 0;
+        var effectivePotency = autoAttack ? 90 : potency;
+        if (effectivePotency == 0 || multiplier == 0) return 0;
 
         var ap = Math.Max(0, decimal.Truncate(156m * (stats.Strength - 390) / 390) + 100) / 100;
         var det = 1000 + decimal.Floor(140m * (stats.Determination - 390) / 1900);
@@ -33,13 +34,13 @@ public static class WarriorDamageMath
         var ten = 1000 + decimal.Floor(112m * (stats.Tenacity - 400) / 1900);
         var weapon = decimal.Floor(390m * 105 / 1000 + stats.WeaponDamage);
         if (autoAttack) weapon = decimal.Floor(weapon * (decimal)stats.WeaponDelay / 3);
-        var amount = decimal.Floor(potency * ap);
+        var amount = decimal.Floor(effectivePotency * ap);
         amount = decimal.Floor(amount * det / 1000);
         amount = decimal.Floor(amount * ten / 1000);
         amount = decimal.Floor(amount * weapon / 100);
         if (autoAttack)
             amount = decimal.Floor(amount * (1000 + decimal.Floor(130m * (stats.SkillSpeed - 400) / 1900)) / 1000);
-        if (potency < 100) amount++;
+        if (effectivePotency < 100) amount++;
 
         var critical = decimal.Floor(200m * (stats.CriticalHit - 400) / 1900);
         if (guaranteed || (decimal)critRoll < (critical + 50) / 1000)
