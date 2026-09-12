@@ -30,8 +30,6 @@ public static unsafe class WarriorStatReader
                 return Fail("Item-level sync is unavailable.", out reason);
             if (Plugin.PlayerState.ClassJob.RowId != 21)
                 return Fail("Only Warrior is supported.", out reason);
-            if (Plugin.PlayerState.Level != 90)
-                return Fail("Only level 90 is supported.", out reason);
 
             var uiState = UIState.Instance();
             var inventoryManager = InventoryManager.Instance();
@@ -42,6 +40,8 @@ public static unsafe class WarriorStatReader
             var localPlayer = localObject == null ? null : (BattleChara*)localObject.Address;
             if (uiState == null || inventoryManager == null || equipped == null || !equipped->IsLoaded || localPlayer == null)
                 return Fail("Player equipment data is unavailable.", out reason);
+            if (localPlayer->Level != 90)
+                return Fail("Only synchronized level 90 is supported.", out reason);
             if (equipped->GetSize() <= EquippedSlots[^1])
                 return Fail("Equipped-item data is incomplete.", out reason);
 
