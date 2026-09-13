@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using AnoMech.Pointers;
 using FFXIVClientStructs.FFXIV.Client.Game.Network;
 using FFXIVClientStructs.FFXIV.Client.Game.Object;
@@ -27,6 +28,7 @@ internal static unsafe class EventObjectHelper
 
             if (freeId == -1)
             {
+                LogFailure(manager, packet, "all 40 event object slots are occupied");
                 slot = -1;
                 eventObject = null;
                 return false;
@@ -38,7 +40,20 @@ internal static unsafe class EventObjectHelper
         PacketDispatcherPointers.HandleSpawnObjectPacket(0, packet);
         slot = packet->ObjectIndex;
         eventObject = EventObjectManagerPointers.GetEventObjectByIndex(manager, (uint)slot);
+        if (eventObject == null)
+            LogFailure(manager, packet, $"slot {slot} was free but the game created no object");
         return eventObject != null;
+    }
+
+    // Spawn failures used to be silent, which hid the housing-start tower bug.
+    private static void LogFailure(EventObjectManager* manager, SpawnObjectPacket* packet, string reason)
+    {
+        var occupied = new List<string>();
+        for (var i = 0; i < 40; i++)
+            if (manager->EventObjects[i] != null)
+                occupied.Add($"{i}:0x{manager->EventObjects[i].Value->BaseId:X}");
+        Plugin.Log.Warning($"[EventObjectHelper.Create] EObj 0x{packet->BaseId:X} not spawned: {reason}. " +
+                           $"Territory={Plugin.ClientState.TerritoryType} occupied={occupied.Count} [{string.Join(" ", occupied)}]");
     }
 
     // Writes the EObj state field (actor[0x1B2]) and notifies the attached

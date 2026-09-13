@@ -168,6 +168,7 @@ public sealed unsafe class ZoneSession : IDisposable
         sessionSave.ItemLevelSync = itemLevelSync != 0;
         sessionSave.Attributes.Clear();
 
+        if (sessionSave.IsHousing) HousingEventObjectSlots.Release();
         EnableFirewall();
         LoadZoneInternal(territoryId, false, playerSpawn);
         IsActive = true;
