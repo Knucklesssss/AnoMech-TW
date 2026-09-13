@@ -95,6 +95,7 @@ public sealed unsafe class CombatNativeState : IDisposable
             var additional = manager->GetAdditionalRecastGroup(ActionType.Action, action);
             if (additional >= 0) CaptureRecast(additional, action, true);
         }
+        foreach (var action in rules.Actions) ValidateBindings(action);
         var freeSlots = 0;
         foreach (var status in player->StatusManager.Status)
         {

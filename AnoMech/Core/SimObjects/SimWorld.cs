@@ -18,7 +18,7 @@ namespace AnoMech.Core.SimObjects;
 public sealed class SimWorld : ISimObject, IDisposable
 {
     public AnoMech.Core.Combat.LocalCombatSession? Combat { get; private set; }
-    private string combatReason = "本機戰鬥未啟用";
+    private string combatReason = "開始模擬時自動偵測職業";
     public string CombatReason => Combat?.Reason ?? combatReason;
     public void StartCombat(byte level)
     {
