@@ -18,8 +18,8 @@ public sealed class TopP5SigmaMoogleAi : TopP5SigmaTuuuflessAi
         .OrderBy(TopP3MonitorRules.PriorityIndex).ToArray();
 
     protected override IAiMove LineupNextToOmegaM() => AiMove.Create(
-        new(-6, 6), new(-6, 8), new(-2, 6), new(-2, 8),
-        new(2, 6), new(2, 8), new(6, 6), new(6, 8))
+        new(-6, -16), new(-6, -13), new(-2, -16), new(-2, -13),
+        new(2, -16), new(2, -13), new(6, -16), new(6, -13))
         .Assignments(Enumerable.Range(0,4).SelectMany(Pair).ToArray())
         .ApplyPositions(state.NewNorthA.Apply);
 

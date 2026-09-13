@@ -60,13 +60,16 @@ public sealed class TopP5DeltaMoogleAi : TopP5DeltaAi
         for(var i=0;i<4;i++) points[i] = state.TetherOrder[i] == state.FarWorldRole ? new(0,19*SafeSouth)
             : state.TetherOrder[i] == state.NearWorldRole ? new(0,6*SafeSouth) : new(9.5f,17*SafeSouth);
         for(var i=4;i<6;i++) points[i] = (i%2==0 ? -1 : 1)==SafeSouth ? new(16,10*SafeSouth) : new(-19,SafeSouth);
-        points[6]=new(-9.5f,OuterFistsSwap ? 9.5f : -9.5f);
-        points[7]=new(-9.5f,OuterFistsSwap ? -9.5f : 9.5f);
+        for(var i=6;i<8;i++)
+        {
+            var side = (i==6)==OuterFistsSwap ? 1 : -1;
+            points[i] = side==SafeSouth ? new(-14,14*SafeSouth) : new(-9.5f,9.5f*side);
+        }
         return AiMove.Create(points).Assignments(state.TetherOrder).ApplyPositions(AdjustEyePosition);
     }
 
     protected override IAiMove RescueUnsafe() => AiMove.Single(
-        state.TetherOrder[(SafeSouth>0)^OuterFistsSwap ? 6 : 7],new(-9.5f,3.5f*SafeSouth))
+        state.TetherOrder[(SafeSouth>0)^OuterFistsSwap ? 6 : 7],new(-10,10*SafeSouth))
         .ApplyPositions(AdjustEyePosition);
 
     protected override IAiMove ReturnToMiddle()
