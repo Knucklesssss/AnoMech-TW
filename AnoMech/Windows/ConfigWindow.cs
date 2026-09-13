@@ -25,21 +25,15 @@ public class ConfigWindow : Window, IDisposable
     public override void Draw()
     {
         var localCombat = configuration.EnableLocalCombat;
-        if (ImGui.Checkbox("90 級戰士本機輸出預覽（下次開始場景生效）", ref localCombat))
+        if (ImGui.Checkbox("90 級戰士技能循環預覽（下次開始場景生效）", ref localCombat))
         {
             configuration.EnableLocalCombat = localCombat;
             configuration.Save();
         }
-        ImGui.TextWrapped("使用原本熱鍵手動攻擊。其他職業不可用；治療、護盾與減傷不在此預覽範圍。");
+        ImGui.TextWrapped("使用原本熱鍵練習連段、派生與量譜消耗；不計算傷害、屬性或減傷。其他職業尚未加入。");
         if (Plugin.GameInstance is { } game)
         {
             ImGui.TextWrapped(game.World.CombatReason);
-            if (game.World.Combat is { } combat)
-            {
-                var s = combat.Stats;
-                ImGui.TextWrapped($"同步屬性：力量 {s.Strength}／武器傷害 {s.WeaponDamage}／暴擊 {s.CriticalHit}／直擊 {s.DirectHit}／信念 {s.Determination}／堅韌 {s.Tenacity}／技速 {s.SkillSpeed}／武器間隔 {s.WeaponDelay:F2}s");
-                ImGui.TextUnformatted($"上次傷害 {combat.LastDamage:N0}　累積傷害 {combat.TotalDamage:N0}");
-            }
         }
         ImGui.Separator();
         var onInn = configuration.OpenSimMenuOnInn;

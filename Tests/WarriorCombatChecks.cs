@@ -8,9 +8,9 @@ internal static class WarriorCombatChecks
             throw new Exception("Warrior offensive state is missing.");
         PublicCooldownContractsAreAdjustedAndReadOnly();
         ManualPreflightSkipsOnlyTiming();
-        SingleTargetComboUsesLiteralPotenciesAndBeast();
+        SingleTargetComboAdvancesAndGrantsBeast();
         ComboOnlyChangesOnSuccessfulRelevantHits();
-        TempestCombosUsePreActivationMultiplier();
+        TempestCombosRefreshBuffDuration();
         AoeCombosRequireAnEnemyHitForGains();
         InfuriateUsesSerialChargesAndChaosUpgrade();
         BeastGainsNeverExceedTheGaugeCap();
@@ -35,7 +35,7 @@ internal static class WarriorCombatChecks
             => (bool)canUse.Invoke(warrior, [actionId, hasTarget, inRange, inCombat, alive, bound, checkTiming])!;
 
         var warrior = new WarriorCombat();
-        AssertHit(warrior.TryUse(31, true, true, false), 31, 200);
+        AssertHit(warrior.TryUse(31, true, true, false), 31);
         if (Check(warrior, 37, true, true, false) || !Check(warrior, 37, true, true, false, checkTiming: false))
             throw new Exception("Manual preflight must skip the active GCD while normal readiness still enforces it.");
         if (Check(warrior, 37, false, true, false, checkTiming: false) ||
@@ -81,12 +81,12 @@ internal static class WarriorCombatChecks
         warrior = new WarriorCombat();
         if (Cooldown(warrior, 7387) != (9, 30, 1) || Cooldown(warrior, 25752) != Cooldown(warrior, 7387))
             throw new Exception("Upheaval and Orogeny must expose the same cooldown contract.");
-        AssertHit(warrior.TryUse(7387, true, true, false), 7387, 400);
+        AssertHit(warrior.TryUse(7387, true, true, false), 7387);
         warrior.Advance(0.6);
         if (warrior.CanUse(25752, false, false, false))
             throw new Exception("Consuming Upheaval must make Orogeny unavailable through their exposed shared group.");
         warrior.Reset();
-        AssertHit(warrior.TryUse(25752, true, false, false), 25752, 150, aoe: true);
+        AssertHit(warrior.TryUse(25752, true, false, false), 25752, aoe: true);
         warrior.Advance(0.6);
         if (warrior.CanUse(7387, true, true, false))
             throw new Exception("Consuming Orogeny must make Upheaval unavailable through their exposed shared group.");
@@ -154,13 +154,13 @@ internal static class WarriorCombatChecks
         if (warrior.CanUse(7386, false, true, false) || warrior.CanUse(7386, true, false, false) ||
             warrior.CanUse(7386, true, true, false, bound: true))
             throw new Exception("Onslaught must require a target in range and reject use while bound.");
-        AssertHit(warrior.TryUse(7386, true, true, false), 7386, 150, gapCloser: true);
+        AssertHit(warrior.TryUse(7386, true, true, false), 7386, gapCloser: true);
         if (warrior.TryUse(7386, true, true, false) != null)
             throw new Exception("The shared animation lock must prevent a second activation from consuming another Onslaught charge.");
         warrior.Advance(0.6);
-        AssertHit(warrior.TryUse(7386, true, true, false), 7386, 150, gapCloser: true);
+        AssertHit(warrior.TryUse(7386, true, true, false), 7386, gapCloser: true);
         warrior.Advance(0.6);
-        AssertHit(warrior.TryUse(7386, true, true, false), 7386, 150, gapCloser: true);
+        AssertHit(warrior.TryUse(7386, true, true, false), 7386, gapCloser: true);
         warrior.Advance(0.6);
         if (warrior.CanUse(7386, true, true, false))
             throw new Exception("Onslaught must be unavailable after all three serial charges are spent.");
@@ -175,7 +175,7 @@ internal static class WarriorCombatChecks
     private static void UpheavalAndOrogenyShareOneCooldownWithoutReadMutation()
     {
         var warrior = new WarriorCombat();
-        AssertHit(warrior.TryUse(7387, true, true, false), 7387, 400);
+        AssertHit(warrior.TryUse(7387, true, true, false), 7387);
         warrior.Advance(0.6);
         if (warrior.CanUse(25752, false, false, false) || warrior.CanUse(25752, false, false, false) ||
             warrior.TryUse(25752, false, false, false) != null || warrior.CanUse(25752, false, false, false))
@@ -186,7 +186,7 @@ internal static class WarriorCombatChecks
         warrior.Advance(0.001);
         if (!warrior.CanUse(25752, false, false, false))
             throw new Exception("Self-AoE Orogeny readiness must not require a selected target at the exact cooldown boundary.");
-        AssertHit(warrior.TryUse(25752, true, false, false), 25752, 150, aoe: true);
+        AssertHit(warrior.TryUse(25752, true, false, false), 25752, aoe: true);
     }
 
     private static void RejectedUsesDoNotMutateStateOrStartLock()
@@ -197,7 +197,7 @@ internal static class WarriorCombatChecks
             throw new Exception("Dead, targetless or out-of-range targeted attacks must be rejected.");
         if (warrior.Beast != 0 || warrior.ComboAction != 0 || warrior.Timing.LockRemaining != 0)
             throw new Exception("Rejected attacks must not mutate resources, combo or animation lock.");
-        AssertHit(warrior.TryUse(31, true, true, false), 31, 200);
+        AssertHit(warrior.TryUse(31, true, true, false), 31);
         if (warrior.Timing.LockRemaining != 0.6)
             throw new Exception("Every successful instant activation must apply the common 0.6-second animation lock once.");
     }
@@ -210,11 +210,11 @@ internal static class WarriorCombatChecks
         if (warrior.InnerReleaseStacks != 3 || warrior.InnerReleaseRemaining != 15 || warrior.RendRemaining != 30 || warrior.TempestRemaining != 0)
             throw new Exception("Inner Release must grant three 15-second stacks and 30 seconds of Rend Ready without creating Tempest.");
         warrior.Advance(0.6);
-        AssertHit(warrior.TryUse(3549, true, true, false), 3549, 520, guaranteed: true);
+        AssertHit(warrior.TryUse(3549, true, true, false), 3549);
         if (warrior.Beast != 0 || warrior.InnerReleaseStacks != 2)
             throw new Exception("Inner Release Fell Cleave must consume a stack instead of Beast and guarantee crit/direct hit.");
         warrior.Advance(2.5);
-        AssertHit(warrior.TryUse(3550, true, false, false), 3550, 180, guaranteed: true, aoe: true);
+        AssertHit(warrior.TryUse(3550, true, false, false), 3550, aoe: true);
         if (warrior.Beast != 0 || warrior.InnerReleaseStacks != 1)
             throw new Exception("Inner Release Decimate must consume a stack instead of Beast and guarantee crit/direct hit.");
 
@@ -223,7 +223,7 @@ internal static class WarriorCombatChecks
         warrior.Advance(0.6);
         warrior.TryUse(52, false, false, true);
         warrior.Advance(0.6);
-        AssertHit(warrior.TryUse(3549, true, true, true), 16465, 660, guaranteed: true);
+        AssertHit(warrior.TryUse(3549, true, true, true), 16465);
         if (warrior.InnerReleaseStacks != 3 || warrior.Beast != 0 || warrior.ChaosRemaining != 0)
             throw new Exception("A Chaos spender must retain its 50-Beast cost and must not consume an Inner Release stack.");
 
@@ -249,7 +249,7 @@ internal static class WarriorCombatChecks
             throw new Exception("Primal Rend must require a target in range and reject use while bound.");
         if (warrior.RendRemaining != 29.4)
             throw new Exception("Rejected Primal Rend readiness checks must not consume or refresh Rend Ready.");
-        AssertHit(warrior.TryUse(25753, true, true, false), 25753, 700, guaranteed: true, aoe: true, gapCloser: true);
+        AssertHit(warrior.TryUse(25753, true, true, false), 25753, aoe: true, gapCloser: true);
         if (warrior.RendRemaining != 0)
             throw new Exception("A successful Primal Rend must consume Rend Ready.");
 
@@ -288,14 +288,14 @@ internal static class WarriorCombatChecks
         warrior.Advance(9.4);
         if (warrior.Adjust(49) != 16465 || warrior.Adjust(3549) != 16465)
             throw new Exception("Active Chaos with 50 Beast must upgrade legacy and current Fell Cleave IDs to Inner Chaos.");
-        AssertHit(warrior.TryUse(3549, true, true, true), 16465, 660, guaranteed: true);
+        AssertHit(warrior.TryUse(3549, true, true, true), 16465);
         if (warrior.Beast != 50 || warrior.ChaosRemaining != 0 || warrior.Timing.Remaining(20) != 45)
             throw new Exception("Inner Chaos must cost 50 Beast, consume Chaos and reduce Infuriate recharge by five seconds.");
 
         warrior.Reset();
         warrior.TryUse(52, false, false, true);
         warrior.Advance(0.6);
-        AssertHit(warrior.TryUse(16463, true, false, true), 16463, 200, guaranteed: true, aoe: true);
+        AssertHit(warrior.TryUse(16463, true, false, true), 16463, aoe: true);
         if (warrior.Beast != 0 || warrior.ChaosRemaining != 0 || warrior.Timing.Remaining(20) != 54.4)
             throw new Exception("Chaotic Cyclone must use the same Chaos cost, consumption and Infuriate reduction rules.");
     }
@@ -312,34 +312,34 @@ internal static class WarriorCombatChecks
         warrior.Reset();
         warrior.TryUse(52, false, false, true);
         warrior.Advance(30);
-        AssertHit(warrior.TryUse(3549, true, true, true), 3549, 520);
+        AssertHit(warrior.TryUse(3549, true, true, true), 3549);
         if (warrior.Beast != 0 || warrior.Timing.Remaining(20) != 25)
             throw new Exception("Fell Cleave must cost 50 Beast and reduce Infuriate recharge by five seconds on hit.");
 
         warrior.Reset();
         warrior.TryUse(52, false, false, true);
         warrior.Advance(30);
-        AssertHit(warrior.TryUse(3550, true, false, true), 3550, 180, aoe: true);
+        AssertHit(warrior.TryUse(3550, true, false, true), 3550, aoe: true);
         if (warrior.Beast != 0 || warrior.Timing.Remaining(20) != 25)
             throw new Exception("Decimate must cost 50 Beast and reduce Infuriate recharge by five seconds on hit.");
     }
 
-    private static void TempestCombosUsePreActivationMultiplier()
+    private static void TempestCombosRefreshBuffDuration()
     {
         var warrior = new WarriorCombat();
         warrior.TryUse(31, true, true, false);
         warrior.Advance(2.5);
         warrior.TryUse(37, true, true, false);
         warrior.Advance(2.5);
-        AssertHit(warrior.TryUse(45, true, true, false), 45, 440);
+        AssertHit(warrior.TryUse(45, true, true, false), 45);
         if (warrior.Beast != 20 || warrior.TempestRemaining != 30)
             throw new Exception("Combo Storm's Eye must grant 10 Beast and activate 30 seconds of Tempest after its own hit.");
         warrior.Advance(2.5);
-        AssertHit(warrior.TryUse(31, true, true, false), 31, 200, multiplier: 1.1);
+        AssertHit(warrior.TryUse(31, true, true, false), 31);
         warrior.Advance(2.5);
         warrior.TryUse(37, true, true, false);
         warrior.Advance(2.5);
-        AssertHit(warrior.TryUse(45, true, true, false), 45, 440, multiplier: 1.1);
+        AssertHit(warrior.TryUse(45, true, true, false), 45);
         if (warrior.TempestRemaining != 52.5)
             throw new Exception("Repeated Storm's Eye must extend the existing Tempest by 30 seconds up to 60.");
     }
@@ -347,10 +347,10 @@ internal static class WarriorCombatChecks
     private static void AoeCombosRequireAnEnemyHitForGains()
     {
         var warrior = new WarriorCombat();
-        AssertHit(warrior.TryUse(41, true, false, false), 41, 110, aoe: true);
+        AssertHit(warrior.TryUse(41, true, false, false), 41, aoe: true);
         if (warrior.ComboAction != 41) throw new Exception("An Overpower hit must start the AoE combo.");
         warrior.Advance(2.5);
-        AssertHit(warrior.TryUse(16462, true, false, false), 16462, 140, aoe: true);
+        AssertHit(warrior.TryUse(16462, true, false, false), 16462, aoe: true);
         if (warrior.Beast != 20 || warrior.TempestRemaining != 30 || warrior.ComboAction != 0)
             throw new Exception("Combo Mythril Tempest must grant 20 Beast, activate Tempest and finish the combo.");
 
@@ -376,39 +376,39 @@ internal static class WarriorCombatChecks
             throw new Exception("An empty Mythril Tempest must clear a nonmatching combo without advancing or granting hit state.");
     }
 
-    private static void SingleTargetComboUsesLiteralPotenciesAndBeast()
+    private static void SingleTargetComboAdvancesAndGrantsBeast()
     {
         var warrior = new WarriorCombat();
-        AssertHit(warrior.TryUse(31, true, true, false), 31, 200);
+        AssertHit(warrior.TryUse(31, true, true, false), 31);
         if (warrior.ComboAction != 31 || warrior.ComboRemaining != 30 || warrior.Beast != 0)
             throw new Exception("Heavy Swing must start a 30-second combo without Beast.");
         warrior.Advance(2.5);
-        AssertHit(warrior.TryUse(37, true, true, false), 37, 300);
+        AssertHit(warrior.TryUse(37, true, true, false), 37);
         if (warrior.ComboAction != 37 || warrior.ComboRemaining != 30 || warrior.Beast != 10)
             throw new Exception("Combo Maim must advance the combo, refresh it to 30 seconds and grant 10 Beast.");
         warrior.Advance(2.5);
-        AssertHit(warrior.TryUse(42, true, true, false), 42, 440);
+        AssertHit(warrior.TryUse(42, true, true, false), 42);
         if (warrior.ComboAction != 0 || warrior.ComboRemaining != 0 || warrior.Beast != 30)
             throw new Exception("Combo Storm's Path must finish the combo and grant 20 Beast.");
 
         warrior.Reset();
-        AssertHit(warrior.TryUse(37, true, true, false), 37, 150);
+        AssertHit(warrior.TryUse(37, true, true, false), 37);
         if (warrior.Beast != 0 || warrior.ComboAction != 0)
-            throw new Exception("Maim without Heavy Swing must use base potency and grant no Beast.");
+            throw new Exception("Maim without Heavy Swing must not advance the combo or grant Beast.");
     }
 
     private static void ComboOnlyChangesOnSuccessfulRelevantHits()
     {
         var warrior = new WarriorCombat();
-        AssertHit(warrior.TryUse(31, true, true, false), 31, 200);
+        AssertHit(warrior.TryUse(31, true, true, false), 31);
         warrior.Advance(2.5);
         if (warrior.TryUse(37, false, true, false) != null || warrior.ComboAction != 31 || warrior.ComboRemaining != 27.5)
             throw new Exception("A rejected combo step must not clear or refresh the existing combo.");
-        AssertHit(warrior.TryUse(46, true, true, false), 46, 150);
+        AssertHit(warrior.TryUse(46, true, true, false), 46);
         if (warrior.ComboAction != 31 || warrior.ComboRemaining != 27.5)
             throw new Exception("Tomahawk must preserve the combo without refreshing it.");
         warrior.Advance(2.5);
-        AssertHit(warrior.TryUse(42, true, true, false), 42, 160);
+        AssertHit(warrior.TryUse(42, true, true, false), 42);
         if (warrior.ComboAction != 0)
             throw new Exception("A successful wrong combo weaponskill must clear the prior combo.");
 
@@ -444,12 +444,11 @@ internal static class WarriorCombatChecks
             throw new Exception("Unsupported actions must return no hit without changing state.");
     }
 
-    private static void AssertHit(WarriorHit? actual, uint actionId, int potency, bool guaranteed = false, double multiplier = 1, bool aoe = false, bool gapCloser = false)
+    private static void AssertHit(WarriorHit? actual, uint actionId, bool aoe = false, bool gapCloser = false)
     {
-        if (actual is not { } hit || hit.ActionId != actionId || hit.Potency != potency ||
-            hit.GuaranteedCritDirectHit != guaranteed || Math.Abs(hit.DamageMultiplier - multiplier) > 1e-9 ||
+        if (actual is not { } hit || hit.ActionId != actionId ||
             hit.IsAoe != aoe || hit.GapCloser != gapCloser)
-            throw new Exception($"Expected Warrior hit {actionId} potency {potency}, guaranteed={guaranteed}, multiplier={multiplier}, aoe={aoe}, gapCloser={gapCloser}; got {actual}.");
+            throw new Exception($"Expected Warrior hit {actionId}  aoe={aoe}, gapCloser={gapCloser}; got {actual}.");
     }
 
     private static void ExpectRejected(Action action, string description)

@@ -20,10 +20,10 @@ public sealed class SimWorld : ISimObject, IDisposable
     public AnoMech.Core.Combat.LocalCombatSession? Combat { get; private set; }
     private string combatReason = "本機戰鬥未啟用";
     public string CombatReason => Combat?.Reason ?? combatReason;
-    public void StartCombat(byte level, ushort itemLevel)
+    public void StartCombat(byte level)
     {
         Combat?.Dispose();
-        Combat = AnoMech.Core.Combat.LocalCombatSession.Start(this, level, itemLevel, out combatReason);
+        Combat = AnoMech.Core.Combat.LocalCombatSession.Start(this, level, out combatReason);
     }
     // Ownership
     private readonly List<ISimObject> children = new();

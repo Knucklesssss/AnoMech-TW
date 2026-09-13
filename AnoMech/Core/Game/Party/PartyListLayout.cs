@@ -23,8 +23,9 @@ internal sealed unsafe class PartyListLayout : IDisposable
 
     public PartyListLayout()
     {
-        Plugin.AddonLifecycle.RegisterListener(AddonEvent.PreRequestedUpdate, AddonName, RestoreBeforeUpdate);
-        Plugin.AddonLifecycle.RegisterListener(AddonEvent.PreDraw, AddonName, ApplyBeforeDraw);
+        Plugin.AddonLifecycle.RegisterListener(AddonEvent.PostRequestedUpdate, AddonName, ApplyLayout);
+        Plugin.AddonLifecycle.RegisterListener(AddonEvent.PostUpdate, AddonName, ApplyLayout);
+        Plugin.AddonLifecycle.RegisterListener(AddonEvent.PreDraw, AddonName, ApplyLayout);
         Plugin.AddonLifecycle.RegisterListener(AddonEvent.PreFinalize, AddonName, RestoreBeforeUpdate);
     }
 
@@ -39,18 +40,23 @@ internal sealed unsafe class PartyListLayout : IDisposable
     public void Dispose()
     {
         Clear();
-        Plugin.AddonLifecycle.UnregisterListener(AddonEvent.PreRequestedUpdate, AddonName, RestoreBeforeUpdate);
-        Plugin.AddonLifecycle.UnregisterListener(AddonEvent.PreDraw, AddonName, ApplyBeforeDraw);
+        Plugin.AddonLifecycle.UnregisterListener(AddonEvent.PostRequestedUpdate, AddonName, ApplyLayout);
+        Plugin.AddonLifecycle.UnregisterListener(AddonEvent.PostUpdate, AddonName, ApplyLayout);
+        Plugin.AddonLifecycle.UnregisterListener(AddonEvent.PreDraw, AddonName, ApplyLayout);
         Plugin.AddonLifecycle.UnregisterListener(AddonEvent.PreFinalize, AddonName, RestoreBeforeUpdate);
     }
 
     private void RestoreBeforeUpdate(AddonEvent type, AddonArgs args) => Restore((AddonPartyList*)args.Addon.Address);
 
-    private void ApplyBeforeDraw(AddonEvent type, AddonArgs args)
+    private void ApplyLayout(AddonEvent type, AddonArgs args)
     {
         var addon = (AddonPartyList*)args.Addon.Address;
-        Restore(addon);
-        if (!Plugin.Config.CustomPartyListOrder || party == null || addon == null || addon->MemberCount != 8) return;
+        if (!Plugin.Config.CustomPartyListOrder || party == null)
+        {
+            Restore(addon);
+            return;
+        }
+        if (addon == null || addon->MemberCount != 8) return;
         var hud = AgentHUD.Instance();
         if (hud == null || hud->PartyMemberCount != 8) return;
         var rowIds = new uint[8];
@@ -69,10 +75,15 @@ internal sealed unsafe class PartyListLayout : IDisposable
         }
         var mapping = PartyListOrderRules.MapRows(Plugin.Config.PartyListOrder, roleIds, rowIds);
         if (mapping == null) return;
+        for (var i = 0; i < 8; i++)
+            if (NodeAt(addon, i) == null) return;
+        // Restore only when a replacement is ready, within the same callback.
+        // Native status/cast updates must never leave our rows at default positions
+        // until a later draw, nor may an incomplete identity snapshot undo them.
+        Restore(addon);
         for (var i = 0; i < 11; i++)
         {
             var node = NodeAt(addon, i);
-            if (i < 8 && node == null) return;
             nodes[i] = (nint)node;
             positions[i] = node == null ? default : new(node->X, node->Y);
         }

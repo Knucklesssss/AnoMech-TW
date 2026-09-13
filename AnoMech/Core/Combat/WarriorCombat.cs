@@ -97,20 +97,17 @@ public sealed class WarriorCombat
         }
 
         var isAoe = actionId is 41 or 16462 or 3550 or 16463 or 25753 or 25752;
-        var guaranteed = actionId == 25753;
         var gapCloser = actionId is 25753 or 7386;
         if (actionId is 16465 or 16463)
         {
             beast -= 50;
             chaosRemaining = 0;
-            guaranteed = true;
         }
         else if (actionId is 3549 or 3550)
         {
             if (innerReleaseStacks > 0)
             {
                 innerReleaseStacks--;
-                guaranteed = true;
             }
             else
             {
@@ -123,30 +120,6 @@ public sealed class WarriorCombat
             if (actionId is 41 or 16462) ClearCombo();
             return null;
         }
-
-        var multiplier = tempestRemaining > 0 ? 1.1 : 1;
-        var potency = actionId switch
-        {
-            31 => 200,
-            37 when comboAction == 31 => 300,
-            37 => 150,
-            42 when comboAction == 37 => 440,
-            42 => 160,
-            45 when comboAction == 37 => 440,
-            45 => 160,
-            41 => 110,
-            16462 when comboAction == 41 => 140,
-            16462 => 100,
-            3549 => 520,
-            3550 => 180,
-            16465 => 660,
-            16463 => 200,
-            25753 => 700,
-            7386 => 150,
-            7387 => 400,
-            25752 => 150,
-            _ => 150,
-        };
 
         switch (actionId)
         {
@@ -188,7 +161,7 @@ public sealed class WarriorCombat
                 break;
         }
         if (actionId is 3549 or 3550 or 16465 or 16463) Timing.Reduce(20, 5);
-        return new WarriorHit(actionId, potency, guaranteed, multiplier, isAoe, gapCloser);
+        return new WarriorHit(actionId, isAoe, gapCloser);
     }
 
     public void Advance(double seconds)
@@ -251,8 +224,5 @@ public sealed class WarriorCombat
 
 public readonly record struct WarriorHit(
     uint ActionId,
-    int Potency,
-    bool GuaranteedCritDirectHit,
-    double DamageMultiplier,
     bool IsAoe,
     bool GapCloser);

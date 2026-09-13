@@ -9,8 +9,6 @@
     <Compile Include="../AnoMech/Core/Combat/CombatTiming.cs" />
     <Compile Include="../AnoMech/Core/Combat/CombatRecastView.cs" />
     <Compile Include="../AnoMech/Core/Combat/WarriorCombat.cs" />
-    <Compile Include="../AnoMech/Core/Combat/WarriorDamageMath.cs" />
-    <Compile Include="../AnoMech/Core/Combat/CombatStatMath.cs" />
     <Compile Include="../AnoMech/Core/Combat/CombatInputBuffer.cs" />
     <Compile Include="../AnoMech/Core/Game/Party/PartyListOrderRules.cs" />
     <Compile Include="../AnoMech/Core/Map/StartLocationRules.cs" />
