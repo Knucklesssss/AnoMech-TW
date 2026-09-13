@@ -63,7 +63,7 @@ public static class XivapiClient
             var best = XivapiCompare.PickVersion(versions, counts);
             return new XivapiCheck(true, best, counts, diffs[best], null);
         }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException or KeyNotFoundException or InvalidOperationException)
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException or KeyNotFoundException or InvalidOperationException or FormatException or OverflowException or ArgumentException)
         {
             return XivapiCheck.Skipped($"xivapi 連線或查詢失敗：{ex.Message}");
         }
