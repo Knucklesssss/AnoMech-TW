@@ -97,10 +97,12 @@ public static class ClientReader
             var name = s.Name.ExtractText();
             var duplicate = statusIdsByName.TryGetValue(name, out var same) && same.Count > 1;
             var (text, unresolved) = MacroText.Evaluate(s.Description.ToMacroString(), job.RowId, level);
-            if (duplicate) manual.Add($"狀態 {id}「{name}」與其他狀態同名：{string.Join("、", same!)}");
             if (unresolved) manual.Add($"狀態 {id}「{name}」的說明含無法求值的巨集");
             return new StatusRow(id, name, s.MaxStacks, s.StatusCategory, s.IsPermanent, s.CanDispel, text, duplicate);
         }).ToList();
+
+        foreach (var name in statusRows.Where(s => s.DuplicateName).Select(s => s.Name).Distinct())
+            manual.Add($"狀態「{name}」有多列同名：{string.Join("、", statusIdsByName[name])}");
 
         return new JobData(job.RowId, abbreviation, job.Name.ExtractText(), level, gameVersion, actionRows, traitRows, statusRows,
             replacements.Distinct().ToList(), manual.Distinct().ToList());
