@@ -10,9 +10,19 @@ public static class Markdown
         sb.AppendLine($"# {job.Name}（{job.Abbreviation}）{job.Level} 級客戶端資料").AppendLine();
         sb.AppendLine($"- 客戶端版本：`{job.GameVersion}`");
         sb.AppendLine($"- 讀取時間：{readAt:yyyy-MM-dd HH:mm:ss zzz}");
-        sb.AppendLine(check.Completed
-            ? $"- 對應 xivapi 國際服版本：`{check.Version}`"
-            : $"- **未完成 xivapi 核對**：{check.FailureReason}。此清單不得直接用於撰寫規則。");
+        if (check.Completed)
+        {
+            var minCount = check.DiffCounts.Values.Min();
+            var tied = check.DiffCounts.Count(kv => kv.Value == minCount) > 1;
+            sb.AppendLine(tied
+                ? $"- xivapi 核對：各版本差異數相同（最低 {minCount}），無法判定對應國際服版本"
+                : $"- 對應 xivapi 國際服版本：`{check.Version}`");
+            sb.AppendLine("- xivapi 只比對數值與 ID 欄位，未比對威力與說明文字。");
+        }
+        else
+        {
+            sb.AppendLine($"- **未完成 xivapi 核對**：{check.FailureReason}。此清單不得直接用於撰寫規則。");
+        }
         sb.AppendLine("- 冷卻組、額外冷卻組為 Action 資料表欄位值，不等於遊戲原生冷卻陣列索引。").AppendLine();
 
         sb.AppendLine("## 技能").AppendLine();
@@ -21,7 +31,8 @@ public static class Markdown
         foreach (var a in job.Actions)
         {
             var targets = string.Join("／", new[] { a.CanTargetSelf ? "自身" : null, a.CanTargetParty ? "隊友" : null, a.CanTargetHostile ? "敵人" : null }.OfType<string>());
-            var replacedBy = string.Join("、", job.Replacements.Where(r => r.From == a.Id).Select(r => $"{r.To}（{r.Source}）"));
+            var replacedBy = string.Join("、", job.Replacements.Where(r => r.From == a.Id)
+                .Select(r => r.Source.StartsWith("特性", StringComparison.Ordinal) ? $"{r.To}（{r.Source}，待確認）" : $"{r.To}（{r.Source}）"));
             sb.AppendLine($"| {a.Id} | {Cell(a.Name)}{(a.IsRoleAction ? "（職能）" : "")} | {Cell(a.Category)} | {a.Level} | {a.Cast100ms / 10.0:0.#} | {a.Recast100ms / 10.0:0.#} | {a.CooldownGroup} | {a.AdditionalCooldownGroup} | {a.MaxCharges} | {a.CostType} | {a.CostValue} | {a.Range} | {a.EffectRange} | {targets} | {(a.ComboFrom == 0 ? "" : a.ComboFrom.ToString())} | {replacedBy} | {(a.StatusGainSelf == 0 ? "" : a.StatusGainSelf.ToString())} |");
         }
 

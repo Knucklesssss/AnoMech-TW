@@ -16,6 +16,8 @@ var unknownTag = MacroText.Evaluate("X<sheet(Action,1,0)>Y", 21, 90);
 Require(unknownTag.Unresolved && unknownTag.Text == "X<sheet(Action,1,0)>Y", "Unknown tags must stay raw and be flagged.");
 var plain = MacroText.Evaluate("猛攻的累積次數增加到3次", 21, 90);
 Require(!plain.Unresolved && plain.Text == "猛攻的累積次數增加到3次", "Plain text must pass through.");
+var unterminated = MacroText.Evaluate("A<if([gnum68==21],B", 21, 90);
+Require(unterminated.Unresolved && unterminated.Text == "A<if([gnum68==21],B", "Unterminated tag must stay raw and be flagged.");
 Console.WriteLine("PASS: macro evaluation for job/level conditions and fail-closed unknowns.");
 
 var names = new Dictionary<string, uint> { ["狂暴"] = 38, ["原初的解放"] = 7389, ["原初"] = 1, ["地毀人亡"] = 3550, ["混沌旋風"] = 16463, ["旋風"] = 2, ["鋼鐵旋風"] = 51 };
@@ -24,6 +26,10 @@ Require(TraitUpgrades.Find("鋼鐵旋風變為地毀人亡", names).SequenceEqua
 Require(TraitUpgrades.Find("原初的混沌效果：獲得50點獸魂，地毀人亡變為混沌旋風", names).SequenceEqual(new[] { (3550u, 16463u) }), "Mid-sentence replacement must be found.");
 Require(TraitUpgrades.Find("猛攻的累積次數增加到3次", names).Count == 0, "No 變為 means no replacement.");
 Require(TraitUpgrades.Find("未知技能變為原初的解放", names).Count == 0, "Unknown source name must not produce a replacement.");
+
+var mchNames = new Dictionary<string, uint> { ["暴雪"] = 142, ["火焰"] = 141, ["悖論"] = 25797 };
+Require(TraitUpgrades.Find("暴雪與火焰變為悖論", mchNames).SequenceEqual(new[] { (142u, 25797u), (141u, 25797u) }), "「A與B變為C」must produce a pair for each listed source name, in text order.");
+Require(TraitUpgrades.Find("暴雪、火焰變為悖論", mchNames).SequenceEqual(new[] { (142u, 25797u), (141u, 25797u) }), "「A、B變為C」must produce a pair for each listed source name, in text order.");
 Console.WriteLine("PASS: trait text replacement detection.");
 
 FieldValue[] local = [new("Action", 31, "CooldownGroup", "58"), new("Action", 31, "Recast100ms", "25"), new("Action", 52, "MaxCharges", "2")];

@@ -33,7 +33,7 @@ public static class WarriorGolden
         var statuses = job.Statuses.ToDictionary(s => s.Id);
         foreach (var id in new uint[] { 1177, 1303 })
             Expect(statuses.TryGetValue(id, out var s) && s.DuplicateName, $"狀態 {id} 應列出並標為同名");
-        foreach (var id in new uint[] { 1897, 2677, 2624 })
+        foreach (var id in new uint[] { 1897, 2677, 2624, 1191 })
             Expect(statuses.ContainsKey(id), $"缺少狀態 {id}");
         foreach (var (from, to) in new (uint, uint)[] { (38, 7389), (49, 3549), (51, 3550), (3551, 25751) })
             Expect(job.Replacements.Any(r => r.From == from && r.To == to) || job.ManualChecks.Any(m => m.Contains($"{from} → {to}")),

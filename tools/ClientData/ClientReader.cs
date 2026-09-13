@@ -36,6 +36,7 @@ public static class ClientReader
         var replacements = new List<Replacement>();
         foreach (var r in data.GetExcelSheet<ActionIndirection>()!.Where(r => r.ClassJob.RowId == job.RowId))
         {
+            if (r.PreviousComboAction.RowId == 0) continue;
             if (actions.GetRowOrDefault(r.Name.RowId) is not { } to || actions.GetRowOrDefault(r.PreviousComboAction.RowId) is not { } from) continue;
             if (to.ClassJobLevel > level || from.ClassJobLevel > level) continue;
             selected.Add(to.RowId);
@@ -51,6 +52,7 @@ public static class ClientReader
             var a = actions.GetRow(id);
             var (text, unresolved) = MacroText.Evaluate(actionText.GetRowOrDefault(id)?.Description.ToMacroString() ?? "", job.RowId, level);
             if (unresolved) manual.Add($"技能 {id} {a.Name.ExtractText()} 的說明含無法求值的巨集");
+            if (!a.IsPlayerAction) manual.Add($"技能 {id} {a.Name.ExtractText()} 未標為玩家技能，請確認是否為玩家可施放的技能");
             return new ActionRow(id, a.Name.ExtractText(), actionCategories.GetRowOrDefault(a.ActionCategory.RowId)?.Name.ExtractText() ?? "",
                 a.ClassJobLevel, a.Cast100ms, a.Recast100ms, a.CooldownGroup, a.AdditionalCooldownGroup, a.MaxCharges,
                 a.PrimaryCostType, a.PrimaryCostValue, a.Range, a.EffectRange, a.CastType, a.CanTargetSelf, a.CanTargetParty,
@@ -91,6 +93,10 @@ public static class ClientReader
             if (allText.Contains(name, StringComparison.Ordinal)) statusIds.UnionWith(ids);
         foreach (var a in actionRows.Where(a => a.StatusGainSelf != 0))
             statusIds.UnionWith(statusIdsByName.GetValueOrDefault(statuses.GetRow(a.StatusGainSelf).Name.ExtractText()) ?? [a.StatusGainSelf]);
+        // Action.StatusGainSelf is 0 throughout this data, so the fallback above adds nothing;
+        // pick up the job's own buff/mitigation statuses by exact name match against selected actions instead.
+        foreach (var a in actionRows.Where(a => a.Name.Length > 0))
+            if (statusIdsByName.TryGetValue(a.Name, out var sameNameIds)) statusIds.UnionWith(sameNameIds);
         var statusRows = statusIds.Select(id =>
         {
             var s = statuses.GetRow(id);
