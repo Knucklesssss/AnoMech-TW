@@ -24,13 +24,7 @@ public class ConfigWindow : Window, IDisposable
 
     public override void Draw()
     {
-        var localCombat = configuration.EnableLocalCombat;
-        if (ImGui.Checkbox("90 級戰士技能循環預覽（下次開始場景生效）", ref localCombat))
-        {
-            configuration.EnableLocalCombat = localCombat;
-            configuration.Save();
-        }
-        ImGui.TextWrapped("使用原本熱鍵練習連段、派生與量譜消耗；不計算傷害、屬性或減傷。其他職業尚未加入。");
+        ImGui.TextWrapped("開始模擬時自動偵測職業；已支援的職業可用原本熱鍵練習連段、派生與量譜消耗，不計算傷害、屬性或減傷。");
         if (Plugin.GameInstance is { } game)
         {
             ImGui.TextWrapped(game.World.CombatReason);

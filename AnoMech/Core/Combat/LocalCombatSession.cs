@@ -12,10 +12,9 @@ namespace AnoMech.Core.Combat;
 
 public sealed unsafe class LocalCombatSession : IDisposable
 {
-    internal static readonly uint[] OffensiveActions = [31, 37, 42, 45, 41, 16462, 46, 3549, 3550, 16465, 16463, 25753, 7386, 7387, 25752, 52, 7389];
     private readonly SimWorld world;
     private readonly SimPlayer player;
-    private readonly WarriorCombat model;
+    private readonly IJobCombat model;
     private readonly CombatInputBuffer buffer = new();
     private readonly CombatNativeState native;
     private readonly SimCast cast;
@@ -24,40 +23,44 @@ public sealed unsafe class LocalCombatSession : IDisposable
     private bool inCombat;
     public bool Active { get; private set; }
     public bool AutoAttacking { get; private set; }
-    public string Reason { get; private set; } = "戰士技能循環預覽進行中";
+    public string Reason { get; private set; } = "本機技能循環進行中";
 
-    private LocalCombatSession(SimWorld world, SimPlayer player)
+    private LocalCombatSession(SimWorld world, SimPlayer player, JobCombatEntry job)
     {
         this.world = world;
         this.player = player;
         if (SignatureReport.TrackAddress("ActionManager.GetAdjustedRecastTime", ActionManager.Addresses.GetAdjustedRecastTime.Value) == 0)
             throw new InvalidOperationException("技能冷卻讀取介面未就緒。");
-        var gcd = ActionManager.GetAdjustedRecastTime(ActionType.Action, 31, true) / 1000d;
+        var gcd = ActionManager.GetAdjustedRecastTime(ActionType.Action, job.GcdProbeAction, true) / 1000d;
         if (gcd <= 0) throw new InvalidOperationException("無法讀取技能冷卻。");
-        model = new WarriorCombat(gcd);
+        model = job.CreateRules(gcd);
+        var sheet = Plugin.DataManager.GetExcelSheet<SheetAction>();
+        foreach (var id in model.Actions.Append(7u))
+            if (!sheet.TryGetRow(id, out _)) throw new InvalidOperationException($"Missing installed Action {id}.");
         cast = new SimCast(player, world.Coordinates);
-        native = new CombatNativeState(player);
+        native = new CombatNativeState(player, job, model);
         Active = true;
-        try { native.Mirror(model, false, resetAdditional: true); }
+        try { native.Mirror(false, resetAdditional: true); }
         catch { Stop("本機戰鬥初始化失敗"); throw; }
     }
 
     public static LocalCombatSession? Start(SimWorld world, byte level, out string reason)
     {
-        reason = "本機戰鬥未啟用";
-        if (!Plugin.Config.EnableLocalCombat) return null;
-        if (!world.Map.IsZoneLoaded || level != 90 || world.Party.Player is not { } player)
-        { reason = "需要已載入的 90 級模擬場景"; return null; }
-        if (player.BattleCharaPtr == null || player.BattleCharaPtr->ClassJob != 21 || player.BattleCharaPtr->Level != 90)
-        { reason = "目前僅支援同步至 90 級的戰士"; return null; }
+        reason = "本機技能循環未啟動";
+        if (!world.Map.IsZoneLoaded || world.Party.Player is not { } player || player.BattleCharaPtr == null)
+        { reason = "需要已載入的模擬場景"; return null; }
+        var job = JobCombatRegistry.Find(player.BattleCharaPtr->ClassJob, player.BattleCharaPtr->Level);
+        if (job == null || job.Level != level)
+        {
+            reason = "目前職業或同步等級尚未支援本機技能循環";
+            Plugin.ChatGui.PrintError($"[AnoMech] {reason}，技能維持原本行為。");
+            return null;
+        }
         if (!Plugin.PlayerInputHooks.CombatHooksReady)
         { reason = "本機戰鬥必要 hook 未全部就緒"; return null; }
         try
         {
-            var sheet = Plugin.DataManager.GetExcelSheet<SheetAction>();
-            foreach (var id in OffensiveActions.Append(7u))
-                if (!sheet.TryGetRow(id, out _)) throw new InvalidOperationException($"Missing installed Action {id}.");
-            var session = new LocalCombatSession(world, player);
+            var session = new LocalCombatSession(world, player, job);
             reason = session.Reason;
             return session;
         }
@@ -140,11 +143,11 @@ public sealed unsafe class LocalCombatSession : IDisposable
         if (type != ActionType.Action && type != ActionType.Item) return false;
         if (type == ActionType.Action && id == LocalPlayerInputHooks.SprintActionId) return false;
         if (type != ActionType.Action || !Supports(id))
-        { Explain("目前僅模擬戰士技能循環與派生，不處理此技能／道具效果。"); return true; }
+        { Explain("目前僅模擬此職業已支援的技能循環與派生，不處理此技能／道具效果。"); return true; }
         // Resolve default target once at button press; queued input keeps this ID.
         targetId = targetId == 0xE0000000 || targetId == 0 ? CurrentTargetId() : targetId;
         id = Adjust(id);
-        if (!Validate(id, targetId, false)) { Explain("技能條件不符：請檢查目標、距離、存活狀態與獸魂。"); return true; }
+        if (!Validate(id, targetId, false)) { Explain("技能條件不符：請檢查目標、距離、存活狀態與資源。"); return true; }
         if (Validate(id, targetId, true)) { buffer.Reset(); Execute(id, targetId); accepted = true; }
         else
         {
@@ -162,9 +165,8 @@ public sealed unsafe class LocalCombatSession : IDisposable
         if (!Alive || Plugin.GameInstance!.Paused || RestrictedStatus(movement: false)) return false;
         id = Adjust(id);
         var target = ResolveTarget(targetId);
-        var selfAoe = id is 41 or 16462 or 3550 or 16463 or 25752;
-        var hasTarget = selfAoe ? Enemies().Any(e => InEffectRange(id, Position(player), e)) : target != null;
-        if (id is 7386 or 25753 && target != null && world.IsOutsideArena(GapEndpoint(target))) return false;
+        var hasTarget = model.IsSelfAction(id) ? Enemies().Any(e => InEffectRange(id, Position(player), e)) : target != null;
+        if (model.IsGapCloser(id) && target != null && world.IsOutsideArena(GapEndpoint(target))) return false;
         return model.CanUse(id, hasTarget, target != null && InRange(id, target), inCombat, Alive, Bound, timing)
             && (!timing || native.AdditionalRemaining(id) <= 0);
     }
@@ -173,8 +175,8 @@ public sealed unsafe class LocalCombatSession : IDisposable
     {
         id = Adjust(id);
         var target = ResolveTarget(targetId);
-        var selfAoe = id is 41 or 16462 or 3550 or 16463 or 25752;
-        var hasTarget = selfAoe ? Enemies().Any(e => InEffectRange(id, Position(player), e)) : target != null;
+        var self = model.IsSelfAction(id);
+        var hasTarget = self ? Enemies().Any(e => InEffectRange(id, Position(player), e)) : target != null;
         var hit = model.TryUse(id, hasTarget, target != null && InRange(id, target), inCombat, Alive, Bound);
         // This client-only timer initializer supplies the actual additional
         // recast duration. Main groups are replaced by the pure model below.
@@ -186,10 +188,10 @@ public sealed unsafe class LocalCombatSession : IDisposable
             if (action.GapCloser && target != null) player.SetPosition(GapEndpoint(target));
             inCombat = true;
         }
-        var presentationTarget = selfAoe || id is 52 or 7389 ? null : target;
+        var presentationTarget = self ? null : target;
         cast.Start(id, presentationTarget == null ? Position(player) : Position(presentationTarget), 0,
             presentationTarget?.GameObjectId ?? player.GameObjectId, 0, 0, 0, .6f);
-        native.Mirror(model, AutoAttacking);
+        native.Mirror(AutoAttacking);
     }
 
     private System.Collections.Generic.IEnumerable<SimEnemy> Enemies()
@@ -231,7 +233,7 @@ public sealed unsafe class LocalCombatSession : IDisposable
         Plugin.ChatGui.PrintError($"[AnoMech] {text}");
     }
     public void BeforeNativeUpdate() { if (CheckIdentity()) native.SuppressNativeAutoAttack(); }
-    public void AfterNativeUpdate() { if (CheckIdentity()) native.Mirror(model, AutoAttacking); }
+    public void AfterNativeUpdate() { if (CheckIdentity()) native.Mirror(AutoAttacking); }
     public void Stop(string reason)
     {
         if (!Active) return;

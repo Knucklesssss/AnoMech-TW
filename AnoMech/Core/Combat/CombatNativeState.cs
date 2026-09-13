@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using AnoMech.Core.Native;
 using AnoMech.Core.SimObjects;
 using AnoMech.Pointers;
@@ -14,20 +15,37 @@ namespace AnoMech.Core.Combat;
 
 // Field-level ownership only. Never owned by SimPlayer's SimStatus list: its
 // subsequent Despawn must not remove the originals restored here.
+internal interface IJobGauge
+{
+    bool Matches { get; }
+    void Mirror(IJobCombat rules);
+    void Restore();
+}
+
+// Native gauge adapters stay out of JobCombatRegistry: the registry is compiled
+// into the pure console tests, which cannot reference unsafe game types.
+internal static class JobNativeGauge
+{
+    public static IJobGauge Create(byte classJob) => classJob switch
+    {
+        21 => new WarriorNativeGauge(),
+        _ => throw new InvalidOperationException($"No native gauge adapter for job {classJob}."),
+    };
+}
+
 public sealed unsafe class CombatNativeState : IDisposable
 {
-    private static readonly ushort[] StatusIds = [1177, 1897, 2677, 2624];
-    private static readonly uint[] BindingActions = [31, 52, 7389, 7386, 7387];
+    private readonly JobCombatEntry job;
+    private readonly IJobCombat rules;
+    private readonly IJobGauge gauge;
     private readonly BattleChara* player;
     private readonly ActionManager* manager;
-    private readonly WarriorGauge* gauge;
     private readonly UIState* ui;
     private readonly ulong objectId;
     private readonly long started = Stopwatch.GetTimestamp();
     private readonly uint comboAction;
     private readonly float comboTimer;
     private readonly float animationLock;
-    private readonly byte beast;
     private readonly bool autoAttack;
     private readonly List<RecastSnapshot> recasts = [];
     private readonly List<StatusSnapshot> statuses = [];
@@ -38,8 +56,10 @@ public sealed unsafe class CombatNativeState : IDisposable
         uint ActionId, bool Active, float Elapsed, float Total);
     private sealed record StatusSnapshot(ushort Id, ushort Param, float Remaining, GameObjectId Source);
 
-    public CombatNativeState(SimPlayer simPlayer)
+    internal CombatNativeState(SimPlayer simPlayer, JobCombatEntry job, IJobCombat rules)
     {
+        this.job = job;
+        this.rules = rules;
         var signaturesReady = true;
         foreach (var (name, address) in new (string, nint)[]
         {
@@ -58,39 +78,37 @@ public sealed unsafe class CombatNativeState : IDisposable
         player = simPlayer.BattleCharaPtr;
         manager = ActionManager.Instance();
         ui = UIState.Instance();
-        var job = JobGaugeManager.Instance();
-        if (player == null || manager == null || ui == null || job == null || job->ClassJobId != 21 || job->CurrentGauge == null)
-            throw new InvalidOperationException("Warrior native state is unavailable.");
-        gauge = (WarriorGauge*)job->CurrentGauge;
+        if (player == null || manager == null || ui == null)
+            throw new InvalidOperationException("Local combat native state is unavailable.");
+        gauge = JobNativeGauge.Create(job.ClassJob);
         objectId = player->GetGameObjectId().ObjectId;
         comboAction = manager->Combo.Action;
         comboTimer = manager->Combo.Timer;
         animationLock = manager->AnimationLock;
-        beast = gauge->BeastGauge;
         autoAttack = ui->WeaponState.AutoAttackState.IsAutoAttacking;
         if (!float.IsFinite(comboTimer) || !float.IsFinite(animationLock))
             throw new InvalidOperationException("Invalid native combo/animation timer.");
-        foreach (var action in BindingActions)
+        // Groups are de-duplicated, so the first listed action binds each group.
+        foreach (var action in rules.Actions)
         {
             CaptureRecast(manager->GetRecastGroup((int)ActionType.Action, action), action, false);
             var additional = manager->GetAdditionalRecastGroup(ActionType.Action, action);
             if (additional >= 0) CaptureRecast(additional, action, true);
         }
-        foreach (var action in LocalCombatSession.OffensiveActions) ValidateBindings(action);
         var freeSlots = 0;
         foreach (var status in player->StatusManager.Status)
         {
             if (status.StatusId == 0) freeSlots++;
-            if (Array.IndexOf(StatusIds, status.StatusId) < 0) continue;
+            if (!rules.StatusIds.Contains(status.StatusId)) continue;
             if (statuses.Exists(s => s.Id == status.StatusId))
                 throw new InvalidOperationException("Duplicate offensive status sources cannot be safely owned.");
             if (simPlayer.HasStatus(status.StatusId))
-                throw new InvalidOperationException("Scenario already owns an offensive Warrior status.");
+                throw new InvalidOperationException("Scenario already owns a local combat job status.");
             if (!float.IsFinite(status.RemainingTime)) throw new InvalidOperationException("Invalid native status timer.");
             statuses.Add(new(status.StatusId, status.Param, status.RemainingTime, status.SourceObject));
         }
-        if (freeSlots + statuses.Count < StatusIds.Length)
-            throw new InvalidOperationException("Insufficient native status slots for local Warrior buffs.");
+        if (freeSlots + statuses.Count < rules.StatusIds.Count)
+            throw new InvalidOperationException("Insufficient native status slots for local job buffs.");
         // All bindings and snapshots are validated before the first write.
     }
 
@@ -105,10 +123,9 @@ public sealed unsafe class CombatNativeState : IDisposable
     }
 
     public bool MatchesIdentity => !disposed && Plugin.ClientState.IsLoggedIn && Plugin.ObjectTable.LocalPlayer?.Address == (nint)player
-        && player->GetGameObjectId().ObjectId == objectId && player->ClassJob == 21 && player->Level == 90
+        && player->GetGameObjectId().ObjectId == objectId && player->ClassJob == job.ClassJob && player->Level == job.Level
         && ActionManager.Instance() == manager && UIState.Instance() == ui
-        && JobGaugeManager.Instance() != null && JobGaugeManager.Instance()->ClassJobId == 21
-        && JobGaugeManager.Instance()->CurrentGauge == (void*)gauge;
+        && gauge.Matches;
 
     public void SuppressNativeAutoAttack()
     {
@@ -143,15 +160,15 @@ public sealed unsafe class CombatNativeState : IDisposable
         manager->StartCooldown(ActionType.Action, action);
     }
 
-    public void Mirror(WarriorCombat model, bool autos, bool resetAdditional = false)
+    public void Mirror(bool autos, bool resetAdditional = false)
     {
         if (!MatchesIdentity) throw new InvalidOperationException("Local combat player identity changed.");
         written = true;
         manager->ActionQueued = false;
-        manager->Combo.Action = model.ComboAction;
-        manager->Combo.Timer = (float)model.ComboRemaining;
-        manager->AnimationLock = (float)model.Timing.LockRemaining;
-        gauge->BeastGauge = (byte)model.Beast;
+        manager->Combo.Action = rules.ComboAction;
+        manager->Combo.Timer = (float)rules.ComboRemaining;
+        manager->AnimationLock = (float)rules.Timing.LockRemaining;
+        gauge.Mirror(rules);
         ui->WeaponState.AutoAttackState.IsAutoAttacking = autos;
         foreach (var recast in recasts)
         {
@@ -161,25 +178,23 @@ public sealed unsafe class CombatNativeState : IDisposable
             if (!MatchesIdentity) return;
             var detail = manager->GetRecastGroupDetail(recast.NativeGroup);
             if (detail == null) throw new InvalidOperationException("Native recast record disappeared.");
-            var (group, seconds, charges) = model.GetCooldown(recast.BindingAction);
+            var (group, seconds, charges) = rules.GetCooldown(recast.BindingAction);
             var view = recast.Additional
                 ? new CombatRecastView(false, 0, 0)
-                : CombatRecastView.Project(seconds, charges, model.Timing.Charges(group, seconds, charges), model.Timing.Remaining(group));
+                : CombatRecastView.Project(seconds, charges, rules.Timing.Charges(group, seconds, charges), rules.Timing.Remaining(group));
             detail->ActionId = recast.BindingAction;
             detail->IsActive = view.IsActive;
             detail->Elapsed = (float)view.Elapsed;
             detail->Total = (float)view.Total;
         }
-        MirrorStatus(1177, model.InnerReleaseRemaining, (ushort)model.InnerReleaseStacks);
-        MirrorStatus(1897, model.ChaosRemaining, 0);
-        MirrorStatus(2677, model.TempestRemaining, 0);
-        MirrorStatus(2624, model.RendRemaining, 0);
+        foreach (var status in rules.Statuses())
+            MirrorStatus(status.Id, status.Remaining, status.Param);
     }
 
     private void MirrorStatus(ushort id, double remaining, ushort param)
     {
         if (!MatchesIdentity) return;
-        if (remaining <= 0 || (id == 1177 && param == 0)) { Statuses.Remove((Character*)player, id); return; }
+        if (remaining <= 0) { Statuses.Remove((Character*)player, id); return; }
         if (player->StatusManager.GetStatusIndex(id) < 0)
             Statuses.AddStatusInit((Character*)player, id, param);
         if (MatchesIdentity) Statuses.Apply((Character*)player, id, (float)remaining, param, player->GetGameObjectId());
@@ -198,7 +213,7 @@ public sealed unsafe class CombatNativeState : IDisposable
             manager->Combo.Timer = (float)Math.Max(0, comboTimer - elapsed);
             manager->Combo.Action = manager->Combo.Timer > 0 ? comboAction : 0;
             manager->AnimationLock = (float)Math.Max(0, animationLock - elapsed);
-            gauge->BeastGauge = beast;
+            gauge.Restore();
             ui->WeaponState.AutoAttackState.IsAutoAttacking = autoAttack;
             foreach (var recast in recasts)
             {
@@ -211,7 +226,7 @@ public sealed unsafe class CombatNativeState : IDisposable
                 detail->Elapsed = (float)view.Elapsed;
                 detail->Total = (float)view.Total;
             }
-            foreach (var id in StatusIds)
+            foreach (var id in rules.StatusIds)
             {
                 if (!MatchesIdentity) return;
                 Statuses.Remove((Character*)player, id);
