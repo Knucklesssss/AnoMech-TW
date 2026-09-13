@@ -444,7 +444,7 @@ internal static class WarriorCombatChecks
             throw new Exception("Unsupported actions must return no hit without changing state.");
     }
 
-    private static void AssertHit(WarriorHit? actual, uint actionId, bool aoe = false, bool gapCloser = false)
+    private static void AssertHit(JobHit? actual, uint actionId, bool aoe = false, bool gapCloser = false)
     {
         if (actual is not { } hit || hit.ActionId != actionId ||
             hit.IsAoe != aoe || hit.GapCloser != gapCloser)

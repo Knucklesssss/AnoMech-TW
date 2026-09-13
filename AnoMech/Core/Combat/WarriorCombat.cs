@@ -1,8 +1,9 @@
 using System;
+using System.Collections.Generic;
 
 namespace AnoMech.Core.Combat;
 
-public sealed class WarriorCombat
+public sealed class WarriorCombat : IJobCombat
 {
     private const int GlobalCooldownGroup = 58;
     private const double AnimationLock = 0.6;
@@ -31,6 +32,8 @@ public sealed class WarriorCombat
     public double TempestRemaining => tempestRemaining;
     public double RendRemaining => rendRemaining;
     public CombatTiming Timing { get; } = new();
+    public IReadOnlyList<uint> Actions { get; } = [31, 37, 42, 45, 41, 16462, 46, 3549, 3550, 16465, 16463, 25753, 7386, 7387, 25752, 52, 7389];
+    public IReadOnlyList<ushort> StatusIds { get; } = [1177, 1897, 2677, 2624];
 
     public uint Adjust(uint actionId)
     {
@@ -53,6 +56,16 @@ public sealed class WarriorCombat
 
     public bool Supports(uint actionId) => IsSupported(Adjust(actionId));
 
+    public IEnumerable<JobStatus> Statuses()
+    {
+        yield return new(1177, innerReleaseStacks > 0 ? innerReleaseRemaining : 0, (ushort)innerReleaseStacks);
+        yield return new(1897, chaosRemaining, 0);
+        yield return new(2677, tempestRemaining, 0);
+        yield return new(2624, rendRemaining, 0);
+    }
+
+    public bool IsGapCloser(uint actionId) => actionId is 25753 or 7386;
+
     public (int Group, double Recast, int Charges) GetCooldown(uint actionId)
     {
         actionId = Adjust(actionId);
@@ -74,7 +87,7 @@ public sealed class WarriorCombat
         return !checkTiming || Timing.IsAvailable(group, recast, charges);
     }
 
-    public WarriorHit? TryUse(uint actionId, bool hasTarget, bool inRange, bool inCombat, bool alive = true, bool bound = false)
+    public JobHit? TryUse(uint actionId, bool hasTarget, bool inRange, bool inCombat, bool alive = true, bool bound = false)
     {
         if (!CanUse(actionId, hasTarget, inRange, inCombat, alive, bound)) return null;
         actionId = Adjust(actionId);
@@ -161,7 +174,7 @@ public sealed class WarriorCombat
                 break;
         }
         if (actionId is 3549 or 3550 or 16465 or 16463) Timing.Reduce(20, 5);
-        return new WarriorHit(actionId, isAoe, gapCloser);
+        return new JobHit(actionId, isAoe, gapCloser);
     }
 
     public void Advance(double seconds)
@@ -208,7 +221,7 @@ public sealed class WarriorCombat
     private static bool IsSupported(uint actionId)
         => actionId is 31 or 37 or 42 or 45 or 41 or 16462 or 46 or 3549 or 3550 or 16465 or 16463 or 25753 or 7386 or 7387 or 25752 or 52 or 7389;
 
-    private static bool IsSelfAction(uint actionId)
+    public bool IsSelfAction(uint actionId)
         => actionId is 41 or 16462 or 3550 or 16463 or 25752 or 52 or 7389;
 
     private (int Group, double Recast, int Charges) TimingContract(uint actionId)
@@ -221,8 +234,3 @@ public sealed class WarriorCombat
             _ => (GlobalCooldownGroup, gcdSeconds, 1),
         };
 }
-
-public readonly record struct WarriorHit(
-    uint ActionId,
-    bool IsAoe,
-    bool GapCloser);

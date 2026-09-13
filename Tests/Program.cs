@@ -4,6 +4,7 @@ if (args.Contains("--combat-recast-only")) { CombatRecastChecks.Run(); return; }
 CombatRecastChecks.Run();
 CombatTimingChecks.Run();
 WarriorCombatChecks.Run();
+JobCombatRegistryChecks.Run();
 CombatInputChecks.Run();
 StartLocationChecks.Run();
 MapEntryChecks.Run();
