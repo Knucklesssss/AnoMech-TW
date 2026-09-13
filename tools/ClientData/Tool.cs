@@ -12,7 +12,14 @@ public static class Tool
         {
             var options = Options.Parse(args);
             var job = ClientReader.Read(options.GamePath, options.Abbreviation, options.Level);
-            var check = XivapiCheck.Skipped("xivapi 核對尚未實作"); // xivapi check
+            if (options.CheckWarrior)
+            {
+                var failures = WarriorGolden.Check(job);
+                foreach (var failure in failures) Console.Error.WriteLine($"戰士標準答案不符：{failure}");
+                Console.WriteLine(failures.Count == 0 ? "PASS: 戰士標準答案檢查通過。" : $"FAIL: {failures.Count} 項不符。");
+                return failures.Count == 0 ? 0 : 3;
+            }
+            var check = options.SkipXivapi ? XivapiCheck.Skipped("使用 --skip-xivapi 略過") : XivapiClient.Check(job, options.XivapiVersion);
             Directory.CreateDirectory(options.OutputDirectory);
             var path = Path.Combine(options.OutputDirectory, $"{job.Abbreviation}-{job.Level}.md");
             var temp = path + ".tmp";
