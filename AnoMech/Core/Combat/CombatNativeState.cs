@@ -50,6 +50,11 @@ public sealed unsafe class CombatNativeState : IDisposable
     private readonly ulong objectId;
     private readonly List<(int NativeGroup, uint BindingAction, bool Additional)> recasts = [];
     private bool disposed;
+    private uint castAction;
+    private float castElapsed;
+    private float castTotal;
+    private GameObjectId castTarget;
+    private bool castWritten;
 
     internal CombatNativeState(SimPlayer simPlayer, JobCombatEntry job, IJobCombat rules)
     {
@@ -171,6 +176,15 @@ public sealed unsafe class CombatNativeState : IDisposable
         manager->StartCooldown(ActionType.Action, action);
     }
 
+    // actionId 0 ends the cast; the next Write clears the client's cast fields.
+    public void SetCast(uint actionId, double elapsed, double total, GameObjectId target)
+    {
+        castAction = actionId;
+        castTotal = (float)total;
+        castElapsed = (float)Math.Clamp(elapsed, 0, total);
+        castTarget = target;
+    }
+
     public void Mirror(bool autos, bool resetAdditional = false)
     {
         if (!MatchesIdentity) throw new InvalidOperationException("Local combat player identity changed.");
@@ -185,6 +199,23 @@ public sealed unsafe class CombatNativeState : IDisposable
             manager->Combo.Action = rules.ComboAction;
             manager->Combo.Timer = (float)rules.ComboRemaining;
             manager->AnimationLock = (float)rules.Timing.LockRemaining;
+            // The local player's cast bar reads these fields; the ActorCast packet alone shows nothing.
+            if (castAction != 0)
+            {
+                manager->CastActionType = ActionType.Action;
+                manager->CastActionId = castAction;
+                manager->CastSpellId = castAction;
+                manager->CastTargetId = castTarget;
+                manager->CastTimeElapsed = castElapsed;
+                manager->CastTimeTotal = castTotal;
+            }
+            else if (castWritten)
+            {
+                manager->CastActionId = 0;
+                manager->CastSpellId = 0;
+                manager->CastTimeElapsed = 0;
+                manager->CastTimeTotal = 0;
+            }
             foreach (var recast in recasts)
             {
                 // Native Update advances additional groups initialized by
@@ -208,6 +239,22 @@ public sealed unsafe class CombatNativeState : IDisposable
         if (gauge.Matches) gauge.Mirror(rules);
         if (!PlayerMatches) return;
         player->Mana = (uint)Math.Min(rules.Mp, player->MaxMana);
+        if (castAction != 0)
+        {
+            player->CastInfo.IsCasting = true;
+            player->CastInfo.ActionType = ActionType.Action;
+            player->CastInfo.ActionId = castAction;
+            player->CastInfo.TargetId = castTarget;
+            player->CastInfo.CurrentCastTime = castElapsed;
+            player->CastInfo.TotalCastTime = castTotal;
+            castWritten = true;
+        }
+        else if (castWritten)
+        {
+            player->CastInfo.IsCasting = false;
+            player->CastInfo.ActionId = 0;
+            castWritten = false;
+        }
         foreach (var status in rules.Statuses())
             MirrorStatus(status.Id, status.Remaining, status.Param);
     }
