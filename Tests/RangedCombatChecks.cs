@@ -5,7 +5,39 @@ internal static class RangedCombatChecks
     public static void Run()
     {
         RoleActions();
+        Bard();
         Console.WriteLine("PASS: ranged and caster role actions.");
+    }
+
+    private static void Bard()
+    {
+        Check(JobCombatRegistry.Find(23, 90) != null, "Bard level 90 must be registered.");
+        var brd = new BardCombat { Roll = () => 0 };
+        Check(brd.Adjust(97) == 16495 && brd.Adjust(36975) == 110, "Heavy Shot and Heartbreak Shot must map to level-90 actions.");
+        Check(!brd.CanUse(7409, true, true, true, checkTiming: false), "Refulgent Arrow needs Hawk's Eye.");
+        Hit(brd, 16495);
+        Check(brd.CanUse(7409, true, true, true, checkTiming: false) && brd.IsHighlighted(7409), "A proc must enable and light Refulgent Arrow.");
+        brd.Advance(2.5);
+        Hit(brd, 7409);
+        Check(!brd.CanUse(7409, true, true, true, checkTiming: false), "Refulgent Arrow must spend Hawk's Eye.");
+        Check(!brd.CanUse(3559, false, false, false), "Songs need combat.");
+        brd.Advance(0.6);
+        brd.TryUse(3559, false, false, true);
+        brd.Advance(3);
+        Check(brd.CurrentSong == BardCombat.Song.Minuet && brd.Repertoire == 1 && brd.SoulVoice == 5 && brd.Adjust(3559) == 7404,
+            "Minuet must build Repertoire and Soul Voice every 3 s and turn into Pitch Perfect.");
+        Hit(brd, 3559, aoe: true);
+        Check(brd.Repertoire == 0, "Pitch Perfect must spend Repertoire.");
+        brd.Advance(0.6);
+        brd.TryUse(114, false, false, true);
+        Check(brd.CurrentSong == BardCombat.Song.Ballad && brd.Codas == 5, "Changing songs must end the old one and keep both codas.");
+        brd.Advance(0.6);
+        Hit(brd, 110);
+        brd.Advance(3);
+        Check(Math.Abs(brd.Timing.Remaining(10) - 4.5) < 1e-6, "Mage's Ballad Repertoire must cut Bloodletter's recast by 7.5 s.");
+        brd.Advance(9);
+        Hit(brd, 16496, aoe: true);
+        Check(brd.SoulVoice == 0 && brd.Adjust(16496) == 16496, "Apex Arrow must spend Soul Voice; under 80 gives no Blast Arrow.");
     }
 
     private static void RoleActions()
