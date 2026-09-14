@@ -36,7 +36,11 @@ public sealed class TopP5DeltaMoogleAi : TopP5DeltaAi
         new(-8.5f, -10), new(-8.5f, 10), new(-9.5f, -10), new(-9.5f, 10))
         .Assignments(state.TetherOrder).ApplySwaps(Swap01, Swap45).ApplyPositions(AdjustEyePosition);
 
-    protected override IAiMove TetherResolveStep() => AiMove.Create(new Vector2?[8]);
+    // Inner blue has broken; each outer blue meets its same-side inner blue on the inner line for the fists.
+    protected override IAiMove TetherResolveStep() => AiMove.Create(
+        new(DiagonalWaymark, -4.4f), new(DiagonalWaymark, 4.4f), new(DiagonalWaymark, -4.4f), new(DiagonalWaymark, 4.4f),
+        null, null, null, null)
+        .Assignments(state.TetherOrder).ApplySwaps(Swap01).ApplyPositions(AdjustEyePosition);
 
     protected override IAiMove HyperPulseBaitArms() => AiMove.Create(
         new[]{4,5,2,3,0,1}.Select(i => ArmUnitPlacements[i].MoveForward(.5f)
