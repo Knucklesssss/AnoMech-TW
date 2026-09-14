@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Windowing;
@@ -24,6 +25,17 @@ public class ConfigWindow : Window, IDisposable
     public override void Draw()
     {
         ImGui.TextWrapped("開始模擬時自動偵測職業；已支援的職業可用原本熱鍵練習連段、派生與量譜消耗，不計算傷害、屬性或減傷。");
+        if (Plugin.ClientState.IsLoggedIn && Plugin.PlayerState.ClassJob.IsValid)
+        {
+            var job = Plugin.PlayerState.ClassJob;
+            var levels = AnoMech.Core.Combat.JobCombatRegistry.Entries
+                .Where(e => e.ClassJob == job.RowId).Select(e => $"{e.Level} 級").ToArray();
+            var name = job.Value.Name.ExtractText();
+            if (levels.Length > 0)
+                ImGui.TextColored(new Vector4(0.45f, 0.9f, 0.45f, 1f), $"目前職業：{name}（支援同步 {string.Join("、", levels)}）");
+            else
+                ImGui.TextColored(new Vector4(1f, 0.45f, 0.45f, 1f), $"目前職業：{name}（尚未支援，技能維持原本行為）");
+        }
         if (Plugin.GameInstance is { } game)
         {
             ImGui.TextWrapped(game.World.CombatReason);
