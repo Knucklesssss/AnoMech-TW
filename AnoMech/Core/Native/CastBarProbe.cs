@@ -11,12 +11,14 @@ internal static unsafe class CastBarProbe
     private const int MaxLines = 60;
     private static long lastLog;
     private static int lines;
+    private static uint detailedAction;
+    private static bool detailed;
 
     public static void Tick()
     {
         if (lines >= MaxLines || !Plugin.LogManager.Enabled) return;
         var player = Control.GetLocalPlayer();
-        if (player == null || !player->CastInfo.IsCasting) return;
+        if (player == null || !player->CastInfo.IsCasting) { detailed = false; return; }
         var now = Stopwatch.GetTimestamp();
         if (Stopwatch.GetElapsedTime(lastLog, now).TotalSeconds < 0.25) return;
         lastLog = now;
@@ -33,5 +35,17 @@ internal static unsafe class CastBarProbe
             : $"visible={addon->IsVisible} root={(addon->RootNode == null ? "null" : $"{addon->RootNode->IsVisible()}/{addon->RootNode->Alpha_2}")}";
         var sim = Plugin.GameInstance?.World.Combat is { Active: true } ? "sim" : "real";
         Plugin.LogManager.LogSkill($"CastBarProbe {sim} action={player->CastInfo.ActionId} t={player->CastInfo.CurrentCastTime:0.00}/{player->CastInfo.TotalCastTime:0.00} ints={ints} ui={ui} name={name}");
+        if (addon != null && !detailed && player->CastInfo.CurrentCastTime >= player->CastInfo.TotalCastTime / 2)
+        {
+            detailed = true;
+            var nodes = new System.Text.StringBuilder();
+            for (var i = 0; i < addon->UldManager.NodeListCount; i++)
+            {
+                var node = addon->UldManager.NodeList[i];
+                if (node == null) continue;
+                nodes.Append($"{node->NodeId}:{(int)node->Type}:{(node->IsVisible() ? 1 : 0)}:{node->Alpha_2}:{node->Width}x{node->Height} ");
+            }
+            Plugin.LogManager.LogSkill($"CastBarProbe {sim} addon alpha={addon->Alpha} visFlags={addon->VisibilityFlags} showHide={addon->ShowHideFlags} pos={addon->X},{addon->Y} scale={addon->Scale:0.00} drawOrder={addon->DrawOrderIndex} depth={addon->DepthLayer} ready={addon->IsReady} nodes=[{nodes}]");
+        }
     }
 }
