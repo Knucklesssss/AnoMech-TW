@@ -229,11 +229,12 @@ public sealed unsafe class CombatNativeState : IDisposable
                 manager->CastTimeTotal = 0;
                 castWritten = false;
             }
-            // Experiment: with only some of these written the game dropped the cast each frame.
+            // The client keeps a cast only when all of these match a real one (diffed against a real cast,
+            // 2026-09-14); with any missing its update clears the cast each frame and the effect replays.
             var conditions = Conditions.Instance();
             if (conditions != null && (castAction != 0 || castInfoWritten))
                 conditions->Flags[(int)Dalamud.Game.ClientState.Conditions.ConditionFlag.Casting] = castAction != 0;
-            // Unnamed ActionManager byte a real cast holds at 1 (CastStateProbe, 2026-09-14).
+            // Unnamed ActionManager byte a real cast holds at 1.
             if (castAction != 0 || castInfoWritten) ((byte*)manager)[CastingFlagOffset] = (byte)(castAction != 0 ? 1 : 0);
             foreach (var recast in recasts)
             {
