@@ -15,9 +15,11 @@ internal sealed unsafe class LocalCastBarHud : IDisposable
 {
     private const string AddonName = "_CastBar";
     private const uint CastNameNodeId = 4;
+    private const uint CastIconNodeId = 8;
 
     private LocalCombatSession? session;
     private bool shown;
+    private uint loadedIcon;
 
     public LocalCastBarHud()
     {
@@ -46,6 +48,7 @@ internal sealed unsafe class LocalCastBarHud : IDisposable
     public void Clear()
     {
         session = null;
+        loadedIcon = 0;
         if (shown) SetShown(false);
     }
 
@@ -56,8 +59,27 @@ internal sealed unsafe class LocalCastBarHud : IDisposable
         // The addon keeps the name it got when a real cast opened it, ignoring the string array.
         var addon = (AtkUnitBase*)args.Addon.Address;
         var nameNode = addon == null ? null : addon->GetTextNodeById(CastNameNodeId);
-        if (nameNode != null && Plugin.DataManager.GetExcelSheet<Action>().TryGetRow(combat.CastingAction, out var action))
-            nameNode->SetText(action.Name.ExtractText());
+        if (addon == null || !Plugin.DataManager.GetExcelSheet<Action>().TryGetRow(combat.CastingAction, out var action)) return;
+        if (nameNode != null) nameNode->SetText(action.Name.ExtractText());
+        if (loadedIcon != action.Icon && LoadIcon(addon, action.Icon)) loadedIcon = action.Icon;
+    }
+
+    // The icon component keeps the texture of the last real cast; reload its image nodes with the simulated action's icon.
+    private static bool LoadIcon(AtkUnitBase* addon, uint icon)
+    {
+        var node = addon->GetComponentNodeById(CastIconNodeId);
+        if (node == null || node->Component == null) return false;
+        var loaded = false;
+        var manager = &node->Component->UldManager;
+        for (var i = 0; i < manager->NodeListCount; i++)
+        {
+            var child = manager->NodeList[i];
+            if (child == null || child->Type != NodeType.Image) continue;
+            ((AtkImageNode*)child)->LoadIconTexture(icon, 0);
+            loaded = true;
+            break;
+        }
+        return loaded;
     }
 
     private void SetShown(bool visible)
