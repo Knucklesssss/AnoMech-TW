@@ -38,6 +38,7 @@ public static class JobCombatRegistry
     public static IReadOnlyList<JobCombatEntry> Entries { get; } =
     [
         new(21, 90, 31, gcd => new WarriorCombat(gcd)),
+        new(32, 90, 3617, gcd => new DarkKnightCombat(gcd)),
     ];
 
     public static JobCombatEntry? Find(byte classJob, byte level)

@@ -29,6 +29,7 @@ internal static class JobNativeGauge
     public static IJobGauge Create(byte classJob) => classJob switch
     {
         21 => new WarriorNativeGauge(),
+        32 => new DarkKnightNativeGauge(),
         _ => throw new InvalidOperationException($"No native gauge adapter for job {classJob}."),
     };
 }
