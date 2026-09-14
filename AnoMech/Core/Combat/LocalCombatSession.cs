@@ -12,16 +12,22 @@ namespace AnoMech.Core.Combat;
 
 public sealed unsafe class LocalCombatSession : IDisposable
 {
+    // The game lets a cast finish when movement starts in its last half second.
+    private const double SlidecastSeconds = 0.5;
     private readonly SimWorld world;
     private readonly SimPlayer player;
     private readonly IJobCombat model;
     private readonly CombatInputBuffer buffer = new();
     private readonly CombatNativeState native;
     private readonly SimCast cast;
+    private readonly double weaponDelay;
     private long lastTick = Stopwatch.GetTimestamp();
     private long lastMessage;
     private bool inCombat;
     private double snapshotClock;
+    private double castRemaining;
+    private ulong castTarget;
+    private double autoAttackTimer;
     private void Log(string text) { if (Plugin.LogManager.Enabled) Plugin.LogManager.LogSkill(text); }
     private void LogState(string label)
     {
@@ -45,12 +51,25 @@ public sealed unsafe class LocalCombatSession : IDisposable
         var sheet = Plugin.DataManager.GetExcelSheet<SheetAction>();
         foreach (var id in model.Actions.Append(7u))
             if (!sheet.TryGetRow(id, out _)) throw new InvalidOperationException($"Missing installed Action {id}.");
+        weaponDelay = ReadWeaponDelay();
+        autoAttackTimer = weaponDelay;
         cast = new SimCast(player, world.Coordinates);
         native = new CombatNativeState(player, job, model);
         Active = true;
-        Log($"Start job={job.ClassJob} level={job.Level} gcd={gcd:0.00}");
+        Log($"Start job={job.ClassJob} level={job.Level} gcd={gcd:0.00} weaponDelay={weaponDelay:0.00}");
         try { native.Mirror(false, resetAdditional: true); LogState("AfterReset"); }
         catch { Stop("本機戰鬥初始化失敗"); throw; }
+    }
+
+    // Main-hand delay drives auto-attack hits (Paladin Oath); 3 s when unreadable.
+    private static double ReadWeaponDelay()
+    {
+        var inventory = InventoryManager.Instance();
+        var equipped = inventory == null ? null : inventory->GetInventoryContainer(InventoryType.EquippedItems);
+        var slot = equipped == null ? null : equipped->GetInventorySlot(0);
+        if (slot == null || slot->ItemId == 0) return 3;
+        var item = Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Item>().GetRowOrDefault(slot->ItemId);
+        return item is { } row && row.Delayms > 0 ? row.Delayms / 1000d : 3;
     }
 
     public static LocalCombatSession? Start(SimWorld world, byte level, out string reason)
@@ -93,20 +112,70 @@ public sealed unsafe class LocalCombatSession : IDisposable
         lastTick = now;
         model.Advance(seconds);
         buffer.Advance(seconds);
+        cast.Tick((float)seconds);
         snapshotClock += seconds;
         if (snapshotClock >= 1) { snapshotClock = 0; LogState("Tick"); }
         if (!Alive)
         {
+            CancelCast("dead");
             buffer.Reset(); AutoAttacking = false; inCombat = false;
             return;
         }
-        if (Plugin.GameInstance!.Paused) return;
+        if (Plugin.GameInstance!.Paused) { CancelCast("paused"); return; }
+        if (model.CastingAction != 0) TickCast(seconds);
+        TickAutoAttack(seconds);
         if (buffer.Pending is { } pending)
         {
             if (!Validate(pending.ActionId, pending.TargetId, false)) { Log($"QueueDropped id={pending.ActionId} {WhyNot(pending.ActionId, pending.TargetId)}"); buffer.Reset(); }
             else if (Validate(pending.ActionId, pending.TargetId, true))
-            { buffer.Take(true); Log($"QueueFired id={pending.ActionId}"); Execute(pending.ActionId, pending.TargetId); }
+            { buffer.Take(true); Log($"QueueFired id={pending.ActionId}"); Use(pending.ActionId, pending.TargetId); }
         }
+    }
+
+    private void TickCast(double seconds)
+    {
+        castRemaining -= seconds;
+        if (castRemaining > SlidecastSeconds && (Plugin.PlayerInputHooks.MovementInputActive || Plugin.PlayerInputHooks.IsJumping))
+        {
+            CancelCast("moved");
+            return;
+        }
+        if (castRemaining > 0) return;
+        var id = model.CastingAction;
+        var target = ResolveTarget(castTarget);
+        var hasTarget = model.IsSelfAction(id) ? Enemies().Any(e => InEffectRange(id, Position(player), e)) : target != null;
+        var done = model.CompleteCast(hasTarget, target != null && InRange(id, target), Alive, out var hit);
+        if (hit != null) inCombat = true;
+        if (!done)
+        {
+            cast.Despawn();
+            Explain("詠唱失敗：請檢查目標、距離與 MP。");
+        }
+        native.Mirror(AutoAttacking);
+        Log($"CastComplete id={id} done={done} hit={hit?.ToString() ?? "null"}");
+    }
+
+    private void CancelCast(string reason)
+    {
+        if (model.CastingAction == 0) return;
+        Log($"CastCancel id={model.CastingAction} reason={reason}");
+        model.CancelCast();
+        cast.Despawn();
+        native.Mirror(AutoAttacking);
+    }
+
+    private void TickAutoAttack(double seconds)
+    {
+        if (!AutoAttacking || model.CastingAction != 0 || ResolveTarget(CurrentTargetId()) is not { } target || !InRange(7, target))
+        {
+            autoAttackTimer = Math.Min(weaponDelay, autoAttackTimer + seconds);
+            return;
+        }
+        autoAttackTimer += seconds;
+        if (autoAttackTimer < weaponDelay) return;
+        autoAttackTimer -= weaponDelay;
+        model.AutoAttackHit();
+        inCombat = true;
     }
 
     private bool Alive => !player.Dead && player.BattleCharaPtr != null && player.BattleCharaPtr->Health > 0;
@@ -168,7 +237,7 @@ public sealed unsafe class LocalCombatSession : IDisposable
         targetId = targetId == 0xE0000000 || targetId == 0 ? CurrentTargetId() : targetId;
         id = Adjust(id);
         if (!Validate(id, targetId, false)) { Log($"Rejected id={id} {WhyNot(id, targetId)}"); Explain("技能條件不符：請檢查目標、距離、存活狀態與資源。"); return true; }
-        if (Validate(id, targetId, true)) { buffer.Reset(); Execute(id, targetId); accepted = true; }
+        if (Validate(id, targetId, true)) { buffer.Reset(); Use(id, targetId); accepted = true; }
         else
         {
             var (group, recast, charges) = model.GetCooldown(id);
@@ -207,6 +276,31 @@ public sealed unsafe class LocalCombatSession : IDisposable
         var inRange = target != null && InRange(id, target);
         return $"alive={Alive} paused={Plugin.GameInstance!.Paused} locked={RestrictedStatus(movement: false)} target={(target != null)} self={self} hasTarget={hasTarget} inRange={inRange} "
             + $"rules={model.CanUse(id, hasTarget, inRange, inCombat, Alive, Bound, false)} rulesTimed={model.CanUse(id, hasTarget, inRange, inCombat, Alive, Bound, true)} extra={native.AdditionalRemaining(id):0.00}";
+    }
+
+    private void Use(uint id, ulong targetId)
+    {
+        if (model.CastTime(Adjust(id)) > 0) BeginCast(id, targetId);
+        else Execute(id, targetId);
+    }
+
+    private void BeginCast(uint id, ulong targetId)
+    {
+        id = Adjust(id);
+        var target = ResolveTarget(targetId);
+        var self = model.IsSelfAction(id);
+        var hasTarget = self ? Enemies().Any(e => InEffectRange(id, Position(player), e)) : target != null;
+        var seconds = model.CastTime(id);
+        if (!model.BeginCast(id, hasTarget, target != null && InRange(id, target), inCombat, Alive, Bound)) return;
+        native.StartCooldown(id);
+        Plugin.PlayerInputHooks.RecordLocalAction();
+        castRemaining = seconds;
+        castTarget = targetId;
+        var presentationTarget = self ? null : target;
+        cast.Start(id, presentationTarget == null ? Position(player) : Position(presentationTarget), (float)seconds,
+            presentationTarget?.GameObjectId ?? player.GameObjectId, 0, 0, 0, .1f);
+        native.Mirror(AutoAttacking);
+        Log($"CastBegin id={id} seconds={seconds:0.00}");
     }
 
     private void Execute(uint id, ulong targetId)
@@ -284,7 +378,12 @@ public sealed unsafe class LocalCombatSession : IDisposable
         Reason = reason;
         buffer.Reset();
         AutoAttacking = false;
-        try { native.Dispose(); }
+        try
+        {
+            // A cast bar left on the player would outlive the simulation.
+            if (model.CastingAction != 0 && native.MatchesIdentity) cast.Despawn();
+            native.Dispose();
+        }
         catch (Exception ex)
         {
             Reason = $"本機戰鬥已停止；還原失敗：{ex.Message}";

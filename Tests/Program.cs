@@ -3,9 +3,8 @@ CrossMonitorChecks.Run();
 if (args.Contains("--combat-recast-only")) { CombatRecastChecks.Run(); return; }
 CombatRecastChecks.Run();
 CombatTimingChecks.Run();
-WarriorCombatChecks.Run();
+TankCombatChecks.Run();
 DarkKnightCombatChecks.Run();
-JobCombatRegistryChecks.Run();
 CombatInputChecks.Run();
 StartLocationChecks.Run();
 MapEntryChecks.Run();

@@ -10,8 +10,10 @@ public interface IJobCombat
     IReadOnlyList<ushort> StatusIds { get; }
     CombatTiming Timing { get; }
     uint ComboAction { get; }
+    double ComboRemaining { get; }
     int Mp { get; }
-    // Hotbar glow: the action continues the current combo.
+    uint CastingAction { get; }
+    // Hotbar glow: the next combo step, or a proc/ready action.
     bool IsHighlighted(uint actionId);
     string DebugState { get; }
     // Contract of the listed action itself, without substitution: native recast
@@ -19,7 +21,6 @@ public interface IJobCombat
     (int Group, double Recast, int Charges) GetBindingCooldown(uint actionId);
     // Stances survive entering a duty; read them from the client once at start.
     void Seed(Func<ushort, bool> hasStatus);
-    double ComboRemaining { get; }
     uint Adjust(uint actionId);
     bool Supports(uint actionId);
     // No target needed: self-centred AoEs and self buffs.
@@ -27,8 +28,16 @@ public interface IJobCombat
     bool IsGapCloser(uint actionId);
     (int Group, double Recast, int Charges) GetCooldown(uint actionId);
     bool CanUse(uint actionId, bool hasTarget, bool inRange, bool inCombat, bool alive = true, bool bound = false, bool checkTiming = true);
+    // Instant actions only; cast-time actions go through BeginCast.
     JobHit? TryUse(uint actionId, bool hasTarget, bool inRange, bool inCombat, bool alive = true, bool bound = false);
-    // Remaining <= 0 means the status must be absent.
+    // Cast bar seconds for the resolved action right now; 0 = instant.
+    double CastTime(uint actionId);
+    // Recast and lock are paid at the start of a cast; effects and MP at the end.
+    bool BeginCast(uint actionId, bool hasTarget, bool inRange, bool inCombat, bool alive = true, bool bound = false);
+    bool CompleteCast(bool hasTarget, bool inRange, bool alive, out JobHit? hit);
+    void CancelCast();
+    void AutoAttackHit();
+    // Remaining <= 0 means the status must be absent; +Infinity is permanent.
     IEnumerable<JobStatus> Statuses();
     void Advance(double seconds);
     void Reset();
@@ -46,8 +55,10 @@ public static class JobCombatRegistry
 {
     public static IReadOnlyList<JobCombatEntry> Entries { get; } =
     [
+        new(19, 90, 9, gcd => new PaladinCombat(gcd)),
         new(21, 90, 31, gcd => new WarriorCombat(gcd)),
         new(32, 90, 3617, gcd => new DarkKnightCombat(gcd)),
+        new(37, 90, 16137, gcd => new GunbreakerCombat(gcd)),
     ];
 
     public static JobCombatEntry? Find(byte classJob, byte level)

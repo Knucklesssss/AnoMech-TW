@@ -23,8 +23,10 @@ internal static class JobNativeGauge
 {
     public static IJobGauge Create(byte classJob) => classJob switch
     {
+        19 => new PaladinNativeGauge(),
         21 => new WarriorNativeGauge(),
         32 => new DarkKnightNativeGauge(),
+        37 => new GunbreakerNativeGauge(),
         _ => throw new InvalidOperationException($"No native gauge adapter for job {classJob}."),
     };
 }
@@ -71,9 +73,12 @@ public sealed unsafe class CombatNativeState : IDisposable
             throw new InvalidOperationException("Local combat native state is unavailable.");
         gauge = JobNativeGauge.Create(job.ClassJob);
         objectId = player->GetGameObjectId().ObjectId;
+        // Main groups first: an additional group can be another action's main group
+        // (Gnashing Fang and Double Down also start the GCD).
+        foreach (var action in rules.Actions)
+            AddRecast(manager->GetRecastGroup((int)ActionType.Action, action), action, false);
         foreach (var action in rules.Actions)
         {
-            AddRecast(manager->GetRecastGroup((int)ActionType.Action, action), action, false);
             var additional = manager->GetAdditionalRecastGroup(ActionType.Action, action);
             if (additional >= 0) AddRecast(additional, action, true);
         }
@@ -120,7 +125,7 @@ public sealed unsafe class CombatNativeState : IDisposable
         var main = manager->GetRecastGroup((int)ActionType.Action, action);
         var additional = manager->GetAdditionalRecastGroup(ActionType.Action, action);
         if (!recasts.Exists(r => r.NativeGroup == main && !r.Additional)
-            || (additional >= 0 && !recasts.Exists(r => r.NativeGroup == additional && r.Additional)))
+            || (additional >= 0 && !recasts.Exists(r => r.NativeGroup == additional)))
             throw new InvalidOperationException($"Action {action} has an unowned native recast binding.");
     }
 

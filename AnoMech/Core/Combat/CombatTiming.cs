@@ -73,6 +73,8 @@ public sealed class CombatTiming
         Recover(state);
     }
 
+    public void ClearLock() => lockedUntil = Math.Min(lockedUntil, now);
+
     public void Reset()
     {
         groups.Clear();
