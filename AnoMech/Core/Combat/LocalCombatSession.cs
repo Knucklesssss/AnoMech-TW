@@ -40,6 +40,9 @@ public sealed unsafe class LocalCombatSession : IDisposable
         catch (Exception ex) { Log($"{label} state read failed: {ex.Message}"); }
     }
     public bool Active { get; private set; }
+    public uint CastingAction => model.CastingAction;
+    public double CastRemaining => Math.Max(0, castRemaining);
+    public float CastProgress => castTotal <= 0 ? 0 : (float)Math.Clamp(1 - castRemaining / castTotal, 0, 1);
     public bool AutoAttacking { get; private set; }
     public string Reason { get; private set; } = "本機技能循環進行中";
 

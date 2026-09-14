@@ -111,6 +111,7 @@ public sealed class Plugin : IDalamudPlugin
         });
 
         PluginInterface.UiBuilder.Draw += WindowSystem.Draw;
+        PluginInterface.UiBuilder.Draw += LocalCastBar.Draw;
         Framework.Update += OnFrameworkUpdate;
 
         PluginInterface.UiBuilder.OpenConfigUi += ToggleConfigUi;
@@ -150,6 +151,7 @@ public sealed class Plugin : IDalamudPlugin
     public void Dispose()
     {
         PluginInterface.UiBuilder.Draw -= WindowSystem.Draw;
+        PluginInterface.UiBuilder.Draw -= LocalCastBar.Draw;
         Framework.Update -= OnFrameworkUpdate;
         PluginInterface.UiBuilder.OpenConfigUi -= ToggleConfigUi;
         PluginInterface.UiBuilder.OpenMainUi -= ToggleMainUi;
