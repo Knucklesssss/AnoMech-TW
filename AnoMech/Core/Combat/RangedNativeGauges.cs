@@ -40,3 +40,20 @@ internal sealed unsafe class MachinistNativeGauge : IJobGauge
         gauge->TimerActive = (byte)((mch.OverheatRemaining > 0 ? 1 : 0) | (mch.QueenRemaining > 0 ? 2 : 0));
     }
 }
+
+internal sealed unsafe class DancerNativeGauge : IJobGauge
+{
+    private readonly DancerGauge* gauge;
+
+    public DancerNativeGauge() => gauge = (DancerGauge*)HealerGauge.Current(38);
+    public bool Matches => HealerGauge.Matches(38, gauge);
+
+    public void Mirror(IJobCombat rules)
+    {
+        var dnc = (DancerCombat)rules;
+        gauge->Feathers = (byte)dnc.Feathers;
+        gauge->Esprit = (byte)dnc.EspritGauge;
+        for (var i = 0; i < 4; i++) gauge->DanceSteps[i] = (byte)dnc.Steps[i];
+        gauge->StepIndex = (byte)dnc.StepIndex;
+    }
+}

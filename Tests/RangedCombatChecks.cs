@@ -7,6 +7,7 @@ internal static class RangedCombatChecks
         RoleActions();
         Bard();
         Machinist();
+        Dancer();
         Console.WriteLine("PASS: ranged and caster role actions.");
     }
 
@@ -95,6 +96,34 @@ internal static class RangedCombatChecks
         Check(mch.OverheatStacks == 4 && Math.Abs(mch.Timing.Remaining(15) - 14.2) < 1e-6,
             "Blazing Shot must spend Overheated and cut Gauss Round by 15 s.");
         Check(!mch.CanUse(16501, false, false, true, checkTiming: false), "Automaton Queen needs 50 Battery.");
+    }
+
+    private static void Dancer()
+    {
+        Check(JobCombatRegistry.Find(38, 90) != null, "Dancer level 90 must be registered.");
+        var dnc = new DancerCombat { Roll = () => 0 };
+        Hit(dnc, 15989);
+        Check(dnc.CanUse(15991, true, true, true, checkTiming: false) && dnc.IsHighlighted(15990),
+            "Cascade must proc Silken Symmetry and light Fountain.");
+        dnc.Advance(2.5);
+        Hit(dnc, 15991);
+        Check(dnc.Feathers == 1 && !dnc.CanUse(15991, true, true, true, checkTiming: false),
+            "Reverse Cascade must spend Silken Symmetry and grant a feather.");
+        dnc.Advance(0.6);
+        Hit(dnc, 16007);
+        Check(dnc.Feathers == 0 && dnc.IsHighlighted(16009), "Fan Dance must spend a feather and ready Fan Dance III.");
+        dnc.Advance(1.9);
+        Check(dnc.TryUse(15997, false, false, true) == null && dnc.StepCount == 2 && dnc.Adjust(15989) == 15999 && dnc.IsHighlighted(16000),
+            "Standard Step must enter dance mode with its steps on the gauge.");
+        Check(!dnc.CanUse(16007, true, true, true, checkTiming: false), "Only steps and a few skills work while dancing.");
+        dnc.Advance(0.6);
+        dnc.TryUse(15990, false, false, true);
+        dnc.Advance(1.5);
+        dnc.TryUse(15991, false, false, true);
+        dnc.Advance(1.5);
+        Check(dnc.StepIndex == 2 && dnc.Adjust(15997) == 16003 && dnc.IsHighlighted(16003), "Both steps must light Standard Finish.");
+        Hit(dnc, 15997, aoe: true);
+        Check(dnc.StepCount == 0 && dnc.Adjust(15989) == 15989, "Standard Finish must leave dance mode.");
     }
 
     private static void RoleActions()
