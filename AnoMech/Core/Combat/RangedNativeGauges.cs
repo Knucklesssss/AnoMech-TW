@@ -112,3 +112,22 @@ internal sealed unsafe class RedMageNativeGauge : IJobGauge
         gauge->ManaStacks = (byte)rdm.ManaStacks;
     }
 }
+
+internal sealed unsafe class PictomancerNativeGauge : IJobGauge
+{
+    private readonly PictomancerGauge* gauge;
+
+    public PictomancerNativeGauge() => gauge = (PictomancerGauge*)HealerGauge.Current(42);
+    public bool Matches => HealerGauge.Matches(42, gauge);
+
+    public void Mirror(IJobCombat rules)
+    {
+        var pct = (PictomancerCombat)rules;
+        gauge->PalleteGauge = (byte)pct.Palette;
+        gauge->Paint = (byte)pct.Paint;
+        gauge->CanvasFlags = (CanvasFlags)((pct.CreatureCanvas == PictomancerCombat.Creature.Pom ? 1 : 0)
+            | (pct.CreatureCanvas == PictomancerCombat.Creature.Wing ? 2 : 0)
+            | (pct.WeaponCanvas ? 16 : 0) | (pct.LandscapeCanvas ? 32 : 0));
+        gauge->CreatureFlags = (CreatureFlags)((pct.PomPortrait ? 1 : 0) | (pct.WingPortrait ? 2 : 0) | (pct.MoogleReady ? 16 : 0));
+    }
+}

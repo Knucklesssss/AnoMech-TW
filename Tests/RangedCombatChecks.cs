@@ -11,7 +11,34 @@ internal static class RangedCombatChecks
         BlackMage();
         Summoner();
         RedMage();
-        Console.WriteLine("PASS: ranged and caster role actions.");
+        Pictomancer();
+        Console.WriteLine("PASS: ranged and caster role actions, Bard, Machinist, Dancer, Black Mage, Summoner, Red Mage and Pictomancer.");
+    }
+
+    private static void Pictomancer()
+    {
+        Check(JobCombatRegistry.Find(42, 90) != null, "Pictomancer level 90 must be registered.");
+        var pct = new PictomancerCombat();
+        // Trait 540 (level 86, "彩繪效果提高II") gives Striking Muse 2 charges instead of the sheet's base 1.
+        Check(pct.GetCooldown(34674).Charges == 2, "Striking Muse must have 2 charges per trait 540.");
+        Cast(pct, 34650);
+        Check(pct.Adjust(34650) == 34651, "Fire in Red must turn into Aero in Green.");
+        pct.Advance(1);
+        Cast(pct, 34650);
+        pct.Advance(1);
+        Cast(pct, 34650);
+        Check(pct.Palette == 25 && pct.Paint == 1 && pct.Adjust(34650) == 34650, "Water in Blue must add 25 Palette and a White Paint.");
+        pct.Advance(1);
+        Hit(pct, 34662, aoe: true);
+        Check(pct.Paint == 0, "Holy in White must spend White Paint.");
+        pct.Advance(2.5);
+        Cast(pct, 34689);
+        Check(pct.CreatureCanvas == PictomancerCombat.Creature.Pom && pct.Adjust(35347) == 34670 && pct.Adjust(34689) == 34665,
+            "Creature Motif must paint Pom first and turn the muse into Pom Muse.");
+        pct.Advance(0.2); // cast release lock
+        Hit(pct, 35347, aoe: true);
+        Check(pct.CreatureCanvas == PictomancerCombat.Creature.None && pct.PomPortrait, "Pom Muse must clear the canvas and mark the pom.");
+        Check(!pct.CanUse(34683, false, false, true, checkTiming: false), "Subtractive Palette needs 50 Palette.");
     }
 
     private static void RedMage()
