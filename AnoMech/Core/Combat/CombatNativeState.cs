@@ -55,6 +55,8 @@ public sealed unsafe class CombatNativeState : IDisposable
     private float castTotal;
     private GameObjectId castTarget;
     private bool castWritten;
+    private bool castInfoWritten;
+    private const int CastingFlagOffset = 0x7DC;
 
     internal CombatNativeState(SimPlayer simPlayer, JobCombatEntry job, IJobCombat rules)
     {
@@ -158,6 +160,15 @@ public sealed unsafe class CombatNativeState : IDisposable
         return text + records;
     }
 
+    public string CastDebugState()
+    {
+        if (ActionManager.Instance() != manager || !PlayerMatches) return "cast=unavailable";
+        var conditions = Conditions.Instance();
+        var casting = conditions != null && conditions->Flags[(int)Dalamud.Game.ClientState.Conditions.ConditionFlag.Casting];
+        return $"manager={manager->CastActionId} elapsed={manager->CastTimeElapsed:0.00}/{manager->CastTimeTotal:0.00} "
+            + $"castInfo={player->CastInfo.IsCasting}:{player->CastInfo.ActionId}:{player->CastInfo.CurrentCastTime:0.00}/{player->CastInfo.BaseCastTime:0.00}/{player->CastInfo.TotalCastTime:0.00} seq={player->CastInfo.SourceSequence}/{manager->LastUsedActionSequence} flag={((byte*)manager)[CastingFlagOffset]} condition={casting}";
+    }
+
     public double AdditionalRemaining(uint action)
     {
         if (!MatchesIdentity) throw new InvalidOperationException("Local combat player identity changed.");
@@ -218,8 +229,12 @@ public sealed unsafe class CombatNativeState : IDisposable
                 manager->CastTimeTotal = 0;
                 castWritten = false;
             }
-            // Not CastInfo: the game clears the player's IsCasting every frame, and setting it again
-            // restarts the cast effect each frame. The ActorCast packet plays the cast once.
+            // Experiment: with only some of these written the game dropped the cast each frame.
+            var conditions = Conditions.Instance();
+            if (conditions != null && (castAction != 0 || castInfoWritten))
+                conditions->Flags[(int)Dalamud.Game.ClientState.Conditions.ConditionFlag.Casting] = castAction != 0;
+            // Unnamed ActionManager byte a real cast holds at 1 (CastStateProbe, 2026-09-14).
+            if (castAction != 0 || castInfoWritten) ((byte*)manager)[CastingFlagOffset] = (byte)(castAction != 0 ? 1 : 0);
             foreach (var recast in recasts)
             {
                 // Native Update advances additional groups initialized by
@@ -243,6 +258,26 @@ public sealed unsafe class CombatNativeState : IDisposable
         if (gauge.Matches) gauge.Mirror(rules);
         if (!PlayerMatches) return;
         player->Mana = (uint)Math.Min(rules.Mp, player->MaxMana);
+        if (castAction != 0)
+        {
+            player->CastInfo.IsCasting = true;
+            player->CastInfo.ActionType = ActionType.Action;
+            player->CastInfo.ActionId = castAction;
+            player->CastInfo.TargetId = castTarget;
+            player->CastInfo.CurrentCastTime = castElapsed;
+            // A real cast fills BaseCastTime and SourceSequence too; with BaseCastTime 0 the client
+            // likely treats the cast as already finished and clears it every frame.
+            player->CastInfo.BaseCastTime = castTotal;
+            player->CastInfo.TotalCastTime = castTotal;
+            if (ActionManager.Instance() == manager) player->CastInfo.SourceSequence = manager->LastUsedActionSequence;
+            castInfoWritten = true;
+        }
+        else if (castInfoWritten)
+        {
+            player->CastInfo.IsCasting = false;
+            player->CastInfo.ActionId = 0;
+            castInfoWritten = false;
+        }
         foreach (var status in rules.Statuses())
             MirrorStatus(status.Id, status.Remaining, status.Param);
     }

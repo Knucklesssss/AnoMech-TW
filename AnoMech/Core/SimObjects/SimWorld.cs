@@ -166,7 +166,8 @@ public sealed class SimWorld : ISimObject, IDisposable
         children.Update(deltaSeconds);
         enmityHud.Refresh(children.OfType<SimEnemy>(), deltaSeconds);
         partyHud.Refresh(Party);
-        castBarHud.Refresh(Combat);
+        // ponytail: HUD off while testing the native cast state; re-enable if the game still hides its bar.
+        // castBarHud.Refresh(Combat);
     }
 
     public void Despawn()
