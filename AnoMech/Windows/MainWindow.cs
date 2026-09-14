@@ -165,6 +165,30 @@ public unsafe class MainWindow : Window, IDisposable
         return Math.Max(180f, measured);
     }
 
+    private static void DrawJobSupport()
+    {
+        if (!Plugin.ClientState.IsLoggedIn || !Plugin.PlayerState.ClassJob.IsValid) return;
+        var job = Plugin.PlayerState.ClassJob;
+        var supported = false;
+        foreach (var entry in AnoMech.Core.Combat.JobCombatRegistry.Entries)
+            supported |= entry.ClassJob == job.RowId;
+        var name = job.Value.Name.ExtractText();
+        if (supported)
+            ImGui.TextColored(new Vector4(0.45f, 0.9f, 0.45f, 1f), $"{name}：技能可練習");
+        else
+            ImGui.TextColored(new Vector4(1f, 0.45f, 0.45f, 1f), $"{name}：技能未支援");
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip(supported
+                ? "模擬中用原本熱鍵打連段、量譜、冷卻。\n不算傷害與減傷數值。"
+                : "模擬中技能維持遊戲原本的樣子。");
+        if (Plugin.GameInstance?.World.Combat is { Active: false } combat)
+        {
+            ImGui.PushStyleColor(ImGuiCol.Text, ImGui.GetColorU32(ImGuiCol.TextDisabled));
+            ImGui.TextWrapped(combat.Reason);
+            ImGui.PopStyleColor();
+        }
+    }
+
     private void DrawScenariosPanel()
     {
         if (_leftPanelOpen)
@@ -174,6 +198,7 @@ public unsafe class MainWindow : Window, IDisposable
             if (ImGui.SmallButton("<##collapse")) _leftPanelOpen = false;
             if (ImGui.Button("多人同步##openmultiplayer", new Vector2(-1, 0))) plugin.ToggleMultiplayerUi();
             if (ImGui.Button("隊伍列表順序##openpartyorder", new Vector2(-1, 0))) plugin.TogglePartyListOrderUi();
+            DrawJobSupport();
             ImGui.Separator();
 
             foreach (var zone in plugin.Game.Zones)
