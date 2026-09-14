@@ -39,6 +39,8 @@ internal static class RangedCombatChecks
         Check(blm.Polyglot >= 1 && blm.CanUse(16507, true, true, true, checkTiming: false), "An element held for 30 s must grant Polyglot.");
         blm.TryUse(7421, false, false, true);
         Check(blm.CastTime(3576) == 0, "Triplecast must make Blizzard IV instant.");
+        // Trait 461 (level 80, "穢濁效果提高") makes Foul instant.
+        Check(blm.CastTime(7422) == 0, "Foul must be instant per trait 461.");
     }
 
     private static void Bard()

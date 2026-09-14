@@ -62,12 +62,13 @@ public sealed class BlackMageCombat : CasterCombatBase
         if (actionId == 152 && HasBuff(Firestarter)) return 0;
         var seconds = actionId switch
         {
-            141 or 142 or 159 or 162 or 3576 or 3577 or 7422 or 16505 => 2.0,
+            141 or 142 or 159 or 162 or 3576 or 3577 or 16505 => 2.0,
             25794 or 25795 => 3.0,
             152 or 154 => 3.5,
+            // Foul (7422) is instant per trait 461 ("穢濁效果提高", level 80: 發動穢濁不需要詠唱時間), so it stays out of this switch and falls to 0.
             _ => 0.0,
         };
-        // ponytail: the opposite element at full stacks halves cast time per the commonly cited rule.
+        // Trait 459 ("極性精通III", level 35) states the opposite element's cast time is halved at full stacks.
         return element == 3 && IsIce(actionId) || element == -3 && IsFire(actionId) ? seconds / 2 : seconds;
     }
 
