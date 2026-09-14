@@ -15,7 +15,7 @@ public sealed class TopP5DeltaMoogleAi : TopP5DeltaAi
     private static readonly float DiagonalWaymark = 13.63f / MathF.Sqrt(2);
 
     protected override IAiMove TetherPrePosition() => AiMove.Create(
-        new(6, -3), new(6, 3), new(10, -4.5f), new(10, 4.5f),
+        new(6, -3), new(6, 3), new(10, -7), new(10, 7),
         new(-4, -6), new(-4, 6), new(-9.5f, -10), new(-9.5f, 10))
         .Assignments(state.TetherOrder).ApplyPositions(AdjustEyePosition);
 
@@ -31,8 +31,9 @@ public sealed class TopP5DeltaMoogleAi : TopP5DeltaAi
 
     protected override IAiMove FistResolveSlots() => AiMove.Create(
         // Inner blue waits on Omega's diagonal waymarks and breaks as the real tethers land; outer blue
-        // stays by its fists under the break distance so both remote breaks never land within one stack window.
-        new(DiagonalWaymark, -DiagonalWaymark), new(DiagonalWaymark, DiagonalWaymark), new(10, -4.5f), new(10, 4.5f),
+        // moves between the east waymarks once the fists spawn, under the break distance so both remote breaks
+        // never land within one stack window.
+        new(DiagonalWaymark, -DiagonalWaymark), new(DiagonalWaymark, DiagonalWaymark), new(13.6f, -4), new(13.6f, 4),
         new(-8.5f, -10), new(-8.5f, 10), new(-9.5f, -10), new(-9.5f, 10))
         .Assignments(state.TetherOrder).ApplySwaps(Swap01, Swap45).ApplyPositions(AdjustEyePosition);
 
