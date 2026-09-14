@@ -1,4 +1,3 @@
-using System;
 using System.Linq;
 using System.Numerics;
 using AnoMech.Core.Game.Ai;
@@ -12,7 +11,6 @@ public sealed class TopP5DeltaMoogleAi : TopP5DeltaAi
     public override string? Group => "陸服";
     private int SafeSouth => state.SwivelCannonSide.Mul * (int)state.EyeSpawn.Mul;
     private bool OuterFistsSwap => state.FistColors[4] == state.FistColors[6];
-    private static readonly float DiagonalWaymark = 13.63f / MathF.Sqrt(2);
 
     protected override IAiMove TetherPrePosition() => AiMove.Create(
         new(6, -3), new(6, 3), new(10, -7), new(10, 7),
@@ -30,16 +28,12 @@ public sealed class TopP5DeltaMoogleAi : TopP5DeltaAi
     }
 
     protected override IAiMove FistResolveSlots() => AiMove.Create(
-        // Inner blue waits on Omega's diagonal waymarks and breaks as the real tethers land; outer blue
-        // moves between the east waymarks once the fists spawn, under the break distance so both remote breaks
-        // never land within one stack window.
-        new(DiagonalWaymark, -DiagonalWaymark), new(DiagonalWaymark, DiagonalWaymark), new(13.6f, -4), new(13.6f, 4),
+        new(10, -3), new(10, 3), new(10, -7), new(10, 7),
         new(-8.5f, -10), new(-8.5f, 10), new(-9.5f, -10), new(-9.5f, 10))
         .Assignments(state.TetherOrder).ApplySwaps(Swap01, Swap45).ApplyPositions(AdjustEyePosition);
 
-    // After the arms spawn, outer blue steps onto the inner blue line (inner blue has already broken).
     protected override IAiMove TetherResolveStep() => AiMove.Create(
-        null, null, new(DiagonalWaymark, -4.4f), new(DiagonalWaymark, 4.4f), null, null, null, null)
+        null, null, new(10, -3), new(10, 3), null, null, null, null)
         .Assignments(state.TetherOrder).ApplySwaps(Swap01).ApplyPositions(AdjustEyePosition);
 
     protected override IAiMove HyperPulseBaitArms() => AiMove.Create(
