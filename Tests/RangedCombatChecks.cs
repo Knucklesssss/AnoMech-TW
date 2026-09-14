@@ -38,6 +38,32 @@ internal static class RangedCombatChecks
         brd.Advance(9);
         Hit(brd, 16496, aoe: true);
         Check(brd.SoulVoice == 0 && brd.Adjust(16496) == 16496, "Apex Arrow must spend Soul Voice; under 80 gives no Blast Arrow.");
+
+        var barrage = new BardCombat { Roll = () => 0 };
+        barrage.TryUse(107, false, false, true);
+        barrage.Advance(0.6);
+        Hit(barrage, 16495);
+        barrage.Advance(2.5);
+        Hit(barrage, 7409);
+        Check(barrage.CanUse(7409, true, true, true, checkTiming: false), "Refulgent Arrow must consume Barrage before Hawk's Eye, leaving Hawk's Eye up.");
+
+        var expiry = new BardCombat { Roll = () => 0 };
+        expiry.TryUse(114, false, false, true);
+        expiry.Advance(45);
+        Check(expiry.CurrentSong == BardCombat.Song.None && expiry.Repertoire == 0, "A song must end and clear Repertoire after 45 s.");
+
+        var paeon = new BardCombat { Roll = () => 0 };
+        paeon.TryUse(116, false, false, true);
+        paeon.Advance(15);
+        Check(paeon.Repertoire == 4, "Army's Paeon Repertoire must cap at 4.");
+
+        var finale = new BardCombat { Roll = () => 0 };
+        Check(!finale.CanUse(25785, true, true, true, checkTiming: false), "Radiant Finale needs at least one coda.");
+        finale.TryUse(114, false, false, true);
+        finale.Advance(0.6);
+        Check(finale.CanUse(25785, true, true, true, checkTiming: false), "One coda must enable Radiant Finale.");
+        finale.TryUse(25785, false, false, true);
+        Check(finale.Codas == 0, "Radiant Finale must spend every coda.");
     }
 
     private static void RoleActions()

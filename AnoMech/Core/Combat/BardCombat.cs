@@ -177,7 +177,7 @@ public sealed class BardCombat : RangedCombatBase
         3558 => (3, 15, 1),
         3561 => (11, 45, 1),
         3562 => (13, 60, 1),
-        7405 => (21, 120, 1),
+        7405 => (21, 90, 1), // trait 447 (level 88) shortens Troubadour's recast from 120 s to 90 s
         7408 => (22, 120, 1),
         25785 => (14, 110, 1),
         _ => Gcd,
