@@ -12,7 +12,7 @@ internal sealed class MultiplayerWindow : Window, IDisposable
 {
     private static readonly Vector4 Good = new(0.45f, 0.9f, 0.45f, 1f);
     private static readonly Vector4 Bad = new(1f, 0.45f, 0.45f, 1f);
-    private static readonly string[] RoleLabels = ["MT", "OT", "H1", "H2", "M1", "M2", "R1", "R2", "未分配"];
+    private static readonly string[] RoleLabels = ["MT", "ST", "H1", "H2", "D1", "D2", "D3", "D4", "未分配"];
     private const int UnassignedIndex = 8;
 
     private readonly MultiplayerSession session;

@@ -49,10 +49,10 @@ public unsafe class MainWindow : Window, IDisposable
     private readonly Dictionary<IScenario, string> _stratGroupMemory = new();
 
     // Index 0 = Auto (null override); indices 1..8 map to (PartyRole)(idx - 1).
-    // Labels are the canonical raid role abbreviations: MT/OT tanks, H1/H2 healers
-    // (H1 = regen), M1/M2 melee DPS, R1/R2 ranged DPS (R1 = phys).
+    // Labels are the TC raid role abbreviations: MT/ST tanks, H1/H2 healers
+    // (H1 = regen), D1/D2 melee DPS, D3/D4 ranged DPS (D3 = phys).
     private static readonly string[] RoleLabels =
-        ["自動", "MT", "OT", "H1", "H2", "M1", "M2", "R1", "R2"];
+        ["自動", "MT", "ST", "H1", "H2", "D1", "D2", "D3", "D4"];
 
 #if DEBUG
     private readonly DebugMenu debugMenu;
