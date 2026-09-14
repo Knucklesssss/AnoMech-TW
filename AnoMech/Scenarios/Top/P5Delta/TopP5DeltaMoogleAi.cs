@@ -13,7 +13,7 @@ public sealed class TopP5DeltaMoogleAi : TopP5DeltaAi
     private bool OuterFistsSwap => state.FistColors[4] == state.FistColors[6];
 
     protected override IAiMove TetherPrePosition() => AiMove.Create(
-        new(6, -3), new(6, 3), new(10, -7), new(10, 7),
+        new(6, -7), new(6, 7), new(10, -3), new(10, 3),
         new(-4, -6), new(-4, 6), new(-9.5f, -10), new(-9.5f, 10))
         .Assignments(state.TetherOrder).ApplyPositions(AdjustEyePosition);
 
@@ -28,7 +28,7 @@ public sealed class TopP5DeltaMoogleAi : TopP5DeltaAi
     }
 
     protected override IAiMove FistResolveSlots() => AiMove.Create(
-        new(10, -3), new(10, 3), new(10, -7), new(10, 7),
+        new(6, -7), new(6, 7), new(10, -3), new(10, 3),
         new(-8.5f, -10), new(-8.5f, 10), new(-9.5f, -10), new(-9.5f, 10))
         .Assignments(state.TetherOrder).ApplySwaps(Swap01, Swap45).ApplyPositions(AdjustEyePosition);
 
