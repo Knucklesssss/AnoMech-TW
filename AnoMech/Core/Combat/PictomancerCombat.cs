@@ -230,9 +230,9 @@ public sealed class PictomancerCombat : CasterCombatBase
     {
         34653 or 34654 or 34655 or 34659 or 34660 or 34661 or 34663 => (GlobalCooldownGroup, Scaled(3.3), 1),
         34664 or 34665 or 34668 or 34669 => (GlobalCooldownGroup, Scaled(4), 1),
-        34670 or 34671 => (19, 40, 2),
-        34674 => (20, 60, 2),
-        34675 => (21, 120, 1),
+        34670 or 34671 or 35347 => (19, 40, 2),
+        34674 or 35348 => (20, 60, 2),
+        34675 or 35349 => (21, 120, 1),
         34676 => (7, 30, 1),
         34683 => (1, 1, 1),
         34684 => (6, 20, 1),

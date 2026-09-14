@@ -21,6 +21,12 @@ internal static class RangedCombatChecks
         var pct = new PictomancerCombat();
         // Trait 540 (level 86, "彩繪效果提高II") gives Striking Muse 2 charges instead of the sheet's base 1.
         Check(pct.GetCooldown(34674).Charges == 2, "Striking Muse must have 2 charges per trait 540.");
+        // The muse hotbar placeholders (35347/35348/35349) sit before their targets in JobActions, so
+        // CombatNativeState binds their native recast circles from these ids directly: they need their
+        // own explicit timing contracts matching their real target's group/recast/charges.
+        Check(pct.GetBindingCooldown(35347) == (19, 40, 2), "Creature Motif must bind group 19, 40 s, 2 charges.");
+        Check(pct.GetBindingCooldown(35348) == (20, 60, 2), "Weapon Motif must bind group 20, 60 s, 2 charges per trait 540.");
+        Check(pct.GetBindingCooldown(35349) == (21, 120, 1), "Landscape Motif must bind group 21, 120 s, 1 charge.");
         Cast(pct, 34650);
         Check(pct.Adjust(34650) == 34651, "Fire in Red must turn into Aero in Green.");
         pct.Advance(1);
