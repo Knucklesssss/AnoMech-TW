@@ -10,8 +10,8 @@ namespace AnoMech.Core;
 
 // The game clears the local player's cast state every frame, so it never fills _CastBar for a
 // simulated cast; this writes the addon's arrays the way EnmityHud does for _EnemyList.
-// ponytail: CastTime/TotalCastTime written as centiseconds and index 1 left untouched — both
-// unverified; the first frame of each cast logs what the game held so the units can be corrected.
+// CastTime/TotalCastTime are centiseconds (a real 2.0 s cast left 196 there).
+// ponytail: index 1 is unnamed in ClientStructs; written as a casting flag on the guess the addon hides without it.
 internal sealed unsafe class LocalCastBarHud : IDisposable
 {
     private const string AddonName = "_CastBar";
@@ -19,6 +19,8 @@ internal sealed unsafe class LocalCastBarHud : IDisposable
     private LocalCombatSession? session;
     private bool wasCasting;
     private uint loggedAction;
+    private bool clearPending;
+    private bool visibilityLogged;
 
     public LocalCastBarHud()
     {
@@ -35,12 +37,18 @@ internal sealed unsafe class LocalCastBarHud : IDisposable
     {
         session = combat is { Active: true, CastingAction: not 0 } ? combat : null;
         var casting = session != null;
+        if (!casting && wasCasting) clearPending = true;
         if (casting || wasCasting)
         {
             MarkArraysDirty();
             SetVisible(casting);
         }
-        if (!casting) loggedAction = 0;
+        if (casting && !visibilityLogged && session!.CastProgress >= 0.5f && Plugin.LogManager.Enabled)
+        {
+            visibilityLogged = true;
+            Plugin.LogManager.LogSkill($"CastBarHud mid {VisibilityState()}");
+        }
+        if (!casting) { loggedAction = 0; visibilityLogged = false; }
         wasCasting = casting;
     }
 
@@ -54,7 +62,8 @@ internal sealed unsafe class LocalCastBarHud : IDisposable
 
     private void OnPreRequestedUpdate(AddonEvent type, AddonArgs args)
     {
-        if (session is not { CastingAction: not 0 } combat) return;
+        var combat = session;
+        if (combat == null && !clearPending) return;
         if (args is not AddonRequestedUpdateArgs reqArgs) return;
         var numArrays = (NumberArrayData**)reqArgs.NumberArrayData;
         var strArrays = (StringArrayData**)reqArgs.StringArrayData;
@@ -62,6 +71,12 @@ internal sealed unsafe class LocalCastBarHud : IDisposable
         var numArr = numArrays[(int)NumberArrayType.CastBar];
         var strArr = strArrays[(int)StringArrayType.CastBar];
         if (numArr == null || strArr == null || numArr->IntArray == null) return;
+        if (combat == null)
+        {
+            numArr->IntArray[1] = 0;
+            clearPending = false;
+            return;
+        }
 
         if (loggedAction != combat.CastingAction && Plugin.LogManager.Enabled)
         {
@@ -84,6 +99,7 @@ internal sealed unsafe class LocalCastBarHud : IDisposable
         bar->TotalCastTime = (int)Math.Round(combat.CastTotal * 100);
         bar->CompletionPercentage = (int)(combat.CastProgress * 100);
         bar->Interupted = false;
+        numArr->IntArray[1] = 1;
         strArr->SetValue(0, name, managed: true);
     }
 
@@ -95,6 +111,18 @@ internal sealed unsafe class LocalCastBarHud : IDisposable
         var strArr = holder->GetStringArrayData((int)StringArrayType.CastBar);
         if (numArr != null) numArr->UpdateState = 1;
         if (strArr != null) strArr->UpdateState = 1;
+    }
+
+    private static string VisibilityState()
+    {
+        var addon = (AtkUnitBase*)Plugin.GameGui.GetAddonByName(AddonName, 1).Address;
+        if (addon == null) return "addon=null";
+        var holder = AtkStage.Instance()->AtkArrayDataHolder;
+        var numArr = holder == null ? null : holder->GetNumberArrayData((int)NumberArrayType.CastBar);
+        var ints = numArr == null || numArr->IntArray == null ? "null"
+            : $"[{numArr->IntArray[0]},{numArr->IntArray[1]},{numArr->IntArray[2]},{numArr->IntArray[3]},{numArr->IntArray[4]},{numArr->IntArray[5]}]";
+        var root = addon->RootNode;
+        return $"visible={addon->IsVisible} root={(root == null ? "null" : $"{root->IsVisible()}/alpha={root->Alpha_2}")} ints={ints}";
     }
 
     private static void SetVisible(bool visible)
