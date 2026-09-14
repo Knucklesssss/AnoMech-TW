@@ -27,6 +27,8 @@ public sealed unsafe class LocalCombatSession : IDisposable
     private double snapshotClock;
     private double castRemaining;
     private ulong castTarget;
+    private double castTotal;
+    private GameObjectId castTargetObject;
     private double autoAttackTimer;
     private readonly System.Collections.Generic.Dictionary<(uint Id, bool Timing), uint> statusSeen = [];
     private void Log(string text) { if (Plugin.LogManager.Enabled) Plugin.LogManager.LogSkill(text); }
@@ -149,10 +151,18 @@ public sealed unsafe class LocalCombatSession : IDisposable
         var hasTarget = model.IsSelfAction(id) ? Enemies().Any(e => InEffectRange(id, Position(player), e)) : target != null;
         var done = model.CompleteCast(hasTarget, target != null && InRange(id, target), Alive, out var hit);
         if (hit != null) inCombat = true;
-        if (!done)
+        if (done)
+        {
+            // A full cast bar for one write lets SimCast see the cast finish and play the release.
+            native.SetCast(id, castTotal, castTotal, castTargetObject);
+            native.Mirror(AutoAttacking);
+            cast.Tick(0);
+        }
+        else
         {
             cast.Despawn();
         }
+        native.SetCast(0, 0, 0, default);
         native.Mirror(AutoAttacking);
         Log($"CastComplete id={id} done={done} hit={hit?.ToString() ?? "null"}");
     }
@@ -163,6 +173,7 @@ public sealed unsafe class LocalCombatSession : IDisposable
         Log($"CastCancel id={model.CastingAction} reason={reason}");
         model.CancelCast();
         cast.Despawn();
+        native.SetCast(0, 0, 0, default);
         native.Mirror(AutoAttacking);
     }
 
@@ -308,10 +319,13 @@ public sealed unsafe class LocalCombatSession : IDisposable
         native.StartCooldown(id);
         Plugin.PlayerInputHooks.RecordLocalAction();
         castRemaining = seconds;
+        castTotal = seconds;
         castTarget = targetId;
         var presentationTarget = self ? null : target;
+        castTargetObject = presentationTarget?.GameObjectId ?? player.GameObjectId;
         cast.Start(id, presentationTarget == null ? Position(player) : Position(presentationTarget), (float)seconds,
-            presentationTarget?.GameObjectId ?? player.GameObjectId, 0, 0, 0, .1f);
+            castTargetObject, 0, 0, 0, .1f);
+        native.SetCast(id, 0, seconds, castTargetObject);
         native.Mirror(AutoAttacking);
         Log($"CastBegin id={id} seconds={seconds:0.00}");
     }
@@ -380,7 +394,12 @@ public sealed unsafe class LocalCombatSession : IDisposable
         Plugin.ChatGui.PrintError($"[AnoMech] {text}");
     }
     public void BeforeNativeUpdate() { if (CheckIdentity()) native.SuppressNativeAutoAttack(); }
-    public void AfterNativeUpdate() { if (CheckIdentity()) native.Mirror(AutoAttacking); }
+    public void AfterNativeUpdate()
+    {
+        if (!CheckIdentity()) return;
+        if (model.CastingAction != 0) native.SetCast(model.CastingAction, castTotal - castRemaining, castTotal, castTargetObject);
+        native.Mirror(AutoAttacking);
+    }
     public void Stop(string reason)
     {
         if (!Active) return;
@@ -397,6 +416,7 @@ public sealed unsafe class LocalCombatSession : IDisposable
         {
             // A cast bar left on the player would outlive the simulation.
             if (model.CastingAction != 0 && native.MatchesIdentity) cast.Despawn();
+            native.SetCast(0, 0, 0, default);
             native.Dispose();
             LogState("AfterStop");
         }
