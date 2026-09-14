@@ -138,7 +138,15 @@ public sealed unsafe class CombatNativeState : IDisposable
         if (gcd != null) text += $" gcdRecast={(gcd->IsActive ? "on" : "off")}/{gcd->Elapsed:0.00}/{gcd->Total:0.00}";
         if (PlayerMatches) text += $" mp={player->Mana}/{player->MaxMana} statuses=[{string.Join(",", rules.StatusIds.Where(id => player->StatusManager.GetStatusIndex(id) >= 0))}]";
         else text += " player=changed";
-        return text;
+        // group:actionId:active:elapsed/total for every owned record; a = additional group.
+        var records = new System.Text.StringBuilder(" recasts=");
+        foreach (var recast in recasts)
+        {
+            var record = manager->GetRecastGroupDetail(recast.NativeGroup);
+            if (record == null) continue;
+            records.Append($"{recast.NativeGroup}{(recast.Additional ? "a" : "")}:{record->ActionId}:{(record->IsActive ? 1 : 0)}:{record->Elapsed:0.00}/{record->Total:0.00} ");
+        }
+        return text + records;
     }
 
     public double AdditionalRemaining(uint action)

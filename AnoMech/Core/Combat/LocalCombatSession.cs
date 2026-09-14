@@ -398,6 +398,7 @@ public sealed unsafe class LocalCombatSession : IDisposable
             // A cast bar left on the player would outlive the simulation.
             if (model.CastingAction != 0 && native.MatchesIdentity) cast.Despawn();
             native.Dispose();
+            LogState("AfterStop");
         }
         catch (Exception ex)
         {
