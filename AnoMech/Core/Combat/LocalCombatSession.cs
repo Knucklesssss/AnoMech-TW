@@ -29,7 +29,6 @@ public sealed unsafe class LocalCombatSession : IDisposable
     private Vector3 castStartPosition;
     private ulong castTarget;
     private double castTotal;
-    private bool castProbeLogged;
     private GameObjectId castTargetObject;
     private double autoAttackTimer;
     private readonly System.Collections.Generic.Dictionary<(uint Id, bool Timing), uint> statusSeen = [];
@@ -330,7 +329,6 @@ public sealed unsafe class LocalCombatSession : IDisposable
         castRemaining = seconds;
         castStartPosition = Position(player);
         castTotal = seconds;
-        castProbeLogged = false;
         castTarget = targetId;
         var presentationTarget = self ? null : target;
         castTargetObject = presentationTarget?.GameObjectId ?? player.GameObjectId;
@@ -408,11 +406,8 @@ public sealed unsafe class LocalCombatSession : IDisposable
     public void AfterNativeUpdate()
     {
         if (!CheckIdentity()) return;
-        var probe = model.CastingAction != 0 && !castProbeLogged && castRemaining <= castTotal / 2 && Plugin.LogManager.Enabled;
-        if (probe) Log($"CastProbe afterNativeUpdate {native.CastDebugState()}");
         if (model.CastingAction != 0) native.SetCast(model.CastingAction, castTotal - castRemaining, castTotal, castTargetObject);
         native.Mirror(AutoAttacking);
-        if (probe) { castProbeLogged = true; Log($"CastProbe afterMirror {native.CastDebugState()}"); }
     }
     public void Stop(string reason)
     {
