@@ -41,10 +41,26 @@ internal sealed class MultiplayerWindow : Window, IDisposable
 
     private static string RoleLabel(byte role) => role < 8 ? RoleLabels[role] : RoleLabels[UnassignedIndex];
 
+    private const string ConnectionExplanation =
+        "連線方式：房主的電腦當伺服器，朋友拿邀請碼直接連到房主，不經過任何中間伺服器。\n" +
+        "遊戲判定都由房主決定；朋友的畫面會比房主晚約 0.2 秒播放，自己操作不會延遲。\n\n" +
+        "誰能當房主：\n" +
+        "・家用固網、有公開 IP（例如一般光世代），並能自己設定路由器轉發 → 可以。\n" +
+        "・手機 4G/5G、手機熱點 → 幾乎都不行（電信商共用位址），請換人開房。\n" +
+        "・社區網路、宿舍、公司網路 → 常常不行；數據機再接路由器 → 兩台都要轉發，或把數據機設成橋接。\n\n" +
+        "加入的朋友用什麼網路都可以，不用設定路由器。\n\n" +
+        $"連線埠：固定使用 UDP {NetProtocol.DefaultPort}；被其他程式占用時會自動改用下一個號碼，請以畫面上「連線埠」顯示的號碼設定轉發。\n" +
+        "家用網路的外部位址可能會變，每次開房都要傳新的邀請碼，路由器規則不用重設。";
+
     private void DrawHost()
     {
         var net = session.Net;
         var hosting = net.Host is not null;
+        if (ImGui.TreeNode("這是什麼連線方式？誰能當房主？##connectionhelp"))
+        {
+            ImGui.TextWrapped(ConnectionExplanation);
+            ImGui.TreePop();
+        }
         ImGui.BeginDisabled(hosting || session.IsClientConnected);
         ImGui.RadioButton("開房給朋友連線##modeinternet", ref hostMode, (int)HostMode.Internet);
         ImGui.SameLine();
@@ -114,6 +130,7 @@ internal sealed class MultiplayerWindow : Window, IDisposable
         var client = net.Client;
         var busy = client.State is ClientState.Connecting or ClientState.Connected;
 
+        ImGui.TextDisabled("加入者用任何網路都可以（包含手機網路），不用設定路由器，貼上房主給的邀請碼即可。");
         ImGui.BeginDisabled(net.Host is not null);
         ImGui.InputText("邀請碼##joininput", ref inviteInput, 64);
         ImGui.BeginDisabled(busy);
