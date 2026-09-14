@@ -115,10 +115,14 @@ internal sealed unsafe class LocalCastBarHud : IDisposable
         if (strArr != null) strArr->UpdateState = 1;
     }
 
-    // The addon stays visible but the game hides its root node when the client isn't casting; re-show it last.
+    // The addon stays visible but the game hides and fades its root node when the client isn't casting; re-show it last.
     private void OnPreDraw(AddonEvent type, AddonArgs args)
     {
-        if (session is { CastingAction: not 0 }) SetVisible(true);
+        if (session is not { CastingAction: not 0 }) return;
+        SetVisible(true);
+        // The game also fades the root out when the client isn't casting.
+        var addon = (AtkUnitBase*)args.Addon.Address;
+        if (addon != null && addon->RootNode != null) addon->RootNode->SetAlpha(255);
     }
 
     private static string VisibilityState()
