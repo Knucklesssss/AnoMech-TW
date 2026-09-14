@@ -17,9 +17,8 @@ internal static class NetChecks
         LoopbackRejectsStaleRoom();
         StunResponseParses();
         AddressesClassify();
-        UpnpParsersHandleRouterReplies();
         ReadinessVerdicts();
-        Console.WriteLine("Net: invite code, packets, loopback connect/ping/reconnect, STUN, UPnP parsing and host readiness checks passed.");
+        Console.WriteLine("Net: invite code, packets, loopback connect/ping/reconnect, STUN and host readiness checks passed.");
     }
 
     private static void Check(bool condition, string message)
@@ -178,70 +177,23 @@ internal static class NetChecks
         Check(NetworkClassifier.Classify(null) == AddressKind.Invalid, "null invalid");
     }
 
-    private static void UpnpParsersHandleRouterReplies()
-    {
-        const string ssdp = "HTTP/1.1 200 OK\r\nCACHE-CONTROL: max-age=120\r\nST: urn:schemas-upnp-org:device:InternetGatewayDevice:1\r\nLocation: http://192.168.1.1:1900/igd.xml\r\n\r\n";
-        Check(UpnpClient.TryParseSsdpLocation(ssdp, out var location) && location.ToString() == "http://192.168.1.1:1900/igd.xml", "SSDP LOCATION header is found case-insensitively");
-        Check(!UpnpClient.TryParseSsdpLocation("HTTP/1.1 200 OK\r\nST: x\r\n\r\n", out _), "response without LOCATION is ignored");
-
-        const string description = """
-            <?xml version="1.0"?>
-            <root xmlns="urn:schemas-upnp-org:device-1-0">
-              <device><deviceList><device><deviceList><device>
-                <serviceList>
-                  <service><serviceType>urn:schemas-upnp-org:service:WANPPPConnection:1</serviceType><controlURL>/ppp</controlURL></service>
-                  <service><serviceType>urn:schemas-upnp-org:service:WANIPConnection:1</serviceType><controlURL>/upnp/control/WANIPConn1</controlURL></service>
-                </serviceList>
-              </device></deviceList></device></deviceList></device>
-            </root>
-            """;
-        Check(UpnpClient.TryFindWanService(description, location, out var control, out var serviceType), "WAN service found in nested device list");
-        Check(serviceType == "urn:schemas-upnp-org:service:WANIPConnection:1", "WANIPConnection preferred over WANPPPConnection");
-        Check(control.ToString() == "http://192.168.1.1:1900/upnp/control/WANIPConn1", "relative control URL resolves against the location");
-        Check(!UpnpClient.TryFindWanService("<root/>", location, out _, out _), "description without WAN service is rejected");
-        Check(!UpnpClient.TryFindWanService("not xml", location, out _, out _), "malformed description is rejected");
-
-        var envelope = UpnpClient.BuildSoapEnvelope(serviceType, "AddPortMapping", [("NewExternalPort", 42420), ("NewPortMappingDescription", "A&B")]);
-        Check(envelope.Contains("<u:AddPortMapping xmlns:u=\"urn:schemas-upnp-org:service:WANIPConnection:1\">") && envelope.Contains("<NewExternalPort>42420</NewExternalPort>") && envelope.Contains("A&amp;B"), "SOAP envelope carries escaped arguments");
-
-        const string ok = """<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><u:GetExternalIPAddressResponse xmlns:u="urn:schemas-upnp-org:service:WANIPConnection:1"><NewExternalIPAddress>203.0.113.9</NewExternalIPAddress></u:GetExternalIPAddressResponse></s:Body></s:Envelope>""";
-        Check(UpnpClient.ParseSoapValue(ok, "NewExternalIPAddress") == "203.0.113.9", "SOAP value read");
-        Check(UpnpClient.ParseSoapFault(ok) is null, "successful reply has no fault");
-
-        const string fault = """<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><s:Fault><faultcode>s:Client</faultcode><faultstring>UPnPError</faultstring><detail><UPnPError xmlns="urn:schemas-upnp-org:control-1-0"><errorCode>718</errorCode><errorDescription>ConflictInMappingEntry</errorDescription></UPnPError></detail></s:Fault></s:Body></s:Envelope>""";
-        Check(UpnpClient.ParseSoapFault(fault) is { Code: 718 } parsed && UpnpClient.DescribeFault(parsed).Contains("718"), "SOAP fault code parsed and described");
-    }
-
     private static void ReadinessVerdicts()
     {
-        var mapping = new UpnpMapping(new Uri("http://192.168.1.1/ctl"), "urn:schemas-upnp-org:service:WANIPConnection:1", 42420);
         var publicIp = IPAddress.Parse("203.0.113.7");
 
-        var ok = HostReadiness.Evaluate(42420, new UpnpOutcome(true, true, null, publicIp, mapping), publicIp);
-        Check(ok.CanHost && ok.PublicIp!.Equals(publicIp) && ok.Problems.Count == 0, "mapped port with a public router IP can host");
+        var ok = HostReadiness.Evaluate(42420, publicIp);
+        Check(ok.CanHost && ok.PublicIp!.Equals(publicIp) && ok.Problems.Count == 0, "a public address can host");
         Check(ok.Invite(9) is { } invite && InviteCode.TryDecode(invite, out var decoded) == InviteError.None && decoded.Port == 42420, "a passing report produces a valid invite");
+        Check(ok.Steps.Any(s => s.Name == "路由器轉發" && s.Ok is null), "router forwarding is shown as not checkable");
 
-        var noGateway = HostReadiness.Evaluate(42420, new UpnpOutcome(false, false, "區網內沒有路由器回應 UPnP 探索", null, null), publicIp);
-        Check(!noGateway.CanHost && noGateway.Problems.Any(p => p.Contains("找不到支援 UPnP 的路由器")) && noGateway.Invite(9) is null, "no gateway cannot host and has no invite");
+        var offline = HostReadiness.Evaluate(42420, null);
+        Check(!offline.CanHost && offline.Problems.Any(p => p.Contains("查不到")) && offline.Invite(9) is null, "no public address cannot host and has no invite");
 
-        var refused = HostReadiness.Evaluate(42420, new UpnpOutcome(true, false, "路由器不允許這台電腦新增埠映射（錯誤 606，UPnP 權限不足）", publicIp, null), publicIp);
-        Check(!refused.CanHost && refused.Problems.Any(p => p.Contains("拒絕建立埠映射")), "refused mapping is explained");
-
-        var cgnat = HostReadiness.Evaluate(42420, new UpnpOutcome(true, true, null, IPAddress.Parse("100.72.1.2"), mapping), publicIp);
-        Check(!cgnat.CanHost && cgnat.Problems.Any(p => p.Contains("CGNAT")), "CGNAT router address blocks hosting");
-
-        var doubleNat = HostReadiness.Evaluate(42420, new UpnpOutcome(true, true, null, IPAddress.Parse("192.168.0.2"), mapping), publicIp);
-        Check(!doubleNat.CanHost && doubleNat.Problems.Any(p => p.Contains("上游還有一層 NAT")), "private router address blocks hosting");
-
-        var mismatch = HostReadiness.Evaluate(42420, new UpnpOutcome(true, true, null, publicIp, mapping), IPAddress.Parse("198.51.100.9"));
-        Check(!mismatch.CanHost && mismatch.Problems.Any(p => p.Contains("疑似 CGNAT")), "router and STUN disagreeing blocks hosting");
-
-        var manual = HostReadiness.Evaluate(42420, null, publicIp);
-        Check(manual.CanHost && manual.Steps.Any(s => s.Name == "UPnP" && s.Ok is null), "manual forwarding skips UPnP and uses the STUN address");
-        Check(!HostReadiness.Evaluate(42420, null, null).CanHost, "manual forwarding without a public IP cannot host");
+        var cgnat = HostReadiness.Evaluate(42420, IPAddress.Parse("100.72.1.2"));
+        Check(!cgnat.CanHost && cgnat.Problems.Any(p => p.Contains("CGNAT")), "a carrier-grade NAT address cannot host");
 
         var local = HostReadiness.LocalOnly(42420);
         Check(local.CanHost && local.Invite(9) is { } localInvite && InviteCode.TryDecode(localInvite, out var localCode) == InviteError.None && localCode.Address.Equals(IPAddress.Loopback), "local-only report invites to 127.0.0.1");
-        Check(HostReadiness.ManualForwardingHelp(42421).Contains("UDP") && HostReadiness.ManualForwardingHelp(42421).Contains("42421"), "manual help names protocol and port");
+        Check(HostReadiness.ManualForwardingHelp(42421).Contains("UDP") && HostReadiness.ManualForwardingHelp(42421).Contains("42421"), "router help names protocol and port");
     }
 }

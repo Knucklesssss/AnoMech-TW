@@ -8,9 +8,7 @@ using var session = new ConnectionTestSession(() => name, message => Console.Wri
 
 return args.FirstOrDefault() switch
 {
-    "host" => await Host(session, args.Contains("--local") ? HostMode.LocalOnly
-                                : args.Contains("--manual") ? HostMode.ManualForwarding
-                                : HostMode.Upnp),
+    "host" => await Host(session, args.Contains("--local") ? HostMode.LocalOnly : HostMode.Internet),
     "join" when args.Length >= 2 => await Join(session, args[1]),
     _ => Usage(),
 };
@@ -25,7 +23,7 @@ static async Task<int> Host(ConnectionTestSession session, HostMode mode)
     }
     host.PlayerJoined += p => Console.WriteLine($"玩家加入：#{p.Id} {p.Name}");
     host.PlayerLeft += (p, reason) => Console.WriteLine($"玩家離開：#{p.Id} {p.Name}（{reason}）");
-    Console.WriteLine($"房間已在 UDP {host.Port} 啟動。按 Q 關閉房間並移除埠映射。");
+    Console.WriteLine($"房間已在 UDP {host.Port} 啟動。按 Q 關閉房間。");
 
     var lastMessage = "";
     var reported = false;
@@ -52,7 +50,7 @@ static async Task<int> Host(ConnectionTestSession session, HostMode mode)
         await Task.Delay(15);
     }
 
-    await session.StopHosting();
+    session.StopHosting();
     Console.WriteLine("房間已關閉。");
     return 0;
 }
@@ -110,7 +108,7 @@ static void PrintReport(HostReadinessReport report, string? invite)
     Console.WriteLine(report.CanHost ? "結論：可以開房" : "結論：無法開房");
     foreach (var problem in report.Problems)
         Console.WriteLine($"  ・{problem}");
-    if (!report.CanHost && report.Upnp is not null)
+    if (!report.CanHost)
         Console.WriteLine(HostReadiness.ManualForwardingHelp(report.Port));
     if (invite is not null)
     {
@@ -122,7 +120,7 @@ static void PrintReport(HostReadinessReport report, string? invite)
 static int Usage()
 {
     Console.WriteLine("用法：");
-    Console.WriteLine("  dotnet run --project tools/NetTest -- host [--manual | --local] [--name 名稱]");
+    Console.WriteLine("  dotnet run --project tools/NetTest -- host [--local] [--name 名稱]");
     Console.WriteLine("  dotnet run --project tools/NetTest -- join <邀請碼> [--name 名稱]");
     return 1;
 }

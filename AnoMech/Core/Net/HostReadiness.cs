@@ -6,15 +6,13 @@ using System.Threading.Tasks;
 
 namespace AnoMech.Core.Net;
 
-// Ok: true = passed, false = failed, null = skipped or not applicable.
+// Ok: true = passed, false = failed, null = cannot be checked from this machine.
 public sealed record ReadinessStep(string Name, bool? Ok, string Detail);
 
 public sealed record HostReadinessReport(
     int Port,
-    UpnpOutcome? Upnp,
-    IPAddress? StunIp,
-    bool CanHost,
     IPAddress? PublicIp,
+    bool CanHost,
     IReadOnlyList<ReadinessStep> Steps,
     IReadOnlyList<string> Problems)
 {
@@ -22,76 +20,44 @@ public sealed record HostReadinessReport(
         => CanHost && PublicIp is not null ? InviteCode.Create(PublicIp, (ushort)Port, roomId).Encode() : null;
 }
 
-// Passing means every check this machine can make succeeded. Whether a friend outside can
-// actually reach the port is only proven when they connect with the invite code.
+// The player forwards the port on their router by hand. This machine can confirm the port is
+// open locally and what address the internet sees; whether the router forwards it is only proven
+// when a friend actually connects.
 public static class HostReadiness
 {
-    public static async Task<HostReadinessReport> RunAsync(int port, bool manualForwarding, Action<string> log, CancellationToken ct)
-    {
-        var stunTask = StunClient.QueryPublicIpAsync(TimeSpan.FromSeconds(3), ct);
-        var upnp = manualForwarding ? null : await UpnpClient.MapUdpPortAsync(port, log, ct);
-        return Evaluate(port, upnp, await stunTask);
-    }
+    public static async Task<HostReadinessReport> RunAsync(int port, CancellationToken ct)
+        => Evaluate(port, await StunClient.QueryPublicIpAsync(TimeSpan.FromSeconds(3), ct));
 
     public static HostReadinessReport LocalOnly(int port)
-        => new(port, null, null, true, IPAddress.Loopback,
-               [new ReadinessStep("本機測試模式", true, "邀請碼使用 127.0.0.1，只能在同一台電腦上連線。")], []);
+        => new(port, IPAddress.Loopback, true,
+               [new ReadinessStep("只在這台電腦測試", true, "這個邀請碼只能在同一台電腦上使用，朋友無法加入。")], []);
 
-    public static HostReadinessReport Evaluate(int port, UpnpOutcome? upnp, IPAddress? stunIp)
+    public static HostReadinessReport Evaluate(int port, IPAddress? publicIp)
     {
-        var steps = new List<ReadinessStep> { new("UDP 埠", true, $"已綁定 UDP {port}") };
         var problems = new List<string>();
-        var stunKind = NetworkClassifier.Classify(stunIp);
-        IPAddress? publicIp;
-
-        if (upnp is null)
+        var kind = NetworkClassifier.Classify(publicIp);
+        var steps = new List<ReadinessStep>
         {
-            steps.Add(new ReadinessStep("UPnP", null, "已略過（手動埠轉發）"));
-            steps.Add(new ReadinessStep("公網 IP（STUN 查詢）", stunKind == AddressKind.Public, stunIp?.ToString() ?? "無法取得"));
-            publicIp = stunKind == AddressKind.Public ? stunIp : null;
-            if (publicIp is null) problems.Add("無法取得公網 IP：STUN 查詢失敗，請確認這台電腦可以連上外部網路。");
-            steps.Add(new ReadinessStep("CGNAT 判斷", null, "手動轉發模式無法向路由器確認；若是電信商共用 IP，轉發也不會生效。"));
-        }
-        else
-        {
-            steps.Add(new ReadinessStep("UPnP 路由器", upnp.GatewayFound, upnp.GatewayFound ? "找到支援 UPnP 的路由器" : upnp.Error ?? "找不到"));
-            if (!upnp.GatewayFound)
-                problems.Add($"找不到支援 UPnP 的路由器：路由器可能沒有 UPnP 功能，或 UPnP 已被關閉（{upnp.Error}）。");
+            new("連線埠", true, $"已開啟 {port} 號埠（UDP）"),
+            new("你的外部網路位址", kind == AddressKind.Public, publicIp?.ToString() ?? "查不到"),
+        };
 
-            steps.Add(new ReadinessStep("埠映射", upnp.GatewayFound ? upnp.Mapped : null, upnp.Mapped ? $"已映射 UDP {port}" : upnp.Error ?? "未執行"));
-            if (upnp.GatewayFound && !upnp.Mapped)
-                problems.Add($"路由器拒絕建立埠映射：{upnp.Error}。");
+        if (kind == AddressKind.CarrierGradeNat)
+            problems.Add("你的外部網路位址是電信商共用的位址（CGNAT），朋友連不進來，請改由其他人當房主。");
+        else if (kind != AddressKind.Public)
+            problems.Add("查不到你的外部網路位址，請確認這台電腦可以上網。");
 
-            var router = upnp.RouterExternalIp;
-            var routerKind = NetworkClassifier.Classify(router);
-            steps.Add(new ReadinessStep("公網 IP（路由器回報）", router is null ? null : routerKind == AddressKind.Public, router?.ToString() ?? "無法取得"));
-            steps.Add(new ReadinessStep("公網 IP（STUN 查詢）", stunIp is null ? null : stunKind == AddressKind.Public, stunIp?.ToString() ?? "無法取得"));
-
-            var nat = routerKind switch
-            {
-                AddressKind.CarrierGradeNat => $"路由器的對外 IP {router} 是電信商共用 IP（CGNAT），外部無法連入。",
-                AddressKind.Private => $"路由器的對外 IP {router} 是內網位址，上游還有一層 NAT（例如數據機也在當路由器），外部無法連入。",
-                _ when router is not null && stunIp is not null && !router.Equals(stunIp)
-                    => $"路由器回報的 IP {router} 與實際對外 IP {stunIp} 不同，疑似 CGNAT 或多層 NAT，外部可能無法連入。",
-                _ => null,
-            };
-            steps.Add(new ReadinessStep("CGNAT 判斷", router is null && stunIp is null ? null : nat is null, nat ?? "未發現共用 IP 或多層 NAT"));
-            if (nat is not null) problems.Add(nat);
-
-            publicIp = routerKind == AddressKind.Public ? router : stunKind == AddressKind.Public ? stunIp : null;
-            if (publicIp is null && nat is null) problems.Add("無法取得公網 IP。");
-        }
-
-        var canHost = problems.Count == 0 && publicIp is not null && (upnp is null || upnp.Mapped);
-        steps.Add(new ReadinessStep("邀請碼", canHost, canHost ? "已產生" : "無法開房，未產生邀請碼"));
-        return new HostReadinessReport(port, upnp, stunIp, canHost, publicIp, steps, problems);
+        steps.Add(new ReadinessStep("路由器轉發", null, $"插件無法自動確認，請先在路由器把 UDP {port} 轉發到這台電腦。"));
+        var canHost = problems.Count == 0;
+        steps.Add(new ReadinessStep("邀請碼", canHost, canHost ? "已產生" : "沒有產生"));
+        return new HostReadinessReport(port, canHost ? publicIp : null, canHost, steps, problems);
     }
 
     public static string ManualForwardingHelp(int port) =>
-        "手動設定埠轉發（Port Forwarding）：\n" +
-        "1. 用瀏覽器登入路由器管理頁面（常見位址 192.168.0.1 或 192.168.1.1）。\n" +
+        "路由器設定步驟（第一次開房才需要做）：\n" +
+        "1. 用瀏覽器打開路由器管理頁面（常見位址 192.168.0.1 或 192.168.1.1），帳號密碼通常貼在路由器背面。\n" +
         "2. 找到「虛擬伺服器」「通訊埠轉送」或「Port Forwarding」。\n" +
-        $"3. 新增規則：協定 UDP，外部埠 {port}，內部埠 {port}，內部 IP 填這台電腦的區網 IP。\n" +
-        "4. 儲存後回到這裡，選「我已手動設定埠轉發」再按一次「建立房間」。\n" +
-        "若是電信商共用 IP（CGNAT），手動轉發也不會生效，請改由其他玩家當房主。";
+        $"3. 新增一條規則：協定選 UDP，外部埠和內部埠都填 {port}，內部 IP 填這台電腦的區網 IP（通常是 192.168.x.x）。\n" +
+        "4. 儲存後回到這裡按「建立房間」。\n" +
+        "不玩的時候可以把這條規則停用；如果家裡是數據機再接一台路由器，兩台可能都要設定。";
 }

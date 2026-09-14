@@ -7,8 +7,7 @@ namespace AnoMech.Core.Net;
 
 public enum HostMode
 {
-    Upnp,
-    ManualForwarding,
+    Internet,
     LocalOnly,
 }
 
@@ -18,7 +17,6 @@ public sealed class ConnectionTestSession : IDisposable
     private readonly Action<string> log;
     private CancellationTokenSource? readinessCts;
     private Task<HostReadinessReport>? readinessTask;
-    private UpnpMapping? mapping;
 
     public ConnectionTestSession(Func<string> playerName, Action<string> log)
     {
@@ -35,13 +33,13 @@ public sealed class ConnectionTestSession : IDisposable
 
     public void StartHosting(HostMode mode)
     {
-        _ = StopHosting();
+        StopHosting();
         var roomId = BitConverter.ToUInt32(RandomNumberGenerator.GetBytes(4));
         var host = new NetHost(roomId, log);
         if (!host.Start())
         {
             host.Dispose();
-            HostMessage = $"無法綁定 UDP {NetProtocol.DefaultPort}～{NetProtocol.DefaultPort + NetProtocol.PortCandidates - 1}，這些埠可能被其他程式占用。";
+            HostMessage = $"無法開啟 {NetProtocol.DefaultPort}～{NetProtocol.DefaultPort + NetProtocol.PortCandidates - 1} 號埠，可能被其他程式占用。";
             return;
         }
         Host = host;
@@ -50,18 +48,16 @@ public sealed class ConnectionTestSession : IDisposable
         {
             Report = HostReadiness.LocalOnly(host.Port);
             InviteText = Report.Invite(roomId);
-            HostMessage = "本機測試模式：可以在同一台電腦加入。";
+            HostMessage = "只在這台電腦測試：可以用同一台電腦加入。";
             return;
         }
 
         readinessCts = new CancellationTokenSource();
-        readinessTask = HostReadiness.RunAsync(host.Port, mode == HostMode.ManualForwarding, log, readinessCts.Token);
-        HostMessage = "正在檢查網路條件…";
+        readinessTask = HostReadiness.RunAsync(host.Port, readinessCts.Token);
+        HostMessage = "正在查詢你的外部網路位址…";
     }
 
-    // ponytail: a UPnP mapping created in the same instant the room is closed can stay on the
-    // router; the next room re-adds the same port rule, so rules never pile up.
-    public Task StopHosting()
+    public void StopHosting()
     {
         readinessCts?.Cancel();
         readinessCts?.Dispose();
@@ -72,10 +68,6 @@ public sealed class ConnectionTestSession : IDisposable
         Report = null;
         InviteText = null;
         HostMessage = "";
-
-        if (mapping is not { } toDelete) return Task.CompletedTask;
-        mapping = null;
-        return UpnpClient.DeleteMappingAsync(toDelete, CancellationToken.None);
     }
 
     public void Join(string inviteText)
@@ -100,19 +92,18 @@ public sealed class ConnectionTestSession : IDisposable
         if (finished.IsCompletedSuccessfully && Host is not null)
         {
             Report = finished.Result;
-            mapping = Report.Upnp?.Mapping;
             InviteText = Report.Invite(Host.RoomId);
-            HostMessage = Report.CanHost ? "可以開房" : "無法開房";
+            HostMessage = Report.CanHost ? "可以開房：把邀請碼傳給朋友" : "無法開房";
         }
         else if (finished.IsFaulted)
         {
-            HostMessage = $"無法開房：網路檢查發生錯誤（{finished.Exception?.GetBaseException().Message}）";
+            HostMessage = $"無法開房：查詢網路時發生錯誤（{finished.Exception?.GetBaseException().Message}）";
         }
     }
 
     public void Dispose()
     {
-        _ = StopHosting();
+        StopHosting();
         Client.Dispose();
     }
 }

@@ -16,7 +16,7 @@ internal sealed class MultiplayerWindow : Window, IDisposable
     private const int UnassignedIndex = 8;
 
     private readonly MultiplayerSession session;
-    private int hostMode = (int)HostMode.Upnp;
+    private int hostMode = (int)HostMode.Internet;
     private string inviteInput = "";
 
     public MultiplayerWindow(MultiplayerSession session)
@@ -46,14 +46,18 @@ internal sealed class MultiplayerWindow : Window, IDisposable
         var net = session.Net;
         var hosting = net.Host is not null;
         ImGui.BeginDisabled(hosting || session.IsClientConnected);
-        ImGui.RadioButton("自動開埠（UPnP）##modeupnp", ref hostMode, (int)HostMode.Upnp);
+        ImGui.RadioButton("開房給朋友連線##modeinternet", ref hostMode, (int)HostMode.Internet);
         ImGui.SameLine();
-        ImGui.RadioButton("我已手動設定埠轉發##modemanual", ref hostMode, (int)HostMode.ManualForwarding);
-        ImGui.SameLine();
-        ImGui.RadioButton("僅本機測試##modelocal", ref hostMode, (int)HostMode.LocalOnly);
+        ImGui.RadioButton("只在這台電腦測試##modelocal", ref hostMode, (int)HostMode.LocalOnly);
         if (!hosting && ImGui.Button("建立房間##hoststart")) net.StartHosting((HostMode)hostMode);
         ImGui.EndDisabled();
-        if (hosting && ImGui.Button("關閉房間##hoststop")) _ = net.StopHosting();
+        if (hosting && ImGui.Button("關閉房間##hoststop")) net.StopHosting();
+
+        if (hostMode == (int)HostMode.Internet && ImGui.TreeNode("第一次開房請看：路由器要怎麼設定##forwardhelp"))
+        {
+            ImGui.TextWrapped(HostReadiness.ManualForwardingHelp(net.Report?.Port ?? NetProtocol.DefaultPort));
+            ImGui.TreePop();
+        }
 
         if (net.HostMessage.Length > 0)
         {
@@ -71,8 +75,6 @@ internal sealed class MultiplayerWindow : Window, IDisposable
             }
             foreach (var problem in report.Problems)
                 ImGui.TextWrapped($"・{problem}");
-            if (!report.CanHost && report.Upnp is not null)
-                ImGui.TextWrapped(HostReadiness.ManualForwardingHelp(report.Port));
         }
 
         if (net.InviteText is { } invite)
@@ -81,7 +83,7 @@ internal sealed class MultiplayerWindow : Window, IDisposable
             ImGui.InputText("邀請碼##invitecode", ref shown, 64, ImGuiInputTextFlags.ReadOnly);
             ImGui.SameLine();
             if (ImGui.Button("複製##copyinvite")) ImGui.SetClipboardText(invite);
-            ImGui.TextWrapped("通過代表本機條件沒問題；請朋友實際貼上邀請碼連線，連進來才算真正成功。若 Windows 防火牆詢問，請允許遊戲存取網路。");
+            ImGui.TextWrapped("把邀請碼傳給要一起玩的朋友，朋友連得進來才算成功；連不進來請檢查路由器轉發和 Windows 防火牆。邀請碼含有你的網路位址，請不要公開。");
         }
 
         if (net.Host is not { } host) return;
