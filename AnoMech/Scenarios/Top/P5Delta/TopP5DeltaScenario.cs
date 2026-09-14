@@ -103,8 +103,11 @@ public sealed class TopP5DeltaScenario : IScenario
         world.Events.Add(65.1f, () => CheckTethersExpired(tethersLong));             // tethers expire t=30.2+36=66.2
     }
     
+    private float elapsed;
+
     public void Tick(float delta, float elapsed)
     {
+        this.elapsed = elapsed;
         TickTethers(tethersLong, tether => tether.StretchLt(Geometry.HwTetherBreakDistance));
         TickTethers(tethersShort, tether => tether.StretchGt(Geometry.HwTetherBreakDistance));
         topUtils.CheckHelloWorldDeath();
@@ -248,7 +251,7 @@ public sealed class TopP5DeltaScenario : IScenario
     {
         if (tether.Resolved) return;
         if (tether.A is not { } a || tether.B is not { } b) return;
-        Plugin.Log.Info($"Tether broken {tether.TetherId}");
+        Plugin.Log.Info($"Tether broken {tether.TetherId} t={elapsed:0.0} {TetherDebug(a, b)}");
         tether.Resolved = true;
         SpawnHwTetherHelper(a.Position, ActionId.HwTetherBreak);
         SpawnHwTetherHelper(b.Position, ActionId.HwTetherBreak);
@@ -259,13 +262,16 @@ public sealed class TopP5DeltaScenario : IScenario
     {
         if (tether.Resolved) return;
         if (tether.A is not { } a || tether.B is not { } b) return;
-        Plugin.Log.Info($"Tether failed {tether.TetherId}");
+        Plugin.Log.Info($"Tether failed {tether.TetherId} t={elapsed:0.0} {TetherDebug(a, b)} dead={SimTether.IsAnyDead(tether)} active={tether.IsActive}");
         tether.Resolved = true;
         party.WipeAllPlayers("HW Tether Fail (raidwide wipe)");
         SpawnHwTetherHelper(a.Position, ActionId.HwTetherFail);
         SpawnHwTetherHelper(b.Position, ActionId.HwTetherFail);
         tether.Despawn();
     }
+
+    private static string TetherDebug(SimCharacter a, SimCharacter b)
+        => $"{a.GameObjectId.ObjectId:X}@({a.Position.X:0.0},{a.Position.Z:0.0}) {b.GameObjectId.ObjectId:X}@({b.Position.X:0.0},{b.Position.Z:0.0}) dist={Vector3.Distance(a.Position, b.Position):0.0}";
 
     private void SpawnHwTetherHelper(Vector3 pos, uint actionId)
     {
