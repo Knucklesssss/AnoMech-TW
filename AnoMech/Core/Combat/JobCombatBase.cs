@@ -57,6 +57,14 @@ public abstract class JobCombatBase : IJobCombat
         return TimingContract(actionId);
     }
 
+    public (int Group, double Recast, int Charges) GetBindingCooldown(uint actionId)
+    {
+        if (!Actions.Contains(actionId)) throw new ArgumentOutOfRangeException(nameof(actionId));
+        return TimingContract(actionId);
+    }
+
+    public virtual void Seed(Func<ushort, bool> hasStatus) { }
+
     public string DebugState
         => $"combo={comboAction}/{comboRemaining:0.0}s mp={mp} lock={Timing.LockRemaining:0.00} gcd={Timing.Remaining(GlobalCooldownGroup):0.00} {JobDebugState}";
     protected abstract string JobDebugState { get; }

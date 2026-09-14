@@ -14,6 +14,11 @@ public interface IJobCombat
     // Hotbar glow: the action continues the current combo.
     bool IsHighlighted(uint actionId);
     string DebugState { get; }
+    // Contract of the listed action itself, without substitution: native recast
+    // records are bound per listed action and must not borrow a replacement's timer.
+    (int Group, double Recast, int Charges) GetBindingCooldown(uint actionId);
+    // Stances survive entering a duty; read them from the client once at start.
+    void Seed(Func<ushort, bool> hasStatus);
     double ComboRemaining { get; }
     uint Adjust(uint actionId);
     bool Supports(uint actionId);

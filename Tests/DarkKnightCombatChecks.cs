@@ -85,7 +85,43 @@ internal static class DarkKnightCombatChecks
         Hit(drk, 3643); drk.Advance(0.6);
         Check(!drk.CanUse(3641, true, true, true), "Carve and Spit and Abyssal Drain must share a cooldown.");
         Check(drk.Actions.All(a => !drk.CanUse(a, true, true, true, alive: false)), "Every action must be rejected while dead.");
-        Console.WriteLine("PASS: Dark Knight combos, Blood gauge, Delirium, Darkside, charges and derived actions.");
+        // Salted Earth substitutes into Salt and Darkness only while active.
+        drk.Reset();
+        Check(drk.Adjust(3639) == 3639, "Salted Earth must stay itself when not active.");
+        drk.TryUse(3639, false, false, true); drk.Advance(0.6);
+        Check(drk.Adjust(3639) == 25755, "Salted Earth must turn into Salt and Darkness while active.");
+        Check(drk.GetBindingCooldown(3639) == (16, 90, 1), "Native binding must keep Salted Earth's own cooldown while substituted.");
+        drk.Advance(15);
+        Check(drk.Adjust(3639) == 3639, "Salted Earth must turn back after it expires.");
+
+        // Grit toggles through Release Grit, is permanent, survives Reset and is seeded from the client.
+        drk.Reset();
+        drk.TryUse(3629, false, false, false); drk.Advance(2);
+        Check(drk.Grit && drk.Adjust(3629) == 32067, "Grit must turn into Release Grit.");
+        Check(drk.Statuses().Single(s => s.Id == 743).Remaining == double.PositiveInfinity, "Grit must mirror as a permanent status.");
+        drk.Reset();
+        Check(drk.Grit, "Grit must survive a duty reset.");
+        drk.TryUse(3629, false, false, false);
+        Check(!drk.Grit && drk.Statuses().Single(s => s.Id == 743).Remaining == 0, "Release Grit must remove the stance.");
+        var seeded = new DarkKnightCombat();
+        seeded.Seed(id => id == 743);
+        Check(seeded.Grit, "Grit must be seeded from the client status.");
+
+        // Defensive and role actions: castable, status and cooldown only.
+        drk.Reset();
+        Check(drk.TryUse(7393, false, false, true) == null && drk.Mp == JobCombatBase.MaxMp - 3000
+            && drk.Statuses().Single(s => s.Id == 1178).Remaining == 7, "The Blackest Night must cost 3000 MP and show its shield.");
+        drk.Advance(0.6);
+        drk.TryUse(25754, false, false, true); drk.Advance(0.6);
+        drk.TryUse(25754, false, false, true); drk.Advance(0.6);
+        Check(!drk.CanUse(25754, false, false, true), "Oblation must have two charges.");
+        drk.TryUse(7531, false, false, true);
+        Check(drk.Statuses().Single(s => s.Id == 1191).Remaining == 20, "Rampart must show for 20 seconds.");
+        drk.Advance(0.6);
+        Check(!drk.CanUse(7533, false, false, true) && drk.CanUse(7533, true, true, true), "Provoke must need an enemy target.");
+        Hit(drk, 7533);
+        Check(!drk.CanUse(7533, true, true, true), "Provoke must go on cooldown.");
+        Console.WriteLine("PASS: Dark Knight combos, Blood gauge, Delirium, Darkside, charges, derived, defensive and role actions.");
     }
 
     private static void Hit(DarkKnightCombat drk, uint id, bool aoe = false, bool gapCloser = false)

@@ -91,6 +91,8 @@ public sealed unsafe class CombatNativeState : IDisposable
         }
         if (freeSlots < rules.StatusIds.Count)
             throw new InvalidOperationException("Insufficient native status slots for local job buffs.");
+        var statusManager = &player->StatusManager;
+        rules.Seed(id => statusManager->GetStatusIndex(id) >= 0);
     }
 
     private void AddRecast(int group, uint action, bool additional)
@@ -173,7 +175,7 @@ public sealed unsafe class CombatNativeState : IDisposable
                 if (recast.Additional && !resetAdditional) continue;
                 var detail = manager->GetRecastGroupDetail(recast.NativeGroup);
                 if (detail == null) continue;
-                var (group, seconds, charges) = rules.GetCooldown(recast.BindingAction);
+                var (group, seconds, charges) = rules.GetBindingCooldown(recast.BindingAction);
                 var view = recast.Additional
                     ? new CombatRecastView(false, 0, 0)
                     : CombatRecastView.Project(seconds, charges, rules.Timing.Charges(group, seconds, charges), rules.Timing.Remaining(group));
@@ -197,7 +199,9 @@ public sealed unsafe class CombatNativeState : IDisposable
         if (remaining <= 0) { Statuses.Remove((Character*)player, id); return; }
         if (player->StatusManager.GetStatusIndex(id) < 0)
             Statuses.AddStatusInit((Character*)player, id, param);
-        if (PlayerMatches) Statuses.Apply((Character*)player, id, (float)remaining, param, player->GetGameObjectId());
+        // Permanent stances show no timer; the client uses -1 like PinnedStatus.
+        var duration = double.IsPositiveInfinity(remaining) ? -1f : (float)remaining;
+        if (PlayerMatches) Statuses.Apply((Character*)player, id, duration, param, player->GetGameObjectId());
     }
 
     public void Dispose()
