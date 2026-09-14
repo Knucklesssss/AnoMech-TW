@@ -183,6 +183,7 @@ public sealed class Plugin : IDalamudPlugin
     private unsafe void OnFrameworkUpdate(IFramework framework)
     {
         Markings.TickPriming();
+        CastStateProbe.Tick();
         // FrameDeltaTime, not framework.UpdateDelta: UpdateDelta is wall-clock
         // truncated to whole ms, so summing it drifts. FrameDeltaTime is the
         // full-precision delta the game ticks its own animations with.
