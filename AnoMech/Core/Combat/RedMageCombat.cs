@@ -30,10 +30,10 @@ public sealed class RedMageCombat : CasterCombatBase
 
     public override uint Adjust(uint actionId) => actionId switch
     {
-        7503 or 7524 => 37004,
-        7505 => 25855,
-        7507 => 25856,
-        7509 => 16526,
+        7503 or 7524 => Adjust(37004),
+        7505 => Adjust(25855),
+        7507 => Adjust(25856),
+        7509 => Adjust(16526),
         25855 or 16524 when stacks == 3 => 7525,
         25856 or 16525 when stacks == 3 => 7526,
         37004 or 16526 when ComboAction is 7525 or 7526 => 16530,
@@ -116,8 +116,11 @@ public sealed class RedMageCombat : CasterCombatBase
 
     protected override JobHit? ApplyJob(uint actionId, bool hasTarget, bool hardcast)
     {
-        var accel = accelerated || HasBuff(Acceleration) && Accelerable(actionId);
-        if (accel && Accelerable(actionId)) ClearBuff(Acceleration);
+        // accelerated is set only by SpendJobInstant, and only when Acceleration (not Dualcast) made the
+        // cast instant; a hardcast can't have Acceleration up (it would have been instant), so deriving
+        // accel from HasBuff(Acceleration) here would wrongly consume and guarantee-proc an Acceleration
+        // that Dualcast, not this cast, actually spent.
+        var accel = accelerated;
         accelerated = false;
         if (hardcast) Buff(Dualcast, 15);
         switch (actionId)

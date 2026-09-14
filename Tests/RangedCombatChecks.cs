@@ -43,16 +43,31 @@ internal static class RangedCombatChecks
         Hit(rdm, 7512);
         rdm.Advance(1.6);
         Hit(rdm, 7516);
-        Check(rdm.ManaStacks == 3 && rdm.Adjust(25855) == 7525, "A third Enchanted hit must fill Mana Stacks and ready Verflare.");
+        Check(rdm.ManaStacks == 3 && rdm.Adjust(25855) == 7525 && rdm.Adjust(7505) == 7525,
+            "A third Enchanted hit must fill Mana Stacks and ready Verflare, including from the base Verthunder hotbar id.");
         rdm.Advance(2.3);
         Hit(rdm, 25855, aoe: true);
-        Check(rdm.ManaStacks == 0 && rdm.Adjust(37004) == 16530, "Verflare must spend Mana Stacks and ready Scorch off Jolt III.");
+        Check(rdm.ManaStacks == 0 && rdm.Adjust(37004) == 16530 && rdm.Adjust(7503) == 16530,
+            "Verflare must spend Mana Stacks and ready Scorch off Jolt III, including from the base Jolt hotbar id.");
         rdm.Advance(2.6);
         Hit(rdm, 37004, aoe: true);
-        Check(rdm.Adjust(37004) == 25858, "Scorch must ready Resolution off Jolt III.");
+        Check(rdm.Adjust(37004) == 25858 && rdm.Adjust(7509) == 25858,
+            "Scorch must ready Resolution off Jolt III, including from the base Scatter hotbar id.");
         rdm.Advance(2.6);
         Hit(rdm, 37004, aoe: true);
         Check(rdm.ComboAction == 0, "Resolution must complete the Verflare finisher chain.");
+
+        var both = new RedMageCombat { Roll = () => 0.99 };
+        both.TryUse(7518, false, false, true);
+        both.Advance(0.6);
+        Cast(both, 37004);
+        both.Advance(0.5);
+        Check(both.Statuses().Any(s => s.Id == 1238 && s.Remaining > 0), "Acceleration must still be up before the Dualcast Verthunder III.");
+        Hit(both, 25855);
+        Check(both.Statuses().Any(s => s.Id == 1238 && s.Remaining > 0) && both.CastTime(25855) == 0,
+            "A Dualcast Verthunder III must spend only Dualcast, leaving Acceleration up.");
+        Check(!both.CanUse(7510, true, true, true, checkTiming: false),
+            "The Dualcast (not Acceleration-sourced) Verthunder III must roll for Verfire normally and miss on a non-proc roll.");
     }
 
     private static void Summoner()
