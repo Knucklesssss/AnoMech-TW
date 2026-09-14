@@ -34,6 +34,9 @@ public sealed class DarkKnightCombat : JobCombatBase
         [3617, 3623, 3632, 3621, 16468, 3624, 7392, 7391, 16470, 16469, 25757, 3641, 3643, 3639, 25755, 7390, 16472, 36926];
     public override IReadOnlyList<ushort> StatusIds { get; } = [742, 1972, 749];
 
+    protected override string JobDebugState
+        => $"blood={blood} darkside={darksideRemaining:0.0} shadow={shadowRemaining:0.0} delirium={deliriumStacks}/{deliriumRemaining:0.0} bloodWeapon={bloodWeaponStacks}/{bloodWeaponRemaining:0.0} salt={saltedEarthRemaining:0.0} shadowstride={Timing.Remaining(8):0.0} shadowbringer={Timing.Remaining(23):0.0}";
+
     public override uint Adjust(uint actionId) => actionId switch
     {
         3625 => 7390,

@@ -57,6 +57,10 @@ public abstract class JobCombatBase : IJobCombat
         return TimingContract(actionId);
     }
 
+    public string DebugState
+        => $"combo={comboAction}/{comboRemaining:0.0}s mp={mp} lock={Timing.LockRemaining:0.00} gcd={Timing.Remaining(GlobalCooldownGroup):0.00} {JobDebugState}";
+    protected abstract string JobDebugState { get; }
+
     public bool IsHighlighted(uint actionId)
     {
         var from = ComboFrom(Adjust(actionId));

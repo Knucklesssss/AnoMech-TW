@@ -52,5 +52,12 @@ internal sealed class LogManager : IDisposable
         writer?.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] CombatEnd territory={territoryId} wipe={wipe}");
     }
 
+    internal bool Enabled => writer != null;
+
+    internal void LogSkill(string text)
+    {
+        writer?.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] Skill {text}");
+    }
+
     public void Dispose() => Close();
 }

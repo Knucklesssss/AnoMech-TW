@@ -122,6 +122,18 @@ public sealed unsafe class CombatNativeState : IDisposable
             throw new InvalidOperationException($"Action {action} has an unowned native recast binding.");
     }
 
+    // What the client actually holds, for comparing against the rules in the skill log.
+    public string NativeDebugState()
+    {
+        if (ActionManager.Instance() != manager) return "native=ActionManager changed";
+        var text = $"native combo={manager->Combo.Action}/{manager->Combo.Timer:0.0}s lock={manager->AnimationLock:0.00}";
+        var gcd = manager->GetRecastGroupDetail(manager->GetRecastGroup((int)ActionType.Action, job.GcdProbeAction));
+        if (gcd != null) text += $" gcdRecast={(gcd->IsActive ? "on" : "off")}/{gcd->Elapsed:0.00}/{gcd->Total:0.00}";
+        if (PlayerMatches) text += $" mp={player->Mana}/{player->MaxMana} statuses=[{string.Join(",", rules.StatusIds.Where(id => player->StatusManager.GetStatusIndex(id) >= 0))}]";
+        else text += " player=changed";
+        return text + $" adjusted3617={manager->GetAdjustedActionId(3617)}";
+    }
+
     public double AdditionalRemaining(uint action)
     {
         if (!MatchesIdentity) throw new InvalidOperationException("Local combat player identity changed.");

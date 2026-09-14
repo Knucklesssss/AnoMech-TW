@@ -21,6 +21,14 @@ public sealed unsafe class LocalCombatSession : IDisposable
     private long lastTick = Stopwatch.GetTimestamp();
     private long lastMessage;
     private bool inCombat;
+    private double snapshotClock;
+    private void Log(string text) { if (Plugin.LogManager.Enabled) Plugin.LogManager.LogSkill(text); }
+    private void LogState(string label)
+    {
+        if (!Plugin.LogManager.Enabled) return;
+        try { Log($"{label} rules: {model.DebugState} | {native.NativeDebugState()}"); }
+        catch (Exception ex) { Log($"{label} state read failed: {ex.Message}"); }
+    }
     public bool Active { get; private set; }
     public bool AutoAttacking { get; private set; }
     public string Reason { get; private set; } = "本機技能循環進行中";
@@ -40,7 +48,8 @@ public sealed unsafe class LocalCombatSession : IDisposable
         cast = new SimCast(player, world.Coordinates);
         native = new CombatNativeState(player, job, model);
         Active = true;
-        try { native.Mirror(false, resetAdditional: true); }
+        Log($"Start job={job.ClassJob} level={job.Level} gcd={gcd:0.00}");
+        try { native.Mirror(false, resetAdditional: true); LogState("AfterReset"); }
         catch { Stop("本機戰鬥初始化失敗"); throw; }
     }
 
@@ -84,6 +93,8 @@ public sealed unsafe class LocalCombatSession : IDisposable
         lastTick = now;
         model.Advance(seconds);
         buffer.Advance(seconds);
+        snapshotClock += seconds;
+        if (snapshotClock >= 1) { snapshotClock = 0; LogState("Tick"); }
         if (!Alive)
         {
             buffer.Reset(); AutoAttacking = false; inCombat = false;
@@ -92,9 +103,9 @@ public sealed unsafe class LocalCombatSession : IDisposable
         if (Plugin.GameInstance!.Paused) return;
         if (buffer.Pending is { } pending)
         {
-            if (!Validate(pending.ActionId, pending.TargetId, false)) buffer.Reset();
+            if (!Validate(pending.ActionId, pending.TargetId, false)) { Log($"QueueDropped id={pending.ActionId} {WhyNot(pending.ActionId, pending.TargetId)}"); buffer.Reset(); }
             else if (Validate(pending.ActionId, pending.TargetId, true))
-            { buffer.Take(true); Execute(pending.ActionId, pending.TargetId); }
+            { buffer.Take(true); Log($"QueueFired id={pending.ActionId}"); Execute(pending.ActionId, pending.TargetId); }
         }
     }
 
@@ -129,6 +140,14 @@ public sealed unsafe class LocalCombatSession : IDisposable
     public bool TryInput(ActionType type, uint id, ulong targetId, out bool accepted)
     {
         accepted = false;
+        var handled = TryInputCore(type, id, targetId, out accepted);
+        Log($"Input type={type} id={id} adjusted={(type == ActionType.Action ? Adjust(id) : id)} handled={handled} accepted={accepted}");
+        return handled;
+    }
+
+    private bool TryInputCore(ActionType type, uint id, ulong targetId, out bool accepted)
+    {
+        accepted = false;
         if (!CheckIdentity()) return false;
         if ((type == ActionType.GeneralAction && id == 1) || (type == ActionType.Action && id == 7))
         {
@@ -148,7 +167,7 @@ public sealed unsafe class LocalCombatSession : IDisposable
         // Resolve default target once at button press; queued input keeps this ID.
         targetId = targetId == 0xE0000000 || targetId == 0 ? CurrentTargetId() : targetId;
         id = Adjust(id);
-        if (!Validate(id, targetId, false)) { Explain("技能條件不符：請檢查目標、距離、存活狀態與資源。"); return true; }
+        if (!Validate(id, targetId, false)) { Log($"Rejected id={id} {WhyNot(id, targetId)}"); Explain("技能條件不符：請檢查目標、距離、存活狀態與資源。"); return true; }
         if (Validate(id, targetId, true)) { buffer.Reset(); Execute(id, targetId); accepted = true; }
         else
         {
@@ -157,6 +176,7 @@ public sealed unsafe class LocalCombatSession : IDisposable
                 model.Timing.Charges(group, recast, charges) > 0 ? 0 : model.Timing.Remaining(group));
             wait = Math.Max(wait, native.AdditionalRemaining(id));
             accepted = buffer.Queue(id, targetId, wait);
+            Log($"Queue id={id} wait={wait:0.00} queued={accepted} {WhyNot(id, targetId)}");
         }
         return true;
     }
@@ -170,6 +190,17 @@ public sealed unsafe class LocalCombatSession : IDisposable
         if (model.IsGapCloser(id) && target != null && world.IsOutsideArena(GapEndpoint(target))) return false;
         return model.CanUse(id, hasTarget, target != null && InRange(id, target), inCombat, Alive, Bound, timing)
             && (!timing || native.AdditionalRemaining(id) <= 0);
+    }
+
+    private string WhyNot(uint id, ulong targetId)
+    {
+        id = Adjust(id);
+        var target = ResolveTarget(targetId);
+        var self = model.IsSelfAction(id);
+        var hasTarget = self ? Enemies().Any(e => InEffectRange(id, Position(player), e)) : target != null;
+        var inRange = target != null && InRange(id, target);
+        return $"alive={Alive} paused={Plugin.GameInstance!.Paused} locked={RestrictedStatus(movement: false)} target={(target != null)} self={self} hasTarget={hasTarget} inRange={inRange} "
+            + $"rules={model.CanUse(id, hasTarget, inRange, inCombat, Alive, Bound, false)} rulesTimed={model.CanUse(id, hasTarget, inRange, inCombat, Alive, Bound, true)} extra={native.AdditionalRemaining(id):0.00}";
     }
 
     private void Execute(uint id, ulong targetId)
@@ -193,6 +224,8 @@ public sealed unsafe class LocalCombatSession : IDisposable
         cast.Start(id, presentationTarget == null ? Position(player) : Position(presentationTarget), 0,
             presentationTarget?.GameObjectId ?? player.GameObjectId, 0, 0, 0, .6f);
         native.Mirror(AutoAttacking);
+        Log($"Execute id={id} hit={hit?.ToString() ?? "null"}");
+        LogState("AfterExecute");
     }
 
     private System.Collections.Generic.IEnumerable<SimEnemy> Enemies()
@@ -238,6 +271,8 @@ public sealed unsafe class LocalCombatSession : IDisposable
     public void Stop(string reason)
     {
         if (!Active) return;
+        Log($"Stop reason={reason}");
+        LogState("BeforeStop");
         Active = false;
         Reason = reason;
         buffer.Reset();

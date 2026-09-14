@@ -13,6 +13,7 @@ public interface IJobCombat
     int Mp { get; }
     // Hotbar glow: the action continues the current combo.
     bool IsHighlighted(uint actionId);
+    string DebugState { get; }
     double ComboRemaining { get; }
     uint Adjust(uint actionId);
     bool Supports(uint actionId);

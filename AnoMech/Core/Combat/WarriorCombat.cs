@@ -23,6 +23,9 @@ public sealed class WarriorCombat : JobCombatBase
     public override IReadOnlyList<uint> Actions { get; } = [31, 37, 42, 45, 41, 16462, 46, 3549, 3550, 16465, 16463, 25753, 7386, 7387, 25752, 52, 7389];
     public override IReadOnlyList<ushort> StatusIds { get; } = [1177, 1897, 2677, 2624];
 
+    protected override string JobDebugState
+        => $"beast={beast} tempest={tempestRemaining:0.0} chaos={chaosRemaining:0.0} ir={innerReleaseStacks}/{innerReleaseRemaining:0.0} rend={rendRemaining:0.0}";
+
     public override uint Adjust(uint actionId)
     {
         actionId = actionId switch
