@@ -14,6 +14,7 @@ namespace AnoMech.Core;
 internal sealed unsafe class LocalCastBarHud : IDisposable
 {
     private const string AddonName = "_CastBar";
+    private const uint CastNameNodeId = 4;
 
     private LocalCombatSession? session;
     private bool shown;
@@ -50,7 +51,13 @@ internal sealed unsafe class LocalCastBarHud : IDisposable
 
     private void OnPreDraw(AddonEvent type, AddonArgs args)
     {
-        if (session is { CastingAction: not 0 }) SetShown(true);
+        if (session is not { CastingAction: not 0 } combat) return;
+        SetShown(true);
+        // The addon keeps the name it got when a real cast opened it, ignoring the string array.
+        var addon = (AtkUnitBase*)args.Addon.Address;
+        var nameNode = addon == null ? null : addon->GetTextNodeById(CastNameNodeId);
+        if (nameNode != null && Plugin.DataManager.GetExcelSheet<Action>().TryGetRow(combat.CastingAction, out var action))
+            nameNode->SetText(action.Name.ExtractText());
     }
 
     private void SetShown(bool visible)

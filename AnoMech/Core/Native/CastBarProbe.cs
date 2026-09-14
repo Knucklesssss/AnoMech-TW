@@ -45,6 +45,13 @@ internal static unsafe class CastBarProbe
                 if (node == null) continue;
                 nodes.Append($"{node->NodeId}:{(int)node->Type}:{(node->IsVisible() ? 1 : 0)}:{node->Alpha_2}:{node->Width}x{node->Height} ");
             }
+            var texts = new System.Text.StringBuilder();
+            foreach (var id in new uint[] { 2, 4, 6, 7 })
+            {
+                var text = addon->GetTextNodeById(id);
+                if (text != null) texts.Append($"{id}='{text->NodeText}' ");
+            }
+            Plugin.LogManager.LogSkill($"CastBarProbe {sim} texts={texts}");
             Plugin.LogManager.LogSkill($"CastBarProbe {sim} addon alpha={addon->Alpha} visFlags={addon->VisibilityFlags} showHide={addon->ShowHideFlags} pos={addon->X},{addon->Y} scale={addon->Scale:0.00} drawOrder={addon->DrawOrderIndex} depth={addon->DepthLayer} ready={addon->IsReady} nodes=[{nodes}]");
         }
     }

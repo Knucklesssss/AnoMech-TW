@@ -275,8 +275,14 @@ public sealed unsafe class CombatNativeState : IDisposable
         }
         else if (castInfoWritten)
         {
+            // A real cast ends with these zeroed too; the party list kept showing the cast otherwise.
             player->CastInfo.IsCasting = false;
             player->CastInfo.ActionId = 0;
+            player->CastInfo.SourceSequence = 0;
+            player->CastInfo.TargetId = new GameObjectId { ObjectId = 0xE0000000 };
+            player->CastInfo.CurrentCastTime = 0;
+            player->CastInfo.BaseCastTime = 0;
+            player->CastInfo.TotalCastTime = 0;
             castInfoWritten = false;
         }
         foreach (var status in rules.Statuses())
