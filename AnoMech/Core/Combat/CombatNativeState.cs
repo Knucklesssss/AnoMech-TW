@@ -208,6 +208,7 @@ public sealed unsafe class CombatNativeState : IDisposable
                 manager->CastTargetId = castTarget;
                 manager->CastTimeElapsed = castElapsed;
                 manager->CastTimeTotal = castTotal;
+                castWritten = true;
             }
             else if (castWritten)
             {
@@ -215,7 +216,10 @@ public sealed unsafe class CombatNativeState : IDisposable
                 manager->CastSpellId = 0;
                 manager->CastTimeElapsed = 0;
                 manager->CastTimeTotal = 0;
+                castWritten = false;
             }
+            // Not CastInfo: the game clears the player's IsCasting every frame, and setting it again
+            // restarts the cast effect each frame. The ActorCast packet plays the cast once.
             foreach (var recast in recasts)
             {
                 // Native Update advances additional groups initialized by
@@ -239,22 +243,6 @@ public sealed unsafe class CombatNativeState : IDisposable
         if (gauge.Matches) gauge.Mirror(rules);
         if (!PlayerMatches) return;
         player->Mana = (uint)Math.Min(rules.Mp, player->MaxMana);
-        if (castAction != 0)
-        {
-            player->CastInfo.IsCasting = true;
-            player->CastInfo.ActionType = ActionType.Action;
-            player->CastInfo.ActionId = castAction;
-            player->CastInfo.TargetId = castTarget;
-            player->CastInfo.CurrentCastTime = castElapsed;
-            player->CastInfo.TotalCastTime = castTotal;
-            castWritten = true;
-        }
-        else if (castWritten)
-        {
-            player->CastInfo.IsCasting = false;
-            player->CastInfo.ActionId = 0;
-            castWritten = false;
-        }
         foreach (var status in rules.Statuses())
             MirrorStatus(status.Id, status.Remaining, status.Param);
     }
