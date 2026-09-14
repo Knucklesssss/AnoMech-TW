@@ -71,7 +71,7 @@ public static class HostReadiness
     }
 
     public static string ManualForwardingHelp(int port) =>
-        "第一次開房要先設定路由器（只要做一次）：\n" +
+        "按「建立房間」後，結果顯示要設定路由器才需要做（只要做一次）：\n" +
         "1. 打開瀏覽器，網址輸入 192.168.0.1 或 192.168.1.1；帳號密碼通常貼在路由器背面。\n" +
         "2. 找到「通訊埠轉送」、「虛擬伺服器」或「Port Forwarding」。\n" +
         $"3. 新增一筆：類型選 UDP，號碼都填 {port}，電腦選這台（或填這台電腦的位址）。\n" +

@@ -45,15 +45,16 @@ internal sealed class MultiplayerWindow : Window, IDisposable
         "怎麼連線：開房的人（房主）的電腦就是房間，朋友貼上邀請碼直接連進來，不經過別人的伺服器。\n" +
         "以房主的畫面為準；朋友看到的會晚約 0.2 秒，但自己走路、按技能不會卡。\n\n" +
         "誰適合開房：\n" +
-        "・家裡拉的網路（例如光世代），而且會進路由器改設定 → 可以。\n" +
+        "・家裡拉的網路（例如光世代）→ 可以。先按「建立房間」，插件會告訴你要不要設定路由器；\n" +
+        "  顯示「不用設定路由器」就直接把邀請碼傳給朋友。\n" +
         "・手機網路、手機熱點 → 通常不行，請換人開房。\n" +
-        "・宿舍、社區、公司的網路 → 常常不行。\n" +
-        "・家裡有兩台網路機器（數據機再接路由器）→ 兩台都要設定，比較麻煩。\n\n" +
+        "・宿舍、社區、公司的網路 → 常常不行。\n\n" +
         "朋友加入：用什麼網路都可以，什麼都不用設定。\n\n" +
-        $"要設定的號碼：{NetProtocol.DefaultPort}（被占用時會自動換下一個，以畫面上「連線埠」顯示的為準）。\n\n" +
-        "要不要申請固定 IP：不用。\n" +
-        "・每次開房的邀請碼都不一樣，請傳最新的給朋友。\n" +
-        "・如果之前連得上、突然連不上，可能是這台電腦在家裡的位址變了。\n" +
+        "要不要申請固定 IP：不用。每次開房的邀請碼都不一樣，請傳最新的給朋友。\n\n" +
+        "插件說要設定路由器時才需要看：\n" +
+        $"・要設定的號碼：{NetProtocol.DefaultPort}（被占用時會自動換下一個，以畫面上「連線埠」顯示的為準）。\n" +
+        "・家裡有兩台網路機器（數據機再接路由器）→ 兩台都要設定，比較麻煩。\n" +
+        "・之前連得上、突然連不上 → 可能是這台電腦在家裡的位址變了，\n" +
         "  到路由器設定裡找「DHCP 保留」或「固定 IP 分配」，把這台電腦固定下來就好。";
 
     private void DrawHost()
@@ -74,7 +75,7 @@ internal sealed class MultiplayerWindow : Window, IDisposable
         if (hosting && ImGui.Button("關閉房間##hoststop")) net.StopHosting();
 
         var needsRouter = net.Report?.NeedsRouterForwarding ?? true;
-        if (hostMode == (int)HostMode.Internet && needsRouter && ImGui.TreeNode("第一次開房請看：路由器要怎麼設定##forwardhelp"))
+        if (hostMode == (int)HostMode.Internet && needsRouter && ImGui.TreeNode("路由器要怎麼設定（插件說要設定才需要看）##forwardhelp"))
         {
             ImGui.TextWrapped(HostReadiness.ManualForwardingHelp(net.Report?.Port ?? NetProtocol.DefaultPort));
             ImGui.TreePop();
