@@ -8,32 +8,62 @@ using Action = Lumina.Excel.Sheets.Action;
 
 namespace AnoMech.Core;
 
-// With the native cast state written (CombatNativeState) the game shows and advances _CastBar itself, but
-// it keeps a stale name and icon from an earlier cast; this overwrites only those while a simulated cast runs.
+// With the native cast state written (CombatNativeState) the game fills _CastBar's numbers itself, but it only
+// opens the addon for a cast started the normal way and keeps the last real cast's name and icon. This opens the
+// addon for a simulated cast and overwrites the name and icon.
 internal sealed unsafe class LocalCastBarHud : IDisposable
 {
     private const string AddonName = "_CastBar";
 
     private LocalCombatSession? session;
+    private bool shown;
 
     public LocalCastBarHud()
     {
         Plugin.AddonLifecycle.RegisterListener(AddonEvent.PreRequestedUpdate, AddonName, OnPreRequestedUpdate);
+        Plugin.AddonLifecycle.RegisterListener(AddonEvent.PreDraw, AddonName, OnPreDraw);
     }
 
     public void Dispose()
     {
         Clear();
         Plugin.AddonLifecycle.UnregisterListener(AddonEvent.PreRequestedUpdate, AddonName, OnPreRequestedUpdate);
+        Plugin.AddonLifecycle.UnregisterListener(AddonEvent.PreDraw, AddonName, OnPreDraw);
     }
 
     public void Refresh(LocalCombatSession? combat)
     {
         session = combat is { Active: true, CastingAction: not 0 } ? combat : null;
-        if (session != null) MarkArraysDirty();
+        if (session != null)
+        {
+            MarkArraysDirty();
+            SetShown(true);
+        }
+        else if (shown) SetShown(false);
     }
 
-    public void Clear() => session = null;
+    public void Clear()
+    {
+        session = null;
+        if (shown) SetShown(false);
+    }
+
+    private void OnPreDraw(AddonEvent type, AddonArgs args)
+    {
+        if (session is { CastingAction: not 0 }) SetShown(true);
+    }
+
+    private void SetShown(bool visible)
+    {
+        shown = visible;
+        var addon = (AtkUnitBase*)Plugin.GameGui.GetAddonByName(AddonName, 1).Address;
+        if (addon == null) return;
+        if (addon->IsVisible != visible) addon->IsVisible = visible;
+        var root = addon->RootNode;
+        if (root == null) return;
+        if (root->IsVisible() != visible) root->ToggleVisibility(visible);
+        if (visible) root->SetAlpha(255);
+    }
 
     private void OnPreRequestedUpdate(AddonEvent type, AddonArgs args)
     {

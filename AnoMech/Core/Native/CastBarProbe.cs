@@ -32,6 +32,6 @@ internal static unsafe class CastBarProbe
         var ui = addon == null ? "addon=null"
             : $"visible={addon->IsVisible} root={(addon->RootNode == null ? "null" : $"{addon->RootNode->IsVisible()}/{addon->RootNode->Alpha_2}")}";
         var sim = Plugin.GameInstance?.World.Combat is { Active: true } ? "sim" : "real";
-        Plugin.LogManager.LogSkill($"CastBarProbe {sim} action={player->CastInfo.ActionId} t={player->CastInfo.CurrentCastTime:0.00}/{player->CastInfo.TotalCastTime:0.00} ints={ints} ui={ui} nameSet={name.Length > 0}");
+        Plugin.LogManager.LogSkill($"CastBarProbe {sim} action={player->CastInfo.ActionId} t={player->CastInfo.CurrentCastTime:0.00}/{player->CastInfo.TotalCastTime:0.00} ints={ints} ui={ui} name={name}");
     }
 }
