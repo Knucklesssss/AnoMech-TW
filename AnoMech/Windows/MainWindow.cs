@@ -75,8 +75,7 @@ public unsafe class MainWindow : Window, IDisposable
             MinimumSize = new Vector2(220, 80),
             MaximumSize = new Vector2(float.MaxValue, float.MaxValue)
         };
-        Size = new Vector2(620, 640);
-        SizeCondition = ImGuiCond.FirstUseEver;
+        Flags |= ImGuiWindowFlags.AlwaysAutoResize;
 
         this.plugin = plugin;
         IsOpen = false;
@@ -155,14 +154,17 @@ public unsafe class MainWindow : Window, IDisposable
     {
         var style = ImGui.GetStyle();
         var widest = 0f;
+        // Headers carry an arrow; scenario buttons sit one indent in. Both must be counted or labels clip.
+        var headerExtra = ImGui.GetFontSize() + style.FramePadding.X * 3;
+        var buttonExtra = style.IndentSpacing + style.FramePadding.X * 2;
         foreach (var zone in plugin.Game.Zones)
         {
-            widest = Math.Max(widest, ImGui.CalcTextSize(zone.Name).X);
+            widest = Math.Max(widest, ImGui.CalcTextSize(zone.Name).X + headerExtra);
             foreach (var phase in plugin.Game.PhasesOf(zone))
                 foreach (var scenario in plugin.Game.ScenariosOf(phase))
-                    widest = Math.Max(widest, ImGui.CalcTextSize(DisplayName(scenario)).X);
+                    widest = Math.Max(widest, ImGui.CalcTextSize(DisplayName(scenario)).X + buttonExtra);
         }
-        var measured = widest + style.FramePadding.X * 2 + style.CellPadding.X * 2;
+        var measured = widest + style.CellPadding.X * 2;
         return Math.Max(180f, measured);
     }
 
