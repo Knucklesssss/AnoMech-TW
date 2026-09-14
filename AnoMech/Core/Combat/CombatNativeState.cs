@@ -131,7 +131,7 @@ public sealed unsafe class CombatNativeState : IDisposable
         if (gcd != null) text += $" gcdRecast={(gcd->IsActive ? "on" : "off")}/{gcd->Elapsed:0.00}/{gcd->Total:0.00}";
         if (PlayerMatches) text += $" mp={player->Mana}/{player->MaxMana} statuses=[{string.Join(",", rules.StatusIds.Where(id => player->StatusManager.GetStatusIndex(id) >= 0))}]";
         else text += " player=changed";
-        return text + $" adjusted3617={manager->GetAdjustedActionId(3617)}";
+        return text;
     }
 
     public double AdditionalRemaining(uint action)

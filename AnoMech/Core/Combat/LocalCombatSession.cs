@@ -194,7 +194,13 @@ public sealed unsafe class LocalCombatSession : IDisposable
 
     private string WhyNot(uint id, ulong targetId)
     {
-        id = Adjust(id);
+        if (!Plugin.LogManager.Enabled) return "";
+        try { return WhyNotCore(Adjust(id), targetId); }
+        catch (Exception ex) { return $"reason read failed: {ex.Message}"; }
+    }
+
+    private string WhyNotCore(uint id, ulong targetId)
+    {
         var target = ResolveTarget(targetId);
         var self = model.IsSelfAction(id);
         var hasTarget = self ? Enemies().Any(e => InEffectRange(id, Position(player), e)) : target != null;
@@ -271,9 +277,10 @@ public sealed unsafe class LocalCombatSession : IDisposable
     public void Stop(string reason)
     {
         if (!Active) return;
+        // Inactive before logging: the state read must not re-enter Stop through the hooks.
+        Active = false;
         Log($"Stop reason={reason}");
         LogState("BeforeStop");
-        Active = false;
         Reason = reason;
         buffer.Reset();
         AutoAttacking = false;

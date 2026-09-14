@@ -14,7 +14,23 @@ internal static class CombatTimingChecks
         ChargeGroupContractCannotChange();
         ReadinessInspectionDoesNotRegisterGroups();
         RechargeReductionRecoversSerialChargesWithoutFutureCredit();
+        RemainingNeverExceedsRecastAfterFloatRounding();
         Console.WriteLine("PASS: shared combat timing serial charges, lock boundaries, reset, validation and large steps.");
+    }
+
+    // In-game crash cause 2026-09-14: CombatRecastView.Project rejected remaining > recast.
+    private static void RemainingNeverExceedsRecastAfterFloatRounding()
+    {
+        // 162 of these clocks make (now + 2.5) - now round above 2.5, starting at k = 126.
+        for (var k = 1; k <= 2000; k++)
+        {
+            var timing = new CombatTiming();
+            timing.Advance(k * 0.0137);
+            if (!timing.TryUse(58, 2.5, 1, 0)) throw new Exception("A fresh GCD must be usable.");
+            var remaining = timing.Remaining(58);
+            if (remaining > 2.5) throw new Exception($"Remaining {remaining:R} exceeds its recast after rounding.");
+            _ = CombatRecastView.Project(2.5, 1, timing.Charges(58, 2.5, 1), remaining);
+        }
     }
 
     private static void SerialChargeRecovery()

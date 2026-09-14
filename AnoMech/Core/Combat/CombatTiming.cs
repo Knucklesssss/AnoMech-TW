@@ -51,7 +51,8 @@ public sealed class CombatTiming
     {
         Validate(group, nameof(group));
         if (!groups.TryGetValue(group, out var state) || state.Charges == state.MaxCharges) return 0;
-        return state.NextChargeAt - now;
+        // (now + recast) - now can exceed recast by one ulp.
+        return Math.Clamp(state.NextChargeAt - now, 0, state.Recast);
     }
 
     public bool IsAvailable(int group, double recast, int maxCharges)
