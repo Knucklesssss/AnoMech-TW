@@ -40,6 +40,7 @@ public sealed class DarkKnightCombat : TankCombatBase
     protected override uint AdjustJob(uint actionId) => actionId switch
     {
         3625 => 7390,
+        36927 => 3636, // Shadowed Vigil, level 92, stored on a level-100 hotbar
         16466 => 16469,
         16467 => 16470,
         3639 when HasBuff(SaltedEarth) => 25755,

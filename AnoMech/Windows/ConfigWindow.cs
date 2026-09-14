@@ -52,6 +52,10 @@ public class ConfigWindow : Window, IDisposable
         if (ImGui.Button("開啟記錄資料夾##openlogs"))
             Plugin.LogManager.OpenLogsFolder();
 
+        if (ImGui.Button("開啟錯誤日誌資料夾##openerrors"))
+            AnoMech.Core.ErrorLog.OpenFolder();
+        ImGui.TextDisabled("錯誤日誌會自動記錄問題，回報 BUG 時把最新的檔案傳給開發者。");
+
 #if DEBUG
         ImGui.Separator();
 

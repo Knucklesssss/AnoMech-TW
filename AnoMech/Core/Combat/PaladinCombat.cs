@@ -36,6 +36,9 @@ public sealed class PaladinCombat : TankCombatBase
     // Substitutions from the client's ReplaceAction sheet (技能變換設定).
     protected override uint AdjustJob(uint actionId) => actionId switch
     {
+        // A level-100 character keeps level-96+ upgrades on the hotbar; the sync is 90.
+        36920 => 17,
+        36921 => 7383,
         21 => 3539,
         3542 => 25746,
         29 => 25747,

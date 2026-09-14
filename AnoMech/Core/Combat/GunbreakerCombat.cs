@@ -34,6 +34,7 @@ public sealed class GunbreakerCombat : TankCombatBase
     protected override uint AdjustJob(uint actionId) => actionId switch
     {
         16144 => 16165,
+        36935 => 16148, // Great Nebula, level 92, stored on a level-100 hotbar
         16161 => 25758,
         16138 when HasBuff(ReadyToBreak) => 16153,
         16146 when gnashStep == 1 => 16147,

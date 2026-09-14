@@ -166,6 +166,7 @@ public sealed class Plugin : IDalamudPlugin
         // the lock flags through the hooks before they're torn down.
         PlayerInputHooks.Dispose();
         LogManager.Dispose();
+        ErrorLog.WriteSummary();
         ConfigWindow.Dispose();
         MainWindow.Dispose();
         MultiplayerWindow.Dispose();

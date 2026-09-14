@@ -259,7 +259,17 @@ public sealed unsafe class LocalPlayerInputHooks : IDisposable
             if (session != null && (type == ActionType.Item || (type == ActionType.Action && id != SprintActionId)))
             {
                 if (extra != null) *extra = 0;
-                return type == ActionType.Item ? 573u : session.ActionStatus(id, target, checkRecast);
+                if (type == ActionType.Item) return 573u;
+                var status = session.ActionStatus(id, target, checkRecast);
+                if (status == 0 && session.Supports(id))
+                {
+                    // The client can still refuse an action the simulation allows; it then never calls UseAction.
+                    uint nativeExtra = 0;
+                    var nativeStatus = actionStatusHook!.Original(self, type, id, target, checkRecast, checkCasting, &nativeExtra);
+                    if (nativeStatus != 0)
+                        ErrorLog.Record("遊戲判定不能用", $"id={id} adjusted={session.Adjust(id)} 遊戲狀態碼={nativeStatus} 附加={nativeExtra}");
+                }
+                return status;
             }
             return actionStatusHook!.Original(self, type, id, target, checkRecast, checkCasting, extra);
         }
@@ -268,8 +278,17 @@ public sealed unsafe class LocalPlayerInputHooks : IDisposable
 
     private static void StopCombat(LocalCombatSession? session, Exception ex)
     {
-        try { Plugin.Log.Error(ex, "Local combat native detour failed"); session?.Stop($"本機戰鬥已停止：{ex.Message}"); }
-        catch (Exception cleanup) { Plugin.Log.Error(cleanup, "Local combat restoration failed"); }
+        try
+        {
+            Plugin.Log.Error(ex, "Local combat native detour failed");
+            ErrorLog.Record("戰鬥攔截錯誤", ex.Message, ex);
+            session?.Stop($"本機戰鬥已停止：{ex.Message}");
+        }
+        catch (Exception cleanup)
+        {
+            Plugin.Log.Error(cleanup, "Local combat restoration failed");
+            ErrorLog.Record("戰鬥還原錯誤", cleanup.Message, cleanup);
+        }
     }
 
     // Lets the auto-cancel UseAction from UpdateDetour through; everything else

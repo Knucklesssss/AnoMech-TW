@@ -93,7 +93,7 @@ public sealed unsafe class LocalCombatSession : IDisposable
             return session;
         }
         catch (Exception ex)
-        { reason = $"本機戰鬥未啟動：{ex.Message}"; Plugin.Log.Error(ex, "Local combat activation failed"); return null; }
+        { reason = $"本機戰鬥未啟動：{ex.Message}"; Plugin.Log.Error(ex, "Local combat activation failed"); ErrorLog.Record("本機戰鬥未啟動", ex.Message, ex); return null; }
     }
 
     public bool CheckIdentity()
@@ -231,7 +231,11 @@ public sealed unsafe class LocalCombatSession : IDisposable
         if (type != ActionType.Action && type != ActionType.Item) return false;
         if (type == ActionType.Action && id == LocalPlayerInputHooks.SprintActionId) return false;
         if (type != ActionType.Action || !Supports(id))
-        { Explain("目前僅模擬此職業已支援的技能循環與派生，不處理此技能／道具效果。"); return true; }
+        {
+            if (type == ActionType.Action) ErrorLog.Record("按到不支援的技能", $"id={id}");
+            Explain("目前僅模擬此職業已支援的技能循環與派生，不處理此技能／道具效果。");
+            return true;
+        }
         // Resolve default target once at button press; queued input keeps this ID.
         targetId = targetId == 0xE0000000 || targetId == 0 ? CurrentTargetId() : targetId;
         id = Adjust(id);
@@ -373,6 +377,8 @@ public sealed unsafe class LocalCombatSession : IDisposable
         // Inactive before logging: the state read must not re-enter Stop through the hooks.
         Active = false;
         Log($"Stop reason={reason}");
+        if (reason != "本機戰鬥已結束" && reason != "本機戰鬥已停止：角色、職業或模擬區域已改變")
+            ErrorLog.Record("本機戰鬥異常停止", reason);
         LogState("BeforeStop");
         Reason = reason;
         buffer.Reset();
@@ -387,6 +393,7 @@ public sealed unsafe class LocalCombatSession : IDisposable
         {
             Reason = $"本機戰鬥已停止；還原失敗：{ex.Message}";
             Plugin.Log.Error(ex, "Local combat restoration failed");
+            ErrorLog.Record("本機戰鬥還原失敗", ex.Message, ex);
         }
     }
     public void Dispose() => Stop("本機戰鬥已結束");

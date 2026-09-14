@@ -34,6 +34,7 @@ public sealed class WarriorCombat : TankCombatBase
             51 => 3550,
             38 => 7389,
             3551 => 25751,
+            36923 => 44, // Damnation, level 92, stored on a level-100 hotbar
             _ => actionId,
         };
         if (HasBuff(NascentChaos) && beast >= 50)
