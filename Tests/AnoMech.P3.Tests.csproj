@@ -10,6 +10,11 @@
     <Compile Include="../AnoMech/Core/Combat/CombatRecastView.cs" />
     <Compile Include="../AnoMech/Core/Combat/JobCombatBase.cs" />
     <Compile Include="../AnoMech/Core/Combat/TankCombatBase.cs" />
+    <Compile Include="../AnoMech/Core/Combat/HealerCombatBase.cs" />
+    <Compile Include="../AnoMech/Core/Combat/WhiteMageCombat.cs" />
+    <Compile Include="../AnoMech/Core/Combat/ScholarCombat.cs" />
+    <Compile Include="../AnoMech/Core/Combat/AstrologianCombat.cs" />
+    <Compile Include="../AnoMech/Core/Combat/SageCombat.cs" />
     <Compile Include="../AnoMech/Core/Combat/WarriorCombat.cs" />
     <Compile Include="../AnoMech/Core/Combat/PaladinCombat.cs" />
     <Compile Include="../AnoMech/Core/Combat/GunbreakerCombat.cs" />

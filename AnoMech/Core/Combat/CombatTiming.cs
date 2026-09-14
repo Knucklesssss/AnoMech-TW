@@ -30,6 +30,8 @@ public sealed class CombatTiming
         var state = GetGroup(group, recast, maxCharges);
         Recover(state);
         if (state.Charges == 0) return false;
+        // A single-charge group takes each use's recast (Sage Eukrasian spells run a 1.5 s GCD).
+        if (state.MaxCharges == 1) state.Recast = recast;
 
         if (state.Charges == state.MaxCharges) state.NextChargeAt = now + state.Recast;
         state.Charges--;
@@ -93,7 +95,7 @@ public sealed class CombatTiming
 
     private void ValidateContract(int group, double recast, int maxCharges)
     {
-        if (groups.TryGetValue(group, out var state) && (state.Recast != recast || state.MaxCharges != maxCharges))
+        if (groups.TryGetValue(group, out var state) && (state.MaxCharges != maxCharges || (maxCharges > 1 && state.Recast != recast)))
             throw new InvalidOperationException($"Charge group {group} already uses recast {state.Recast} and {state.MaxCharges} max charges.");
     }
 
@@ -124,7 +126,7 @@ public sealed class CombatTiming
 
     private sealed class ChargeGroup(double recast, int maxCharges)
     {
-        public double Recast { get; } = recast;
+        public double Recast { get; set; } = recast;
         public int MaxCharges { get; } = maxCharges;
         public int Charges { get; set; } = maxCharges;
         public double NextChargeAt { get; set; }

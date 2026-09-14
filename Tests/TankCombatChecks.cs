@@ -15,7 +15,7 @@ internal static class TankCombatChecks
     {
         foreach (var classJob in new byte[] { 19, 21, 32, 37 })
             Check(JobCombatRegistry.Find(classJob, 90) != null, $"Tank job {classJob} level 90 must be registered.");
-        Check(JobCombatRegistry.Find(21, 70) == null && JobCombatRegistry.Find(24, 90) == null, "Only registered job/level pairs may start local combat.");
+        Check(JobCombatRegistry.Find(21, 70) == null && JobCombatRegistry.Find(25, 90) == null, "Only registered job/level pairs may start local combat.");
         foreach (var entry in JobCombatRegistry.Entries)
         {
             var job = entry.CreateRules(2.5);
@@ -28,7 +28,7 @@ internal static class TankCombatChecks
             {
                 var (group, recast, charges) = job.GetBindingCooldown(action);
                 if (contracts.TryGetValue(group, out var known))
-                    Check(known == (recast, charges), $"Job {entry.ClassJob} group {group} has two cooldown contracts.");
+                    Check(known.Item2 == charges && (charges == 1 || known.Item1 == recast), $"Job {entry.ClassJob} group {group} has two cooldown contracts.");
                 contracts[group] = (recast, charges);
             }
         }

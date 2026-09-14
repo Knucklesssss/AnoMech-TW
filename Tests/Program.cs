@@ -4,6 +4,7 @@ if (args.Contains("--combat-recast-only")) { CombatRecastChecks.Run(); return; }
 CombatRecastChecks.Run();
 CombatTimingChecks.Run();
 TankCombatChecks.Run();
+HealerCombatChecks.Run();
 DarkKnightCombatChecks.Run();
 CombatInputChecks.Run();
 StartLocationChecks.Run();

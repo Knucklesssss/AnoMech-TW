@@ -12,6 +12,7 @@ internal static class CombatTimingChecks
         LargeAdvanceRecoversEveryDueCharge();
         InvalidInputsAreRejectedBeforeMutation();
         ChargeGroupContractCannotChange();
+        SingleChargeGroupTakesEachUsesRecast();
         ReadinessInspectionDoesNotRegisterGroups();
         RechargeReductionRecoversSerialChargesWithoutFutureCredit();
         RemainingNeverExceedsRecastAfterFloatRounding();
@@ -114,6 +115,17 @@ internal static class CombatTimingChecks
         ExpectRejected(() => timing.Charges(9, 20, -1), "negative queried max charges");
         if (timing.Charges(9, 10, 2) != 2) throw new Exception("Rejected queries must not create a charge group.");
         ExpectRejected(() => timing.Remaining(-1), "negative remaining group");
+    }
+
+    private static void SingleChargeGroupTakesEachUsesRecast()
+    {
+        var timing = new CombatTiming();
+        if (!timing.TryUse(58, 1.5, 1, 0) || Math.Abs(timing.Remaining(58) - 1.5) > 1e-9)
+            throw new Exception("A 1.5 s use must start a 1.5 s recast.");
+        timing.Advance(1.5);
+        if (!timing.IsAvailable(58, 2.5, 1) || !timing.TryUse(58, 2.5, 1, 0) || Math.Abs(timing.Remaining(58) - 2.5) > 1e-9)
+            throw new Exception("The same single-charge group must accept the next use's 2.5 s recast.");
+        ExpectContractRejected(() => timing.Charges(58, 2.5, 2));
     }
 
     private static void ChargeGroupContractCannotChange()
