@@ -20,3 +20,23 @@ internal sealed unsafe class BardNativeGauge : IJobGauge
         gauge->SongFlags = (SongFlags)((int)brd.CurrentSong | (brd.Codas << 4));
     }
 }
+
+internal sealed unsafe class MachinistNativeGauge : IJobGauge
+{
+    private readonly MachinistGauge* gauge;
+
+    public MachinistNativeGauge() => gauge = (MachinistGauge*)HealerGauge.Current(31);
+    public bool Matches => HealerGauge.Matches(31, gauge);
+
+    public void Mirror(IJobCombat rules)
+    {
+        var mch = (MachinistCombat)rules;
+        gauge->Heat = (byte)mch.Heat;
+        gauge->Battery = (byte)mch.Battery;
+        gauge->OverheatTimeRemaining = (short)Math.Ceiling(mch.OverheatRemaining * 1000);
+        gauge->SummonTimeRemaining = (short)Math.Ceiling(mch.QueenRemaining * 1000);
+        gauge->LastSummonBatteryPower = (byte)mch.QueenBattery;
+        // ponytail: TimerActive bit meaning is unverified; 1 overheat, 2 queen.
+        gauge->TimerActive = (byte)((mch.OverheatRemaining > 0 ? 1 : 0) | (mch.QueenRemaining > 0 ? 2 : 0));
+    }
+}

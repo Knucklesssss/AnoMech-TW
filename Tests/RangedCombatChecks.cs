@@ -6,6 +6,7 @@ internal static class RangedCombatChecks
     {
         RoleActions();
         Bard();
+        Machinist();
         Console.WriteLine("PASS: ranged and caster role actions.");
     }
 
@@ -64,6 +65,36 @@ internal static class RangedCombatChecks
         Check(finale.CanUse(25785, true, true, true, checkTiming: false), "One coda must enable Radiant Finale.");
         finale.TryUse(25785, false, false, true);
         Check(finale.Codas == 0, "Radiant Finale must spend every coda.");
+    }
+
+    private static void Machinist()
+    {
+        Check(JobCombatRegistry.Find(31, 90) != null, "Machinist level 90 must be registered.");
+        var mch = new MachinistCombat();
+        Check(mch.Adjust(2866) == 7411 && mch.Adjust(36979) == 2874 && mch.Adjust(36980) == 2890,
+            "Split Shot, Double Check and Checkmate must map to level-90 actions.");
+        Hit(mch, 7411);
+        mch.Advance(2.5);
+        Check(mch.IsHighlighted(7412), "Heated Slug Shot must glow after Heated Split Shot.");
+        Hit(mch, 7412);
+        mch.Advance(2.5);
+        Hit(mch, 7413);
+        Check(mch.Heat == 15 && mch.Battery == 10, "The heated combo must build 15 Heat and 10 Battery.");
+        mch.Advance(2.5);
+        Hit(mch, 16500);
+        Check(mch.Battery == 30 && !mch.CanUse(17209, false, false, true, checkTiming: false), "Air Anchor adds 20 Battery; Hypercharge needs 50 Heat.");
+        mch.Advance(0.6);
+        mch.TryUse(7414, false, false, true);
+        mch.Advance(0.6);
+        Check(mch.TryUse(17209, false, false, true) == null && mch.OverheatStacks == 5 && mch.Heat == 15,
+            "Hypercharged must allow a free Hypercharge with five Overheated stacks.");
+        mch.Advance(0.6);
+        Hit(mch, 2874);
+        mch.Advance(0.8);
+        Hit(mch, 36978);
+        Check(mch.OverheatStacks == 4 && Math.Abs(mch.Timing.Remaining(15) - 14.2) < 1e-6,
+            "Blazing Shot must spend Overheated and cut Gauss Round by 15 s.");
+        Check(!mch.CanUse(16501, false, false, true, checkTiming: false), "Automaton Queen needs 50 Battery.");
     }
 
     private static void RoleActions()
