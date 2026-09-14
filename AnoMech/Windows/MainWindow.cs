@@ -75,7 +75,8 @@ public unsafe class MainWindow : Window, IDisposable
             MinimumSize = new Vector2(220, 80),
             MaximumSize = new Vector2(float.MaxValue, float.MaxValue)
         };
-        Flags |= ImGuiWindowFlags.AlwaysAutoResize;
+        Size = new Vector2(620, 640);
+        SizeCondition = ImGuiCond.FirstUseEver;
 
         this.plugin = plugin;
         IsOpen = false;
@@ -281,7 +282,9 @@ public unsafe class MainWindow : Window, IDisposable
         if (_selectedScenario is null) return;
         var inInn = ZoneSession.CanStartHere();
         var busy = ZoneSession.IsPlayerBusy();
-        var envReady = inInn && !busy;
+        // Starting another ultimate's scenario inside a loaded zone crashed the game (2026-09-11 log).
+        var sameZone = game.World.Map.CanLoad(_selectedScenario.Phase.Zone.TerritoryId);
+        var envReady = inInn && !busy && sameZone;
         var hasStrat = HasStartableStrat();
         var canStart = envReady && hasStrat;
         ImGui.BeginDisabled(!canStart);
@@ -293,7 +296,9 @@ public unsafe class MainWindow : Window, IDisposable
                 ? "場景只能在旅館、個人／公會住宅或個人房間內開始。"
                 : busy
                     ? "忙碌中無法開始（過場動畫、NPC 事件、製作、交易、區域切換等）。"
-                    : "這個地區目前還沒有可用的戰術。");
+                    : !sameZone
+                        ? "目前在其他絕本的場地，請先按「離開」回到房間再開始。"
+                        : "這個地區目前還沒有可用的戰術。");
         }
         ImGui.SameLine();
         if (ImGui.Button("重置##reset")) game.Reset();

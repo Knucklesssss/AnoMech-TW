@@ -161,6 +161,7 @@ internal sealed unsafe class MultiplayerSession : IDisposable
         if (Net.Host is null) { reason = "尚未建立房間。"; return false; }
         if (scenario.Phase.Zone is not TopZone) { reason = "多人同步目前只支援絕歐米茄（P2～P6）。"; return false; }
         if (!ZoneSession.CanStartHere() || ZoneSession.IsPlayerBusy()) { reason = "房主必須在旅館或住宅室內，且沒有忙碌。"; return false; }
+        if (!game.World.Map.CanLoad(scenario.Phase.Zone.TerritoryId)) { reason = "房主目前在其他絕本的場地，請先按「離開」。"; return false; }
         if (hostLobby.Count <= 1) { reason = "尚無玩家加入。"; return false; }
         foreach (var entry in hostLobby.Values)
         {
