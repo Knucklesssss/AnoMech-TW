@@ -57,3 +57,22 @@ internal sealed unsafe class DancerNativeGauge : IJobGauge
         gauge->StepIndex = (byte)dnc.StepIndex;
     }
 }
+
+internal sealed unsafe class BlackMageNativeGauge : IJobGauge
+{
+    private readonly BlackMageGauge* gauge;
+
+    public BlackMageNativeGauge() => gauge = (BlackMageGauge*)HealerGauge.Current(25);
+    public bool Matches => HealerGauge.Matches(25, gauge);
+
+    public void Mirror(IJobCombat rules)
+    {
+        var blm = (BlackMageCombat)rules;
+        gauge->ElementStance = (sbyte)blm.Element;
+        gauge->UmbralHearts = (byte)blm.UmbralHearts;
+        gauge->PolyglotStacks = (byte)blm.Polyglot;
+        // Countdown to the next Polyglot while an element is held.
+        gauge->EnochianTimer = (short)(blm.Element == 0 ? 0 : Math.Ceiling((30 - blm.PolyglotTimer) * 1000));
+        gauge->EnochianFlags = (EnochianFlags)((blm.Element != 0 ? 1 : 0) | (blm.Paradox ? 2 : 0));
+    }
+}

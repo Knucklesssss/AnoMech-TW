@@ -16,7 +16,7 @@ internal static class TankCombatChecks
     {
         foreach (var classJob in new byte[] { 19, 21, 32, 37 })
             Check(JobCombatRegistry.Find(classJob, 90) != null, $"Tank job {classJob} level 90 must be registered.");
-        Check(JobCombatRegistry.Find(21, 70) == null && JobCombatRegistry.Find(25, 90) == null, "Only registered job/level pairs may start local combat.");
+        Check(JobCombatRegistry.Find(21, 70) == null && JobCombatRegistry.Find(30, 90) == null, "Only registered job/level pairs may start local combat.");
         foreach (var entry in JobCombatRegistry.Entries)
         {
             var job = entry.CreateRules(2.5);

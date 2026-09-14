@@ -8,7 +8,37 @@ internal static class RangedCombatChecks
         Bard();
         Machinist();
         Dancer();
+        BlackMage();
         Console.WriteLine("PASS: ranged and caster role actions.");
+    }
+
+    private static void BlackMage()
+    {
+        Check(JobCombatRegistry.Find(25, 90) != null, "Black Mage level 90 must be registered.");
+        var blm = new BlackMageCombat { Roll = () => 0.99 };
+        Check(blm.Adjust(144) == 153 && blm.Adjust(36986) == 153 && blm.Adjust(147) == 25794, "Thunder, High Thunder and Fire II must map to level-90 actions.");
+        Check(!blm.CanUse(3577, true, true, true, checkTiming: false), "Fire IV needs Astral Fire.");
+        // Trait 463 (level 84, "魔泉效果提高") shortens Manafont's recast from the sheet's 120s to 100s.
+        Check(blm.GetBindingCooldown(158).Recast == 100, "Manafont recast must be 100s per trait 463.");
+        Cast(blm, 152);
+        blm.Advance(0.1); // cast release lock
+        Check(blm.Element == 3 && blm.Mp == JobCombatBase.MaxMp - 2000 && blm.CanUse(153, true, true, true, checkTiming: false),
+            "Fire III must enter Astral Fire III, cost 2000 MP and grant Thunderhead.");
+        Cast(blm, 3577);
+        Check(blm.Mp == JobCombatBase.MaxMp - 2000 - 1600, "Fire IV costs double in Astral Fire without Umbral Hearts, with no natural regen.");
+        blm.Advance(0.6);
+        Check(Math.Abs(blm.CastTime(154) - 1.75) < 1e-9, "Blizzard III casts in half the time from Astral Fire III.");
+        var mp = blm.Mp;
+        Cast(blm, 154);
+        Check(blm.Element == -3 && blm.Paradox && blm.Adjust(141) == 25797 && blm.Mp == mp,
+            "Blizzard III from Astral Fire III must be free, enter Umbral Ice III and ready Paradox.");
+        blm.Advance(0.8);
+        Cast(blm, 3576);
+        Check(blm.UmbralHearts == 3, "Blizzard IV must grant three Umbral Hearts.");
+        blm.Advance(30);
+        Check(blm.Polyglot >= 1 && blm.CanUse(16507, true, true, true, checkTiming: false), "An element held for 30 s must grant Polyglot.");
+        blm.TryUse(7421, false, false, true);
+        Check(blm.CastTime(3576) == 0, "Triplecast must make Blizzard IV instant.");
     }
 
     private static void Bard()

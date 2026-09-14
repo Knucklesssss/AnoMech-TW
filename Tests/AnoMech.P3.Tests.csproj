@@ -17,6 +17,7 @@
     <Compile Include="../AnoMech/Core/Combat/BardCombat.cs" />
     <Compile Include="../AnoMech/Core/Combat/MachinistCombat.cs" />
     <Compile Include="../AnoMech/Core/Combat/DancerCombat.cs" />
+    <Compile Include="../AnoMech/Core/Combat/BlackMageCombat.cs" />
     <Compile Include="../AnoMech/Core/Combat/WhiteMageCombat.cs" />
     <Compile Include="../AnoMech/Core/Combat/ScholarCombat.cs" />
     <Compile Include="../AnoMech/Core/Combat/AstrologianCombat.cs" />
