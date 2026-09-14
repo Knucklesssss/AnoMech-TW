@@ -28,6 +28,7 @@ public sealed unsafe class LocalCombatSession : IDisposable
     private double castRemaining;
     private ulong castTarget;
     private double autoAttackTimer;
+    private readonly System.Collections.Generic.Dictionary<(uint Id, bool Timing), uint> statusSeen = [];
     private void Log(string text) { if (Plugin.LogManager.Enabled) Plugin.LogManager.LogSkill(text); }
     private void LogState(string label)
     {
@@ -48,6 +49,8 @@ public sealed unsafe class LocalCombatSession : IDisposable
         var gcd = ActionManager.GetAdjustedRecastTime(ActionType.Action, job.GcdProbeAction, true) / 1000d;
         if (gcd <= 0) throw new InvalidOperationException("無法讀取技能冷卻。");
         model = job.CreateRules(gcd);
+        foreach (var id in model.Actions)
+            model.OverrideRecast(id, ActionManager.GetAdjustedRecastTime(ActionType.Action, id, true) / 1000d);
         var sheet = Plugin.DataManager.GetExcelSheet<SheetAction>();
         foreach (var id in model.Actions.Append(7u))
             if (!sheet.TryGetRow(id, out _)) throw new InvalidOperationException($"Missing installed Action {id}.");
@@ -200,9 +203,16 @@ public sealed unsafe class LocalCombatSession : IDisposable
         if (id == 7)
             return Alive && !Plugin.GameInstance!.Paused && !RestrictedStatus(movement: false)
                 && (AutoAttacking || ResolveTarget(targetId) is { } target && InRange(7, target)) ? 0u : 572u;
-        if (!Supports(id)) return 573;
-        if (!Validate(id, targetId, false)) return 572;
-        return !checkTiming || Validate(id, targetId, true) ? 0u : 582u;
+        var status = !Supports(id) ? 573u
+            : !Validate(id, targetId, false) ? 572u
+            : !checkTiming || Validate(id, targetId, true) ? 0u : 582u;
+        // The hotbar greys an icon from this status; log only changes so the file stays readable.
+        if (Plugin.LogManager.Enabled && (!statusSeen.TryGetValue((id, checkTiming), out var last) || last != status))
+        {
+            statusSeen[(id, checkTiming)] = status;
+            Log($"Status id={id} adjusted={Adjust(id)} timing={checkTiming} status={status} {WhyNot(id, targetId)}");
+        }
+        return status;
     }
 
     public bool TryInput(ActionType type, uint id, ulong targetId, out bool accepted)

@@ -144,6 +144,12 @@ internal static class TankCombatChecks
 
     private static void Gunbreaker()
     {
+        var adjusted = new GunbreakerCombat(2.47);
+        adjusted.OverrideRecast(25760, 59.16);
+        adjusted.OverrideRecast(16146, 10);
+        Check(adjusted.GetBindingCooldown(25760) == (13, 59.16, 1) && adjusted.GetBindingCooldown(16146) == (8, 30, 1),
+            "Client recasts must replace skill-speed differences only.");
+
         var gnb = new GunbreakerCombat();
         Check(!gnb.CanUse(16162, true, true, true), "Burst Strike must need a cartridge.");
         Hit(gnb, 16137); gnb.Advance(2.5); Hit(gnb, 16139); gnb.Advance(2.5); Hit(gnb, 16145);

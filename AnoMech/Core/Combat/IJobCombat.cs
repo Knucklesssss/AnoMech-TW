@@ -21,6 +21,8 @@ public interface IJobCombat
     (int Group, double Recast, int Charges) GetBindingCooldown(uint actionId);
     // Stances survive entering a duty; read them from the client once at start.
     void Seed(Func<ushort, bool> hasStatus);
+    // Client-adjusted recast (skill speed shortens weaponskills with their own timer).
+    void OverrideRecast(uint actionId, double seconds);
     uint Adjust(uint actionId);
     bool Supports(uint actionId);
     // No target needed: self-centred AoEs and self buffs.

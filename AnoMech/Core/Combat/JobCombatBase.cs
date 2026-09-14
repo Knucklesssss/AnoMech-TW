@@ -23,6 +23,7 @@ public abstract class JobCombatBase : IJobCombat
     private int mp = MaxMp;
     private double mpTick;
     private uint castingAction;
+    private readonly Dictionary<uint, double> recastOverrides = [];
 
     protected JobCombatBase(double gcdSeconds)
     {
@@ -64,13 +65,29 @@ public abstract class JobCombatBase : IJobCombat
     {
         actionId = Adjust(actionId);
         if (!Actions.Contains(actionId)) throw new ArgumentOutOfRangeException(nameof(actionId));
-        return TimingContract(actionId);
+        return Contract(actionId);
     }
 
     public (int Group, double Recast, int Charges) GetBindingCooldown(uint actionId)
     {
         if (!Actions.Contains(actionId)) throw new ArgumentOutOfRangeException(nameof(actionId));
-        return TimingContract(actionId);
+        return Contract(actionId);
+    }
+
+    // Only small corrections are accepted: the client value differs from the sheet by skill speed,
+    // never by a different charge count or an unrelated recast.
+    public void OverrideRecast(uint actionId, double seconds)
+    {
+        if (!Actions.Contains(actionId) || !double.IsFinite(seconds) || seconds <= 0) return;
+        var (_, recast, _) = TimingContract(actionId);
+        var difference = Math.Abs(seconds - recast);
+        if (difference > 0.001 && difference <= recast * 0.05) recastOverrides[actionId] = seconds;
+    }
+
+    private (int Group, double Recast, int Charges) Contract(uint actionId)
+    {
+        var (group, recast, charges) = TimingContract(actionId);
+        return recastOverrides.TryGetValue(actionId, out var adjusted) ? (group, adjusted, charges) : (group, recast, charges);
     }
 
     public string DebugState
@@ -96,7 +113,7 @@ public abstract class JobCombatBase : IJobCombat
         if (mp < MpCost(actionId) || !JobCanUse(actionId, inCombat)) return false;
         if (!checkTiming) return true;
         if (castingAction != 0) return false;
-        var (group, recast, charges) = TimingContract(actionId);
+        var (group, recast, charges) = Contract(actionId);
         return Timing.IsAvailable(group, recast, charges)
             && (!AlsoUsesGcd(actionId) || Timing.IsAvailable(GlobalCooldownGroup, GcdSeconds, 1));
     }
@@ -170,7 +187,7 @@ public abstract class JobCombatBase : IJobCombat
 
     private bool PayRecast(uint actionId, double lockSeconds)
     {
-        var (group, recast, charges) = TimingContract(actionId);
+        var (group, recast, charges) = Contract(actionId);
         if (AlsoUsesGcd(actionId) && !Timing.TryUse(GlobalCooldownGroup, GcdSeconds, 1, 0)) return false;
         return Timing.TryUse(group, recast, charges, lockSeconds);
     }

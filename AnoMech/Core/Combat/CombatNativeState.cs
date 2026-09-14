@@ -215,5 +215,16 @@ public sealed unsafe class CombatNativeState : IDisposable
         disposed = true;
         rules.Reset();
         Write(autos: false, resetAdditional: true);
+        // A full-but-inactive record (Elapsed == Total == sheet recast) made speed-adjusted
+        // weaponskills (Gnashing Fang, Double Down) flash on the hotbar after leaving.
+        if (ActionManager.Instance() != manager) return;
+        foreach (var recast in recasts)
+        {
+            var detail = manager->GetRecastGroupDetail(recast.NativeGroup);
+            if (detail == null) continue;
+            detail->IsActive = false;
+            detail->Elapsed = 0;
+            detail->Total = 0;
+        }
     }
 }
