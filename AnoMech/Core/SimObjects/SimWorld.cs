@@ -29,6 +29,7 @@ public sealed class SimWorld : ISimObject, IDisposable
     private readonly List<ISimObject> children = new();
     private readonly EnmityHud enmityHud = new();
     private readonly PartyHud partyHud = new();
+    private readonly LocalCastBarHud castBarHud = new();
     private readonly Waymarks waymarks;
 
     // Zone loading and map effects entry point.
@@ -165,6 +166,7 @@ public sealed class SimWorld : ISimObject, IDisposable
         children.Update(deltaSeconds);
         enmityHud.Refresh(children.OfType<SimEnemy>(), deltaSeconds);
         partyHud.Refresh(Party);
+        castBarHud.Refresh(Combat);
     }
 
     public void Despawn()
@@ -174,6 +176,7 @@ public sealed class SimWorld : ISimObject, IDisposable
         Party = SimParty.Empty;
         enmityHud.Clear();
         partyHud.Clear();
+        castBarHud.Clear();
         Markings.ClearAll();
         waymarks.ClearAll();
         Obstacles.Clear();
@@ -185,6 +188,7 @@ public sealed class SimWorld : ISimObject, IDisposable
         Despawn();
         enmityHud.Dispose();
         partyHud.Dispose();
+        castBarHud.Dispose();
         Map.Dispose();
     }
 }
