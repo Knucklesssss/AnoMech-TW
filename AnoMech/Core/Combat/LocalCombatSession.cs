@@ -149,7 +149,6 @@ public sealed unsafe class LocalCombatSession : IDisposable
         if (!done)
         {
             cast.Despawn();
-            Explain("詠唱失敗：請檢查目標、距離與 MP。");
         }
         native.Mirror(AutoAttacking);
         Log($"CastComplete id={id} done={done} hit={hit?.ToString() ?? "null"}");
@@ -236,7 +235,7 @@ public sealed unsafe class LocalCombatSession : IDisposable
         // Resolve default target once at button press; queued input keeps this ID.
         targetId = targetId == 0xE0000000 || targetId == 0 ? CurrentTargetId() : targetId;
         id = Adjust(id);
-        if (!Validate(id, targetId, false)) { Log($"Rejected id={id} {WhyNot(id, targetId)}"); Explain("技能條件不符：請檢查目標、距離、存活狀態與資源。"); return true; }
+        if (!Validate(id, targetId, false)) { Log($"Rejected id={id} {WhyNot(id, targetId)}"); return true; }
         if (Validate(id, targetId, true)) { buffer.Reset(); Use(id, targetId); accepted = true; }
         else
         {
