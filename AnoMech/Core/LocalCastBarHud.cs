@@ -25,12 +25,14 @@ internal sealed unsafe class LocalCastBarHud : IDisposable
     public LocalCastBarHud()
     {
         Plugin.AddonLifecycle.RegisterListener(AddonEvent.PreRequestedUpdate, AddonName, OnPreRequestedUpdate);
+        Plugin.AddonLifecycle.RegisterListener(AddonEvent.PreDraw, AddonName, OnPreDraw);
     }
 
     public void Dispose()
     {
         Clear();
         Plugin.AddonLifecycle.UnregisterListener(AddonEvent.PreRequestedUpdate, AddonName, OnPreRequestedUpdate);
+        Plugin.AddonLifecycle.UnregisterListener(AddonEvent.PreDraw, AddonName, OnPreDraw);
     }
 
     public void Refresh(LocalCombatSession? combat)
@@ -62,7 +64,7 @@ internal sealed unsafe class LocalCastBarHud : IDisposable
 
     private void OnPreRequestedUpdate(AddonEvent type, AddonArgs args)
     {
-        var combat = session;
+        var combat = session is { CastingAction: not 0 } casting ? casting : null;
         if (combat == null && !clearPending) return;
         if (args is not AddonRequestedUpdateArgs reqArgs) return;
         var numArrays = (NumberArrayData**)reqArgs.NumberArrayData;
@@ -113,6 +115,12 @@ internal sealed unsafe class LocalCastBarHud : IDisposable
         if (strArr != null) strArr->UpdateState = 1;
     }
 
+    // The addon stays visible but the game hides its root node when the client isn't casting; re-show it last.
+    private void OnPreDraw(AddonEvent type, AddonArgs args)
+    {
+        if (session is { CastingAction: not 0 }) SetVisible(true);
+    }
+
     private static string VisibilityState()
     {
         var addon = (AtkUnitBase*)Plugin.GameGui.GetAddonByName(AddonName, 1).Address;
@@ -128,6 +136,8 @@ internal sealed unsafe class LocalCastBarHud : IDisposable
     private static void SetVisible(bool visible)
     {
         var addon = (AtkUnitBase*)Plugin.GameGui.GetAddonByName(AddonName, 1).Address;
-        if (addon != null && addon->IsVisible != visible) addon->IsVisible = visible;
+        if (addon == null) return;
+        if (addon->IsVisible != visible) addon->IsVisible = visible;
+        if (addon->RootNode != null && addon->RootNode->IsVisible() != visible) addon->RootNode->ToggleVisibility(visible);
     }
 }
