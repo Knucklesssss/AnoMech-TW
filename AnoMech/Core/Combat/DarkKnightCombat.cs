@@ -21,6 +21,19 @@ public sealed class DarkKnightCombat : TankCombatBase
 
     public DarkKnightCombat(double gcdSeconds = 2.5) : base(gcdSeconds, 3629, 32067, 743, 2) { }
 
+    private const ushort LivingDead = 810, UndeadRebirth = 3255;
+
+    // Healing is not simulated, so Walking Dead is treated as healed to full: the first lethal hit turns
+    // Living Dead straight into Undead Rebirth with the remaining time.
+    public override bool SurviveLethal()
+    {
+        if (HasBuff(UndeadRebirth)) return true;
+        if (!HasBuff(LivingDead)) return false;
+        Buff(UndeadRebirth, BuffRemaining(LivingDead));
+        ClearBuff(LivingDead);
+        return true;
+    }
+
     public int Blood => blood;
     public double DarksideRemaining => darksideRemaining;
     public double ShadowRemaining => shadowRemaining;
@@ -32,7 +45,7 @@ public sealed class DarkKnightCombat : TankCombatBase
         [3617, 3623, 3632, 3621, 16468, 3624, 7392, 7391, 16470, 16469, 25757, 3641, 3643, 3639, 25755, 7390, 16472, 36926,
          3636, 3634, 3638, 16471, 25754, 7393];
     // PvE rows; the same-name CanStatusOff rows (2171, 1308, 1996, 3036) are PvP.
-    protected override IReadOnlyList<ushort> JobStatusIds { get; } = [742, 1972, 749, 747, 746, 810, 1894, 2682, 1178];
+    protected override IReadOnlyList<ushort> JobStatusIds { get; } = [742, 1972, 749, 747, 746, LivingDead, UndeadRebirth, 1894, 2682, 1178];
 
     protected override string JobDebugState
         => $"blood={blood} darkside={darksideRemaining:0.0} shadow={shadowRemaining:0.0} shadowstride={Timing.Remaining(8):0.0} shadowbringer={Timing.Remaining(23):0.0}";
@@ -83,7 +96,7 @@ public sealed class DarkKnightCombat : TankCombatBase
             case 3639: Buff(SaltedEarth, 15); return null;
             case 3636: Buff(747, 15); return null;
             case 3634: Buff(746, 10); return null;
-            case 3638: Buff(810, 10); return null;
+            case 3638: Buff(LivingDead, 10); return null;
             case 16471: Buff(1894, 15); return null;
             case 25754: Buff(2682, 10); return null;
             case 7393: Buff(1178, 7); return null;

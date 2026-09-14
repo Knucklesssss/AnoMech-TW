@@ -19,6 +19,8 @@ public sealed class GunbreakerCombat : TankCombatBase
 
     public GunbreakerCombat(double gcdSeconds = 2.5) : base(gcdSeconds, 16142, 32068, 1833, 2) { }
 
+    public override bool SurviveLethal() => HasBuff(Superbolide);
+
     public int Cartridges => cartridges;
     public int GnashStep => gnashStep;
     protected override IReadOnlyList<uint> JobActions { get; } =

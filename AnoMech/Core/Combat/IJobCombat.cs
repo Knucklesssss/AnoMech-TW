@@ -38,6 +38,8 @@ public interface IJobCombat
     bool BeginCast(uint actionId, bool hasTarget, bool inRange, bool inCombat, bool alive = true, bool bound = false);
     bool CompleteCast(bool hasTarget, bool inRange, bool alive, out JobHit? hit);
     void CancelCast();
+    // True when an active invulnerability swallows a death; may convert the status (Living Dead).
+    bool SurviveLethal();
     void AutoAttackHit();
     // Remaining <= 0 means the status must be absent; +Infinity is permanent.
     IEnumerable<JobStatus> Statuses();

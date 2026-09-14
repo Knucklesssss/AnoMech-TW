@@ -8,7 +8,8 @@ internal static class TankCombatChecks
         Warrior();
         Paladin();
         Gunbreaker();
-        Console.WriteLine("PASS: tank registry, Warrior, Paladin and Gunbreaker rotations, gauges, casts, substitutions and defensives.");
+        Invulnerabilities();
+        Console.WriteLine("PASS: tank registry, Warrior, Paladin and Gunbreaker rotations, gauges, casts, substitutions, defensives and invulnerabilities.");
     }
 
     private static void Registry()
@@ -192,6 +193,31 @@ internal static class TankCombatChecks
         Check(!gnb.CanUse(16151, false, false, true), "Aurora must have two charges.");
         gnb.TryUse(16142, false, false, false);
         Check(gnb.Stance && gnb.Adjust(16142) == 32068, "Royal Guard must turn into Release Royal Guard.");
+    }
+
+    private static void Invulnerabilities()
+    {
+        (IJobCombat Job, uint Action)[] cases = [(new PaladinCombat(), 30), (new WarriorCombat(), 43), (new GunbreakerCombat(), 16152)];
+        foreach (var (job, action) in cases)
+        {
+            var name = job.GetType().Name;
+            Check(!job.SurviveLethal(), $"{name} must not survive without its invulnerability.");
+            job.TryUse(action, false, false, true);
+            Check(job.SurviveLethal() && job.SurviveLethal(), $"{name} invulnerability must block every death while active.");
+            job.Advance(10.1);
+            Check(!job.SurviveLethal(), $"{name} invulnerability must end after 10 s.");
+        }
+
+        var drk = new DarkKnightCombat();
+        Check(!drk.SurviveLethal(), "Dark Knight must not survive without Living Dead.");
+        drk.TryUse(3638, false, false, true);
+        drk.Advance(4);
+        Check(drk.SurviveLethal(), "Living Dead must survive the first lethal hit.");
+        var statuses = drk.Statuses().ToDictionary(s => s.Id, s => s.Remaining);
+        Check(statuses[810] == 0 && Math.Abs(statuses[3255] - 6) < 1e-6, "Living Dead must become Undead Rebirth with its remaining time.");
+        Check(drk.SurviveLethal(), "Undead Rebirth must keep blocking deaths.");
+        drk.Advance(6.1);
+        Check(!drk.SurviveLethal(), "Undead Rebirth must end with Living Dead's duration.");
     }
 
     private static void Hit(IJobCombat job, uint id, bool aoe = false, bool gapCloser = false)

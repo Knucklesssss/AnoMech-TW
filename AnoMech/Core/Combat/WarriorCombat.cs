@@ -14,6 +14,8 @@ public sealed class WarriorCombat : TankCombatBase
 
     public WarriorCombat(double gcdSeconds = 2.5) : base(gcdSeconds, 48, 32066, 91, 2) { }
 
+    public override bool SurviveLethal() => HasBuff(Holmgang);
+
     public int Beast => beast;
     public int InnerReleaseStacks => BuffParam(InnerRelease);
     public double TempestRemaining => BuffRemaining(SurgingTempest);

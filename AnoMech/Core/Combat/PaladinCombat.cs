@@ -22,6 +22,8 @@ public sealed class PaladinCombat : TankCombatBase
 
     public PaladinCombat(double gcdSeconds = 2.5) : base(gcdSeconds, 28, 32065, 79, 1) { }
 
+    public override bool SurviveLethal() => HasBuff(HallowedGround);
+
     public int Oath => oath;
     public int RequiescatStacks => BuffParam(Requiescat);
     protected override IReadOnlyList<uint> JobActions { get; } =

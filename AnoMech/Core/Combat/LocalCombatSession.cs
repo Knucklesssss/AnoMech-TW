@@ -417,6 +417,14 @@ public sealed unsafe class LocalCombatSession : IDisposable
         native.Mirror(AutoAttacking);
         if (probe) { castProbeLogged = true; Log($"CastProbe afterMirror {native.CastDebugState()}"); }
     }
+    public bool SurviveLethal()
+    {
+        if (!Active || !model.SurviveLethal()) return false;
+        Log("SurvivedLethal");
+        native.Mirror(AutoAttacking);
+        return true;
+    }
+
     public void Stop(string reason)
     {
         if (!Active) return;

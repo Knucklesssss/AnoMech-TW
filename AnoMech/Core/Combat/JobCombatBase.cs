@@ -46,6 +46,7 @@ public abstract class JobCombatBase : IJobCombat
     public virtual void Seed(Func<ushort, bool> hasStatus) { }
     public virtual double CastTime(uint actionId) => 0;
     public virtual void AutoAttackHit() { }
+    public virtual bool SurviveLethal() => false;
 
     // Combo predecessor from the Action sheet's ActionCombo column; 0 = none.
     protected abstract uint ComboFrom(uint actionId);

@@ -253,6 +253,12 @@ public sealed class Game : IDisposable
     {
         if (target == null) return false;
         if (target.Dead) return false;
+        // Tank invulnerabilities live in the local combat rules, not the sim status list HasStatus reads.
+        if (target is SimPlayer && World.Combat is { Active: true } combat && combat.SurviveLethal())
+        {
+            Plugin.Log.Info($"[Invuln] {DescribeName(target)} survived with a tank invulnerability: {cause}");
+            return false;
+        }
         if (target is SimCharacter sc && sc.HasStatus(SimParty.InvulnStatusId))
         {
             Plugin.Log.Info($"[Invuln] {DescribeName(target)} survived: {cause}");
