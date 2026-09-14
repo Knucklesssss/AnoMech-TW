@@ -124,6 +124,18 @@ internal static class RangedCombatChecks
         Check(dnc.StepIndex == 2 && dnc.Adjust(15997) == 16003 && dnc.IsHighlighted(16003), "Both steps must light Standard Finish.");
         Hit(dnc, 15997, aoe: true);
         Check(dnc.StepCount == 0 && dnc.Adjust(15989) == 15989, "Standard Finish must leave dance mode.");
+
+        Check(!dnc.CanUse(16010, false, false, true, bound: true, checkTiming: false), "En Avant must be blocked while bound.");
+        Check(dnc.CanUse(16010, false, false, true, bound: false, checkTiming: false), "En Avant must be usable while not bound.");
+
+        Check(dnc.GetCooldown(16012).Recast == 90, "Shield Samba recast must be 90 s under trait 456.");
+
+        dnc.Advance(2.5);
+        Hit(dnc, 15989);
+        Check(dnc.EspritGauge == 5, "Cascade must grant 5 Esprit under Standard Finish's Esprit status (trait 255).");
+        dnc.Advance(2.5);
+        Hit(dnc, 15991);
+        Check(dnc.EspritGauge == 15, "Reverse Cascade must grant 10 Esprit under Esprit status (trait 454).");
     }
 
     private static void RoleActions()

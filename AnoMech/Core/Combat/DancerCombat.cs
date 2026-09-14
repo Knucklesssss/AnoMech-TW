@@ -58,7 +58,7 @@ public sealed class DancerCombat : RangedCombatBase
         };
     }
 
-    public override bool IsGapCloser(uint actionId) => false;
+    public override bool IsGapCloser(uint actionId) => actionId == 16010;
     protected override uint ComboFrom(uint actionId) => actionId switch { 15990 => 15989, 15994 => 15993, _ => 0 };
 
     // Closed Position only toggles the player's own status; the partner is not simulated.
@@ -132,22 +132,22 @@ public sealed class DancerCombat : RangedCombatBase
                 EndDance();
                 return Area(actionId, hasTarget);
             case 15989 or 15993:
-                GainEsprit();
+                GainEsprit(5);
                 if (Chance(0.5)) Buff(SilkenSymmetry, 30);
                 SetCombo(actionId);
                 return actionId == 15989 ? new JobHit(actionId, false, false) : Area(actionId, hasTarget);
             case 15990 or 15994:
-                GainEsprit();
+                GainEsprit(5);
                 if (ComboAction == ComboFrom(actionId) && Chance(0.5)) Buff(SilkenFlow, 30);
                 ClearCombo();
                 return actionId == 15990 ? new JobHit(actionId, false, false) : Area(actionId, hasTarget);
             case 15991 or 15995:
-                GainEsprit();
+                GainEsprit(10);
                 if (!ConsumeBuff(SilkenSymmetry)) ClearBuff(FlourishingSymmetry);
                 GainFeatherChance();
                 return actionId == 15991 ? new JobHit(actionId, false, false) : Area(actionId, hasTarget);
             case 15992 or 15996:
-                GainEsprit();
+                GainEsprit(10);
                 if (!ConsumeBuff(SilkenFlow)) ClearBuff(FlourishingFlow);
                 GainFeatherChance();
                 return actionId == 15992 ? new JobHit(actionId, false, false) : Area(actionId, hasTarget);
@@ -200,10 +200,11 @@ public sealed class DancerCombat : RangedCombatBase
 
     private static JobHit? Area(uint actionId, bool hasTarget) => hasTarget ? new JobHit(actionId, true, false) : null;
 
-    // ponytail: 10 Esprit per weaponskill while the Esprit status is up; the solo gain rate is unverified.
-    private void GainEsprit()
+    // Amounts from trait 255 (+5 for Cascade/Fountain/Windmill/Bladeshower) and trait 454
+    // (+10 for Reverse Cascade/Fountainfall/Rising Windmill/Bloodshower), only while Esprit status is up.
+    private void GainEsprit(int amount)
     {
-        if (HasBuff(EspritStatus)) esprit = Math.Min(100, esprit + 10);
+        if (HasBuff(EspritStatus)) esprit = Math.Min(100, esprit + amount);
     }
 
     private void GainFeatherChance()
