@@ -58,7 +58,9 @@ internal sealed unsafe class LocalCastBarHud : IDisposable
         shown = visible;
         var addon = (AtkUnitBase*)Plugin.GameGui.GetAddonByName(AddonName, 1).Address;
         if (addon == null) return;
-        if (addon->IsVisible != visible) addon->IsVisible = visible;
+        // Setting IsVisible alone left ShowHideFlags at 1 and the addon never drew; Show/Hide clear and set it.
+        if (visible && (!addon->IsVisible || (addon->ShowHideFlags & 1) != 0)) addon->Show(true, 1);
+        else if (!visible && addon->IsVisible) addon->Hide(false, false, 1);
         var root = addon->RootNode;
         if (root == null) return;
         if (root->IsVisible() != visible) root->ToggleVisibility(visible);
