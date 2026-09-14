@@ -1,4 +1,3 @@
-using System;
 using System.Linq;
 using System.Numerics;
 using AnoMech.Core.Game.Ai;
@@ -12,10 +11,11 @@ public sealed class TopP5DeltaMoogleAi : TopP5DeltaAi
     public override string? Group => "陸服";
     private int SafeSouth => state.SwivelCannonSide.Mul * (int)state.EyeSpawn.Mul;
     private bool OuterFistsSwap => state.FistColors[4] == state.FistColors[6];
-    private static readonly float DiagonalWaymark = 13.63f / MathF.Sqrt(2);
 
+    // Outer blue waits beside the waymark facing Omega-M; inner blue stands just inside the east diagonals,
+    // far enough apart that its remote tether breaks as soon as it lands.
     protected override IAiMove TetherPrePosition() => AiMove.Create(
-        new(6, -3), new(6, 3), new(10, -7), new(10, 7),
+        new(9.9f, -7), new(9.9f, 7), new(13.6f, -2.5f), new(13.6f, 2.5f),
         new(-4, -6), new(-4, 6), new(-9.5f, -10), new(-9.5f, 10))
         .Assignments(state.TetherOrder).ApplyPositions(AdjustEyePosition);
 
@@ -29,18 +29,16 @@ public sealed class TopP5DeltaMoogleAi : TopP5DeltaAi
         if (state.FistColors[4] == state.FistColors[6]) roles.ByPosition(6, 7);
     }
 
-    // Inner blue takes the east diagonal waymarks and breaks when the real tethers land; outer blue waits
-    // beside the east waymark, under the break distance, until it leaves for the arms.
+    // After the fists spawn, outer blue steps inward off its fists.
     protected override IAiMove FistResolveSlots() => AiMove.Create(
-        new(DiagonalWaymark, -DiagonalWaymark), new(DiagonalWaymark, DiagonalWaymark), new(13.6f, -2.5f), new(13.6f, 2.5f),
+        new(9.9f, -7), new(9.9f, 7), new(9.9f, -2.5f), new(9.9f, 2.5f),
         new(-8.5f, -10), new(-8.5f, 10), new(-9.5f, -10), new(-9.5f, 10))
         .Assignments(state.TetherOrder).ApplySwaps(Swap01, Swap45).ApplyPositions(AdjustEyePosition);
 
-    // Inner blue has broken; each outer blue meets its same-side inner blue on the inner line for the fists.
+    // Once its tether has exploded, inner blue stacks with the same-side outer blue for the fists.
     protected override IAiMove TetherResolveStep() => AiMove.Create(
-        new(DiagonalWaymark, -4.4f), new(DiagonalWaymark, 4.4f), new(DiagonalWaymark, -4.4f), new(DiagonalWaymark, 4.4f),
-        null, null, null, null)
-        .Assignments(state.TetherOrder).ApplySwaps(Swap01).ApplyPositions(AdjustEyePosition);
+        new(9.9f, -2.5f), new(9.9f, 2.5f), null, null, null, null, null, null)
+        .Assignments(state.TetherOrder).ApplyPositions(AdjustEyePosition);
 
     protected override IAiMove HyperPulseBaitArms() => AiMove.Create(
         new[]{4,5,2,3,0,1}.Select(i => ArmUnitPlacements[i].MoveForward(.5f)
