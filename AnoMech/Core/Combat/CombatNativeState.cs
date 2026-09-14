@@ -239,7 +239,9 @@ public sealed unsafe class CombatNativeState : IDisposable
                 var (group, seconds, charges) = rules.GetBindingCooldown(recast.BindingAction);
                 var view = recast.Additional
                     ? new CombatRecastView(false, 0, 0)
-                    : CombatRecastView.Project(seconds, charges, rules.Timing.Charges(group, seconds, charges), rules.Timing.Remaining(group));
+                    // The GCD group mixes skill-speed and spell-speed recasts (Paladin: 2.49 s Fast Blade, 2.50 s Holy Spirit);
+                    // the bound action's recast may be shorter than what the last use left.
+                    : CombatRecastView.Project(seconds, charges, rules.Timing.Charges(group, seconds, charges), Math.Min(seconds, rules.Timing.Remaining(group)));
                 detail->ActionId = recast.BindingAction;
                 detail->IsActive = view.IsActive;
                 detail->Elapsed = (float)view.Elapsed;
