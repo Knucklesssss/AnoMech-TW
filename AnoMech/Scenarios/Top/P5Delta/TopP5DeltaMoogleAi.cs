@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Numerics;
 using AnoMech.Core.Game.Ai;
@@ -11,6 +12,7 @@ public sealed class TopP5DeltaMoogleAi : TopP5DeltaAi
     public override string? Group => "陸服";
     private int SafeSouth => state.SwivelCannonSide.Mul * (int)state.EyeSpawn.Mul;
     private bool OuterFistsSwap => state.FistColors[4] == state.FistColors[6];
+    private static readonly float DiagonalWaymark = 13.63f / MathF.Sqrt(2);
 
     protected override IAiMove TetherPrePosition() => AiMove.Create(
         new(6, -3), new(6, 3), new(10, -7), new(10, 7),
@@ -27,14 +29,14 @@ public sealed class TopP5DeltaMoogleAi : TopP5DeltaAi
         if (state.FistColors[4] == state.FistColors[6]) roles.ByPosition(6, 7);
     }
 
+    // Inner blue takes the east diagonal waymarks and breaks when the real tethers land; outer blue waits
+    // beside the east waymark, under the break distance, until it leaves for the arms.
     protected override IAiMove FistResolveSlots() => AiMove.Create(
-        new(10, -3), new(10, 3), new(10, -7), new(10, 7),
+        new(DiagonalWaymark, -DiagonalWaymark), new(DiagonalWaymark, DiagonalWaymark), new(13.6f, -2.5f), new(13.6f, 2.5f),
         new(-8.5f, -10), new(-8.5f, 10), new(-9.5f, -10), new(-9.5f, 10))
         .Assignments(state.TetherOrder).ApplySwaps(Swap01, Swap45).ApplyPositions(AdjustEyePosition);
 
-    protected override IAiMove TetherResolveStep() => AiMove.Create(
-        null, null, new(10, -3), new(10, 3), null, null, null, null)
-        .Assignments(state.TetherOrder).ApplySwaps(Swap01).ApplyPositions(AdjustEyePosition);
+    protected override IAiMove TetherResolveStep() => AiMove.Create(new Vector2?[8]);
 
     protected override IAiMove HyperPulseBaitArms() => AiMove.Create(
         new[]{4,5,2,3,0,1}.Select(i => ArmUnitPlacements[i].MoveForward(.5f)
@@ -63,7 +65,9 @@ public sealed class TopP5DeltaMoogleAi : TopP5DeltaAi
         for(var i=6;i<8;i++)
         {
             var side = (i==6)==OuterFistsSwap ? 1 : -1;
-            points[i] = side==SafeSouth ? new(-14,14*SafeSouth) : new(-9.5f,9.5f*side);
+            // The unsafe-side local tether goes straight to the safe diagonal once the monitor vulnerability is gone,
+            // so its break vulnerability ends well before Hello World.
+            points[i] = side==SafeSouth ? new(-14,14*SafeSouth) : new(-10,10*SafeSouth);
         }
         return AiMove.Create(points).Assignments(state.TetherOrder).ApplyPositions(AdjustEyePosition);
     }
