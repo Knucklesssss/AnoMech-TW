@@ -198,6 +198,7 @@ public unsafe class MainWindow : Window, IDisposable
             if (ImGui.SmallButton("<##collapse")) _leftPanelOpen = false;
             if (ImGui.Button("多人同步##openmultiplayer", new Vector2(-1, 0))) plugin.ToggleMultiplayerUi();
             if (ImGui.Button("隊伍列表順序##openpartyorder", new Vector2(-1, 0))) plugin.TogglePartyListOrderUi();
+            if (ImGui.Button("職業支援列表##openjobsupport", new Vector2(-1, 0))) plugin.ToggleJobSupportUi();
             DrawJobSupport();
             ImGui.Separator();
 

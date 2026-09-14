@@ -64,6 +64,7 @@ public sealed class Plugin : IDalamudPlugin
     private MainWindow MainWindow { get; init; }
     private MultiplayerWindow MultiplayerWindow { get; init; }
     private PartyListOrderWindow PartyListOrderWindow { get; init; }
+    private JobSupportWindow JobSupportWindow { get; init; }
     internal static MultiplayerSession Multiplayer { get; private set; } = null!;
 #if DEBUG
     private DamageDebugWindow DamageDebugWindow { get; init; }
@@ -90,6 +91,8 @@ public sealed class Plugin : IDalamudPlugin
         WindowSystem.AddWindow(MultiplayerWindow);
         PartyListOrderWindow = new PartyListOrderWindow(this);
         WindowSystem.AddWindow(PartyListOrderWindow);
+        JobSupportWindow = new JobSupportWindow();
+        WindowSystem.AddWindow(JobSupportWindow);
 #if DEBUG
         DamageDebugWindow = new DamageDebugWindow(this);
         WindowSystem.AddWindow(DamageDebugWindow);
@@ -167,6 +170,7 @@ public sealed class Plugin : IDalamudPlugin
         MainWindow.Dispose();
         MultiplayerWindow.Dispose();
         PartyListOrderWindow.Dispose();
+        JobSupportWindow.Dispose();
 #if DEBUG
         DamageDebugWindow.Dispose();
 #endif
@@ -376,5 +380,6 @@ public sealed class Plugin : IDalamudPlugin
     public void ToggleConfigUi() => ConfigWindow.Toggle();
     public void ToggleMultiplayerUi() => MultiplayerWindow.Toggle();
     public void TogglePartyListOrderUi() => PartyListOrderWindow.Toggle();
+    public void ToggleJobSupportUi() => JobSupportWindow.Toggle();
     public void ToggleMainUi() => MainWindow.Toggle();
 }
