@@ -370,5 +370,6 @@ public sealed class Plugin : IDalamudPlugin
     }
 
     public void ToggleConfigUi() => ConfigWindow.Toggle();
+    public void ToggleMultiplayerUi() => MultiplayerWindow.Toggle();
     public void ToggleMainUi() => MainWindow.Toggle();
 }

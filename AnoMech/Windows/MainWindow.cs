@@ -88,6 +88,13 @@ public unsafe class MainWindow : Window, IDisposable
             Click = _ => plugin.ToggleConfigUi(),
             ShowTooltip = () => ImGui.SetTooltip("設定"),
         });
+        TitleBarButtons.Add(new TitleBarButton
+        {
+            Icon = FontAwesomeIcon.Users,
+            IconOffset = new Vector2(2f, 1f),
+            Click = _ => plugin.ToggleMultiplayerUi(),
+            ShowTooltip = () => ImGui.SetTooltip("多人同步"),
+        });
 #if DEBUG
         debugMenu = new DebugMenu(plugin);
 #endif
@@ -165,6 +172,7 @@ public unsafe class MainWindow : Window, IDisposable
             ImGui.TextUnformatted("場景");
             ImGui.SameLine();
             if (ImGui.SmallButton("<##collapse")) _leftPanelOpen = false;
+            if (ImGui.Button("多人同步##openmultiplayer", new Vector2(-1, 0))) plugin.ToggleMultiplayerUi();
             ImGui.Separator();
 
             foreach (var zone in plugin.Game.Zones)
@@ -226,7 +234,7 @@ public unsafe class MainWindow : Window, IDisposable
 
         var multiplayer = Plugin.Multiplayer;
         if (multiplayer.IsClientConnected || multiplayer.HostControlsRun)
-            ImGui.TextDisabled("職能由「多人同步」視窗（/ano net）分配。");
+            ImGui.TextDisabled("職能由左側「多人同步」視窗分配。");
         else
             DrawRoleSelector();
         DrawStratSelector();
