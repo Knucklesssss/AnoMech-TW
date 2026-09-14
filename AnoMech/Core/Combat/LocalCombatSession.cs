@@ -26,6 +26,7 @@ public sealed unsafe class LocalCombatSession : IDisposable
     private bool inCombat;
     private double snapshotClock;
     private double castRemaining;
+    private Vector3 castStartPosition;
     private ulong castTarget;
     private double autoAttackTimer;
     private readonly System.Collections.Generic.Dictionary<(uint Id, bool Timing), uint> statusSeen = [];
@@ -138,7 +139,10 @@ public sealed unsafe class LocalCombatSession : IDisposable
     private void TickCast(double seconds)
     {
         castRemaining -= seconds;
-        if (castRemaining > SlidecastSeconds && (Plugin.PlayerInputHooks.MovementInputActive || Plugin.PlayerInputHooks.IsJumping))
+        // Real displacement, not the input sample: MovementInputActive keeps its last value on frames
+        // without movement input and cancelled casts the moment they began.
+        var moved = Vector2.Distance(new(Position(player).X, Position(player).Z), new(castStartPosition.X, castStartPosition.Z)) > 0.1f;
+        if (castRemaining > SlidecastSeconds && (moved || Plugin.PlayerInputHooks.IsJumping))
         {
             CancelCast("moved");
             return;
@@ -308,6 +312,7 @@ public sealed unsafe class LocalCombatSession : IDisposable
         native.StartCooldown(id);
         Plugin.PlayerInputHooks.RecordLocalAction();
         castRemaining = seconds;
+        castStartPosition = Position(player);
         castTarget = targetId;
         var presentationTarget = self ? null : target;
         cast.Start(id, presentationTarget == null ? Position(player) : Position(presentationTarget), (float)seconds,
