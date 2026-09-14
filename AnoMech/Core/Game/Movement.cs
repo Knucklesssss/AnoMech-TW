@@ -35,6 +35,7 @@ internal class Movement(SimCharacter parent)
 
     public void Follow(SimCharacter? target, float speed = 6f)
     {
+        if (parent.NetworkDriven) return;
         if (!target.IsAlive())
         {
             followTarget = null;
@@ -52,6 +53,7 @@ internal class Movement(SimCharacter parent)
     // is how many yards short of either endpoint to park.
     public void Intercept(SimTether? tether, float margin = 3f)
     {
+        if (parent.NetworkDriven) return;
         followTarget = null;
         interceptTether = tether;
         interceptMargin = margin;
@@ -105,7 +107,8 @@ internal class Movement(SimCharacter parent)
 
     public void Knockback(Vector3 source, float distance, float kbSpeed)
     {
-        var kbDestination = parent.Placement().Face(source).MoveForward(-distance).Position;
+        if (parent.NetworkDriven) return;
+        var kbDestination = new Placement(parent.NativePosition, parent.Rotation).Face(source).MoveForward(-distance).Position;
         // Knockback is forced movement: don't steer around or stop short of obstacles.
         InternalMoveTo(kbDestination, kbSpeed, tl: KnockbackTimelineId, baseOverride: false, faceTravel: false, avoid: false);
 
@@ -119,7 +122,7 @@ internal class Movement(SimCharacter parent)
         Vector3 moveDestination, float sp = 6f, float? finalRot = null, ushort tl = RunTimelineId, bool baseOverride = true,
         bool faceTravel = true, bool avoid = true)
     {
-        if (!parent.IsAlive()) return;   // dead characters don't move
+        if (!parent.IsAlive() || parent.NetworkDriven) return;   // dead characters don't move
         destination = moveDestination;
         speed = MathF.Max(0f, sp);
         finalRotation = finalRot;
@@ -133,6 +136,7 @@ internal class Movement(SimCharacter parent)
 
     public void Tick(float deltaSeconds)
     {
+        if (parent.NetworkDriven) return;
         if (parent.AnimationLock)
         {
             StopAnim();
@@ -151,7 +155,7 @@ internal class Movement(SimCharacter parent)
         // rest of the way unanimated.
         if (!animActive) StartAnim();
 
-        var cur = parent.Position;
+        var cur = parent.NativePosition;
 
         // Park-at-edge: if the destination lies inside an obstacle, retarget to the
         // nearest boundary point so the bot stops at the edge instead of orbiting an

@@ -51,6 +51,11 @@
     <Compile Include="../AnoMech/Scenarios/Top/P3HelloWorld/TopP3Transition.cs" Link="Production/TopP3Transition.cs" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="../AnoMech/Core/Game/SimRandom.cs" Link="Production/SimRandom.cs" />
+    <Compile Include="../AnoMech/Core/Game/MultiplayerContext.cs" Link="Production/MultiplayerContext.cs" />
+    <Compile Include="../AnoMech/Core/Game/MultiplayerOverrides.cs" Link="Production/MultiplayerOverrides.cs" />
+    <Compile Include="../AnoMech/Core/Multiplayer/MultiplayerMessages.cs" Link="Production/Net/MultiplayerMessages.cs" />
+    <Compile Include="../AnoMech/Core/Multiplayer/PlaybackTiming.cs" Link="Production/Net/PlaybackTiming.cs" />
     <Compile Include="../AnoMech/Core/Net/**/*.cs" Link="Production/Net/%(RecursiveDir)%(Filename)%(Extension)" />
     <PackageReference Include="LiteNetLib" Version="2.1.4" />
   </ItemGroup>

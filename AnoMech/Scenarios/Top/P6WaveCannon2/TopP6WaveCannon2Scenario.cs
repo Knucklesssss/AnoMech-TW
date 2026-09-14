@@ -33,10 +33,9 @@ public sealed class TopP6WaveCannon2Scenario : IScenario
     {
         world = worldParam;
         party = worldParam.Party;
-        state = new TopP6WaveCannon2State(party, settingsWindow.Overrides);
+        state = new TopP6WaveCannon2State(party, MultiplayerOverrides.Resolve(settingsWindow.Overrides));
         var solo = selectedAi is null;
-        if (selectedAi is { } idx && idx < AiStrats.Count)
-            ((IScenarioAi<TopP6WaveCannon2State>)AiStrats[idx]).Run(state, world);
+        ScenarioAiRunner.Run(AiStrats, selectedAi, state, world);
         topUtils = new TopUtils(world);
         damage = new DamageSolver(party);
         damage.SetStatuses(DamageType.Magic, StatusId.MagicVulnerabilityUp);

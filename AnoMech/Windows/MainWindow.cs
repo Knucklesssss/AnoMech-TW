@@ -10,6 +10,7 @@ using AnoMech.Core.Map;
 using AnoMech.Core;
 using AnoMech.Core.Game.Ai;
 using AnoMech.Core.Game.Party;
+using AnoMech.Core.Multiplayer;
 using AnoMech.Scenarios;
 using static AnoMech.Core.Game.Game;
 
@@ -223,10 +224,26 @@ public unsafe class MainWindow : Window, IDisposable
         ImGui.Separator();
         DrawLocationHint();
 
-        DrawRoleSelector();
+        var multiplayer = Plugin.Multiplayer;
+        if (multiplayer.IsClientConnected || multiplayer.HostControlsRun)
+            ImGui.TextDisabled("職能由「多人同步」視窗（/ano net）分配。");
+        else
+            DrawRoleSelector();
         DrawStratSelector();
         DrawWaymarkSelector();
 
+        if (multiplayer.IsClientConnected)
+            DrawMultiplayerClientControls(game, multiplayer);
+        else if (multiplayer.HostControlsRun)
+            DrawMultiplayerHostControls(game, multiplayer);
+        else
+            DrawLocalControls(game);
+        DrawAfterControls(game);
+    }
+
+    private void DrawLocalControls(AnoMech.Core.Game.Game game)
+    {
+        if (_selectedScenario is null) return;
         var inInn = ZoneSession.CanStartHere();
         var busy = ZoneSession.IsPlayerBusy();
         var envReady = inInn && !busy;
@@ -266,7 +283,52 @@ public unsafe class MainWindow : Window, IDisposable
 
         var god = game.GodMode;
         if (ImGui.Checkbox("無敵模式##godmode", ref god)) game.GodMode = god;
+    }
 
+    private void DrawMultiplayerHostControls(AnoMech.Core.Game.Game game, MultiplayerSession multiplayer)
+    {
+        if (_selectedScenario is not { } scenario) return;
+        var hasStrat = HasStartableStrat();
+        var canStart = multiplayer.CanHostStart(scenario, out var reason) && hasStrat;
+        if (!hasStrat) reason = "這個地區目前還沒有可用的戰術。";
+        ImGui.BeginDisabled(!canStart);
+        if (ImGui.Button("多人開始##mpstart")) multiplayer.HostStartRun(scenario, _selectedStrat, _selectedWaymark);
+        ImGui.EndDisabled();
+        if (!canStart && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled)) ImGui.SetTooltip(reason);
+        ImGui.SameLine();
+        if (ImGui.Button("重置##reset"))
+        {
+            multiplayer.HostStopRun();
+            game.Reset();
+        }
+        if (game.World.Map.IsInInstance)
+        {
+            ImGui.SameLine();
+            if (ImGui.Button("離開##leave"))
+            {
+                multiplayer.HostStopRun();
+                game.Leave();
+            }
+        }
+        ImGui.BeginDisabled(multiplayer.RunActive);
+        var god = game.GodMode;
+        if (ImGui.Checkbox("無敵模式##godmode", ref god)) game.GodMode = god;
+        ImGui.EndDisabled();
+        ImGui.TextDisabled("多人房間：場景設定以房主為準，與個人有關的點名設定會改為隨機。");
+    }
+
+    private void DrawMultiplayerClientControls(AnoMech.Core.Game.Game game, MultiplayerSession multiplayer)
+    {
+        ImGui.TextWrapped(multiplayer.ClientRunActive
+            ? "多人場景進行中，由房主控制開始與重置。"
+            : "已加入多人房間：由房主選擇場景並開始。");
+        if (!multiplayer.ClientRunActive && game.World.Map.IsInInstance && ImGui.Button("離開##leave"))
+            game.Leave();
+    }
+
+    private void DrawAfterControls(AnoMech.Core.Game.Game game)
+    {
+        if (_selectedScenario is null) return;
 #if DEBUG
         debugMenu.DrawSpeedControl();
 #endif

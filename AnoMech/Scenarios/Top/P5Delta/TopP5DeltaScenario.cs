@@ -43,9 +43,8 @@ public sealed class TopP5DeltaScenario : IScenario
     {
         world = worldParam;
         party = worldParam.Party;
-        state = new TopP5DeltaState(settingsWindow.Overrides, party.PlayerRole);
-        if (selectedAi is { } idx && idx < AiStrats.Count)
-            ((IScenarioAi<TopP5DeltaState>)AiStrats[idx]).Run(state, world);
+        state = new TopP5DeltaState(MultiplayerOverrides.Resolve(settingsWindow.Overrides), party.PlayerRole);
+        ScenarioAiRunner.Run(AiStrats, selectedAi, state, world);
         topUtils = new TopUtils(world);
 
         world.Events.Add(0.1f, SpawnOmega);
@@ -358,7 +357,7 @@ public sealed class TopP5DeltaScenario : IScenario
                 if (closest2.Any(m => m == player))
                     target = closest2.FirstOrDefault(m => m != player);
                 else
-                    target = closest2.Count > 0 ? closest2[Random.Shared.Next(closest2.Count)] : null;
+                    target = closest2.Count > 0 ? closest2[SimRandom.Current.Next(closest2.Count)] : null;
                 break;
             }
             default:

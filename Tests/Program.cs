@@ -20,3 +20,4 @@ SigmaTowerChecks.Run();
 DeltaSettingsChecks.Run();
 BlueScreenChecks.Run();
 NetChecks.Run();
+MultiplayerChecks.Run();

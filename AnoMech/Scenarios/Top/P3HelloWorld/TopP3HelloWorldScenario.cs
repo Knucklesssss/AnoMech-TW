@@ -46,11 +46,10 @@ public sealed class TopP3HelloWorldScenario : IScenario
     {
         world = worldParam;
         party = worldParam.Party;
-        state = new TopP3HelloWorldState(party, settingsWindow.Overrides);
+        state = new TopP3HelloWorldState(party, MultiplayerOverrides.Resolve(settingsWindow.Overrides));
         transition = new TopP3Transition(world, state);
         mechanics = new TopP3HelloWorldMechanics(world, state);
-        if (selectedAi is { } idx && idx < AiStrats.Count)
-            ((IScenarioAi<TopP3HelloWorldState>)AiStrats[idx]).Run(state, world);
+        ScenarioAiRunner.Run(AiStrats, selectedAi, state, world);
 
         Run_Omega_400033C8();
         Run_Omega_400033C7();

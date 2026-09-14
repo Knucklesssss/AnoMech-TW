@@ -29,6 +29,9 @@ public class Configuration : IPluginConfiguration
     // the sim zone leaks back to the server.
     public bool SafeMode { get; set; } = true;
 
+    // Seconds a multiplayer client plays behind the host (NetworkPlaybackDelay).
+    public float MultiplayerPlaybackDelay { get; set; } = 0.2f;
+
     // The below exists just to make saving less cumbersome
     public void Save()
     {

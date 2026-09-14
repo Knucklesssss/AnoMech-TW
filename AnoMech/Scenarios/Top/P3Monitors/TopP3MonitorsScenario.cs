@@ -55,13 +55,13 @@ public sealed class TopP3MonitorsState
         {
             TopP3BossSideOption.Left => TopP3BossSide.Left,
             TopP3BossSideOption.Right => TopP3BossSide.Right,
-            _ => Random.Shared.Next(2) == 0 ? TopP3BossSide.Left : TopP3BossSide.Right,
+            _ => SimRandom.Current.Next(2) == 0 ? TopP3BossSide.Left : TopP3BossSide.Right,
         };
 
         var monitorRoles = PickMonitorRoles(PlayerRole, overrides.PlayerMonitor);
         Assignment = TopP3MonitorRules.Assign(monitorRoles);
         foreach (var role in MonitorRoles)
-            statuses[role] = Random.Shared.Next(2) == 0
+            statuses[role] = SimRandom.Current.Next(2) == 0
                 ? TopP3MonitorStatus.Left
                 : TopP3MonitorStatus.Right;
     }
@@ -106,7 +106,7 @@ public sealed class TopP3MonitorsState
     {
         for (var i = values.Count - 1; i > 0; i--)
         {
-            var j = Random.Shared.Next(i + 1);
+            var j = SimRandom.Current.Next(i + 1);
             (values[i], values[j]) = (values[j], values[i]);
         }
     }
@@ -136,13 +136,12 @@ public sealed class TopP3MonitorsScenario : IScenario
     {
         world = worldParam;
         party = worldParam.Party;
-        state = new TopP3MonitorsState(party, settingsWindow.Overrides);
+        state = new TopP3MonitorsState(party, MultiplayerOverrides.Resolve(settingsWindow.Overrides));
         settingsWindow.CurrentState = state;
         settingsWindow.CrossStrategy = selectedAi is { } choice && choice >= 0 && choice < AiStrats.Count && AiStrats[choice] is TopP3MonitorsCrossAi;
         topUtils = new TopUtils(world);
 
-        if (selectedAi is { } index && index < AiStrats.Count)
-            ((IScenarioAi<TopP3MonitorsState>)AiStrats[index]).Run(state, world);
+        ScenarioAiRunner.Run(AiStrats, selectedAi, state, world);
 
         world.Events.Add(0.1f, SpawnBoss);
         world.Events.Add(TopP3MonitorRules.BuffAt, ApplyMonitorStatuses);

@@ -199,7 +199,7 @@ public sealed class CharacterFind<T> where T : IPositioned
     public T? RandomClosestN(Vector3 from, int count)
     {
         var pool = ClosestN(from, count);
-        return pool.Count == 0 ? default : pool[Random.Shared.Next(pool.Count)];
+        return pool.Count == 0 ? default : pool[SimRandom.Current.Next(pool.Count)];
     }
 
     public IReadOnlyList<T> FarestN(Vector3 from, int count)
@@ -216,7 +216,7 @@ public sealed class CharacterFind<T> where T : IPositioned
     public T? RandomMember()
     {
         var pool = source() as IReadOnlyList<T> ?? source().ToList();
-        return pool.Count == 0 ? default : pool[Random.Shared.Next(pool.Count)];
+        return pool.Count == 0 ? default : pool[SimRandom.Current.Next(pool.Count)];
     }
 
     // size is extra dimension, that's not present in game data.
@@ -309,7 +309,7 @@ public sealed class CharacterFind<T> where T : IPositioned
     {
         for (int i = list.Count - 1; i > 0; i--)
         {
-            var j = Random.Shared.Next(i + 1);
+            var j = SimRandom.Current.Next(i + 1);
             (list[i], list[j]) = (list[j], list[i]);
         }
     }

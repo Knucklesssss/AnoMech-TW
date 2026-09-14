@@ -17,7 +17,7 @@ public sealed class EventScheduler
     {
         var time = elapsed + MathF.Max(0f, offset);
         var index = entries.FindIndex(e => e.Time > time);
-        var entry = new Entry(time, action);
+        var entry = new Entry(time, action, SimRandom.InHostOnly);
         if (index < 0) entries.Add(entry);
         else entries.Insert(index, entry);
     }
@@ -27,9 +27,15 @@ public sealed class EventScheduler
         elapsed += deltaSeconds;
         while (entries.Count > 0 && entries[0].Time <= elapsed)
         {
-            var action = entries[0].Action;
+            var entry = entries[0];
             entries.RemoveAt(0);
-            action();
+            if (!entry.HostOnly)
+            {
+                entry.Action();
+                continue;
+            }
+            using var scope = SimRandom.HostOnly();
+            entry.Action();
         }
     }
 
@@ -39,5 +45,6 @@ public sealed class EventScheduler
         elapsed = 0f;
     }
 
-    private readonly record struct Entry(float Time, Action Action);
+    // HostOnly: scheduled from AI, which clients never run; see SimRandom.
+    private readonly record struct Entry(float Time, Action Action, bool HostOnly);
 }

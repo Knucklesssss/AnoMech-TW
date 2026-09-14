@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using AnoMech.Core.Game;
 using AnoMech.Core.Game.Party;
 using AnoMech.Helpers;
 
@@ -8,7 +9,7 @@ namespace AnoMech.Scenarios;
 
 public class Rng
 {
-    private readonly Random rng = new();
+    private static Random rng => SimRandom.Current;
 
     public bool NextBool()
     {

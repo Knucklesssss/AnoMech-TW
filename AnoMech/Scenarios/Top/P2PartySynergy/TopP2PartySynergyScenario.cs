@@ -31,14 +31,13 @@ public sealed class TopP2PartySynergyScenario : IScenario
     {
         world = worldParam;
         party = worldParam.Party;
-        state = new TopP2PartySynergyState(world.Party, settingsWindow.Overrides);
+        state = new TopP2PartySynergyState(world.Party, MultiplayerOverrides.Resolve(settingsWindow.Overrides));
         topUtils = new TopUtils(world);
         damage = new DamageSolver(world.Party);
         damage.SetStatuses(DamageType.Any, StatusId.VulnerabilityUp);
         damage.SetStatuses(DamageType.Magic, StatusId.MagicVulnerabilityUp);
         var solo = selectedAi is null;
-        if (selectedAi is { } idx && idx < AiStrats.Count)
-            ((IScenarioAi<TopP2PartySynergyState>)AiStrats[idx]).Run(state, world);
+        ScenarioAiRunner.Run(AiStrats, selectedAi, state, world);
 
         Run_Omega_4000A4E9();
         Run_Omega_4000A4E8();
@@ -87,7 +86,7 @@ public sealed class TopP2PartySynergyScenario : IScenario
     {
         if(solo)
         {
-            world.Events.Add(7.93f, () => state.Order.ForEach(p => p.AttachLockonVfx(LockonId.Playstation[new Random().Next(4)], persistent: false)));
+            world.Events.Add(7.93f, () => state.Order.ForEach(p => p.AttachLockonVfx(LockonId.Playstation[SimRandom.Current.Next(4)], persistent: false)));
             return;
         }
         world.Events.Add(7.93f, () => state.Order.ForEach((i, p) =>

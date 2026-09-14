@@ -30,9 +30,8 @@ public sealed class TopP5SigmaScenario : IScenario
     {
         world = worldParam;
         party = worldParam.Party;
-        state = new TopP5SigmaState(party, settingsWindow.Overrides);
-        if (selectedAi is { } idx && idx < AiStrats.Count)
-            ((IScenarioAi<TopP5SigmaState>)AiStrats[idx]).Run(state, world);
+        state = new TopP5SigmaState(party, MultiplayerOverrides.Resolve(settingsWindow.Overrides));
+        ScenarioAiRunner.Run(AiStrats, selectedAi, state, world);
         topUtils = new TopUtils(world);
 
         Run_Omega_M_4000A63C();

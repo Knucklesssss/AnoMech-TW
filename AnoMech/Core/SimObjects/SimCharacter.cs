@@ -45,12 +45,18 @@ public abstract unsafe class SimCharacter(Coordinates coordinates) : ISimObject,
         var native = BattleCharaPtr;
         if (native != null)
         {
-            Position = Coordinates.ToLocal(native->Position);
+            NativePosition = Coordinates.ToLocal(native->Position);
+            Position = NativePosition;
             Rotation = native->Rotation;
         }
         statusList.Update(deltaSeconds);
         vfx.Update(deltaSeconds);
         Movement.Tick(deltaSeconds);
+        if (NetworkLogicPose is { } pose)
+        {
+            Position = pose.Position;
+            Rotation = pose.Rotation;
+        }
     }
 
     public virtual void Despawn()
@@ -66,6 +72,36 @@ public abstract unsafe class SimCharacter(Coordinates coordinates) : ISimObject,
     // Character position in local coordinates. Updated every frame to be always in sync with game
     public Vector3 Position { get; private set; }
     public float Rotation { get; private set; }
+
+    // Where the model actually stands. Equal to Position except on a multiplayer client, where
+    // Position is the host's authoritative pose and the model may be ahead of it.
+    internal Vector3 NativePosition { get; private set; }
+
+    // Multiplayer: this slot's movement comes from the network, so Movement leaves it alone.
+    internal bool NetworkDriven { get; set; }
+
+    // Multiplayer client: the host's pose for this tick, applied after the native read so every
+    // mechanic resolves against the same positions the host used.
+    internal (Vector3 Position, float Rotation)? NetworkLogicPose { get; set; }
+
+    internal void SetLogicPose(Vector3 position, float rotation)
+    {
+        NetworkLogicPose = (position, rotation);
+        Position = position;
+        Rotation = rotation;
+    }
+
+    // Moves the model without touching the simulated Position (network-driven slots).
+    internal void SetNativePose(Vector3 position, float rotation)
+    {
+        var obj = BattleCharaPtr;
+        if (obj == null) return;
+        var w = Coordinates.ToGlobal(position);
+        obj->SetPosition(w.X, w.Y, w.Z);
+        if (obj->DrawObject != null) obj->DrawObject->Object.Position = w;
+        obj->SetRotation(MathUtil.NormalizeRotation(rotation));
+        NativePosition = position;
+    }
     
     public void SetPosition(Vector3 position)
     {
@@ -75,6 +111,7 @@ public abstract unsafe class SimCharacter(Coordinates coordinates) : ISimObject,
         obj->SetPosition(w.X, w.Y, w.Z);
         if (obj->DrawObject != null) obj->DrawObject->Object.Position = w;
         Position = position; // early update, will be updated on next tick anyway
+        NativePosition = position;
     }
     
     public void SetRotation(float rotation)
@@ -186,6 +223,8 @@ public abstract unsafe class SimCharacter(Coordinates coordinates) : ISimObject,
     }
 
     public bool HasStatus(ushort statusId) => FindStatus(statusId) != null;
+
+    internal IEnumerable<SimStatus> ActiveStatuses => statusList.Where(status => status.IsActive);
     
     
     // -------------------------

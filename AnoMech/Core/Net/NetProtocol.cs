@@ -26,6 +26,14 @@ public enum MessageType : byte
     Welcome = 1,
     Ping = 2,
     Pong = 3,
+    LobbyState = 10,
+    SetReady = 11,
+    RequestRole = 12,
+    StartRun = 13,
+    Frames = 14,
+    StopRun = 15,
+    Transform = 16,
+    RunFailed = 17,
 }
 
 public enum RejectReason : byte

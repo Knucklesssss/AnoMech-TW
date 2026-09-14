@@ -18,7 +18,6 @@ namespace AnoMech.Core.SimObjects;
 // SimParty.Empty sentinel doesn't accidentally register one at static init.
 public sealed class SimParty : ISimObject
 {
-    private static Random rnd = new();
     
     public static readonly SimParty Empty = new();
 
@@ -154,6 +153,6 @@ public sealed class SimParty : ISimObject
 
     public SimCharacter? GetRandom()
     {
-        return Get(rnd.Next(8));
+        return Get(SimRandom.Current.Next(8));
     }
 }

@@ -1,3 +1,4 @@
+using AnoMech.Core.Game;
 using System.Collections.Generic;
 using AnoMech.Core.Game.Ai;
 using AnoMech.Core.SimObjects;
@@ -15,11 +16,10 @@ public sealed class TopP4BlueScreenScenario : IScenario
 
     public void Run(SimWorld world, int? selectedAi)
     {
-        var state = new TopP4BlueScreenState(world.Party, playerStackTarget);
+        var state = new TopP4BlueScreenState(world.Party, MultiplayerContext.InRun ? null : playerStackTarget);
         mechanics = new TopP4BlueScreenMechanics(world, state);
         mechanics.Run();
-        if (selectedAi is { } index && index >= 0 && index < AiStrats.Count)
-            ((IScenarioAi<TopP4BlueScreenState>)AiStrats[index]).Run(state, world);
+        ScenarioAiRunner.Run(AiStrats, selectedAi, state, world);
     }
 
     public void DrawSettings()

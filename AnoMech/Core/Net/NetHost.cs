@@ -57,6 +57,7 @@ public sealed class NetHost : IDisposable
 
     public event Action<NetPlayer>? PlayerJoined;
     public event Action<NetPlayer, string>? PlayerLeft;
+    public event Action<NetPlayer, PacketHeader, NetPacketReader>? MessageReceived;
 
     // firstPort 0 lets the OS pick (used by the loopback checks).
     public bool Start(ushort firstPort = NetProtocol.DefaultPort, int candidates = NetProtocol.PortCandidates)
@@ -145,7 +146,7 @@ public sealed class NetHost : IDisposable
                     Send(peer, MessageType.Pong, w => new PongDto(header.Sequence, header.SentAtMs).Write(w), DeliveryMethod.Unreliable);
                     break;
                 default:
-                    log($"[Net] Unexpected {header.Type} from player #{player.Id}");
+                    MessageReceived?.Invoke(player, header, reader);
                     break;
             }
         }
@@ -153,6 +154,15 @@ public sealed class NetHost : IDisposable
         {
             log($"[Net] Receive failed: {e.Message}");
         }
+    }
+
+    public void Send(NetPlayer player, MessageType type, Action<NetDataWriter> payload, DeliveryMethod method)
+        => Send(player.Peer, type, payload, method);
+
+    public void Broadcast(MessageType type, Action<NetDataWriter> payload, DeliveryMethod method)
+    {
+        foreach (var player in players.Values)
+            Send(player.Peer, type, payload, method);
     }
 
     private void Send(NetPeer peer, MessageType type, Action<NetDataWriter> payload, DeliveryMethod method)

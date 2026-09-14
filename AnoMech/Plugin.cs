@@ -13,6 +13,7 @@ using Lumina.Excel.Sheets;
 using AnoMech.Core;
 using AnoMech.Core.Game;
 using AnoMech.Core.Map;
+using AnoMech.Core.Multiplayer;
 using AnoMech.Core.Native;
 using AnoMech.Scenarios.Top.P3Monitors;
 using AnoMech.Windows;
@@ -61,7 +62,8 @@ public sealed class Plugin : IDalamudPlugin
     internal static LogManager LogManager { get; private set; } = null!;
     private ConfigWindow ConfigWindow { get; init; }
     private MainWindow MainWindow { get; init; }
-    private ConnectionTestWindow ConnectionTestWindow { get; init; }
+    private MultiplayerWindow MultiplayerWindow { get; init; }
+    internal static MultiplayerSession Multiplayer { get; private set; } = null!;
 #if DEBUG
     private DamageDebugWindow DamageDebugWindow { get; init; }
 #endif
@@ -79,11 +81,12 @@ public sealed class Plugin : IDalamudPlugin
         GameInstance = Game;
         ConfigWindow = new ConfigWindow(this);
         MainWindow = new MainWindow(this);
-        ConnectionTestWindow = new ConnectionTestWindow();
+        Multiplayer = new MultiplayerSession(Game);
+        MultiplayerWindow = new MultiplayerWindow(Multiplayer);
 
         WindowSystem.AddWindow(ConfigWindow);
         WindowSystem.AddWindow(MainWindow);
-        WindowSystem.AddWindow(ConnectionTestWindow);
+        WindowSystem.AddWindow(MultiplayerWindow);
 #if DEBUG
         DamageDebugWindow = new DamageDebugWindow(this);
         WindowSystem.AddWindow(DamageDebugWindow);
@@ -151,6 +154,7 @@ public sealed class Plugin : IDalamudPlugin
 
         WindowSystem.RemoveAllWindows();
 
+        Multiplayer.Dispose();
         Game.Dispose();
         // After Game.Dispose so World.Dispose → SimPlayer.Despawn can still clear
         // the lock flags through the hooks before they're torn down.
@@ -158,7 +162,7 @@ public sealed class Plugin : IDalamudPlugin
         LogManager.Dispose();
         ConfigWindow.Dispose();
         MainWindow.Dispose();
-        ConnectionTestWindow.Dispose();
+        MultiplayerWindow.Dispose();
 #if DEBUG
         DamageDebugWindow.Dispose();
 #endif
@@ -169,14 +173,14 @@ public sealed class Plugin : IDalamudPlugin
 
     private unsafe void OnFrameworkUpdate(IFramework framework)
     {
-        ConnectionTestWindow.Poll();
         Markings.TickPriming();
         // FrameDeltaTime, not framework.UpdateDelta: UpdateDelta is wall-clock
         // truncated to whole ms, so summing it drifts. FrameDeltaTime is the
         // full-precision delta the game ticks its own animations with.
         var fw = CSFramework.Instance();
         if (fw == null) return;
-        Game.Tick(fw->FrameDeltaTime);
+        if (!Multiplayer.Update(fw->FrameDeltaTime))
+            Game.Tick(fw->FrameDeltaTime);
     }
 
     private void OnTerritoryChanged(ushort territory)
@@ -241,7 +245,7 @@ public sealed class Plugin : IDalamudPlugin
                 Game.Leave();
                 break;
             case "net":
-                ConnectionTestWindow.Toggle();
+                MultiplayerWindow.Toggle();
                 break;
             default:
                 MainWindow.Toggle();

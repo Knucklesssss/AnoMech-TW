@@ -37,7 +37,7 @@ public sealed class AiManager
             var move = positions();
             for (int i = 0; i < 8; i++)
             {
-                if (move[i] is not { } local) continue;
+                if (move[i] is not { } local || MultiplayerContext.IsHumanControlled(i)) continue;
                 var member = world.Party.Get(i);
                 if (member == null || !member.IsAlive()) continue;
                 var target = Jitter(new Vector3(local.X, 0f, local.Y), jitter);
@@ -62,7 +62,11 @@ public sealed class AiManager
     // `seconds` (default 10). Wraps SimParty.GiveInvuln so AI strats can read top-to-
     // bottom alongside Move/Automarker, e.g. ai.GiveInvuln(28f, PartyRole.OffTank).
     public void GiveInvuln(float time, PartyRole role, float seconds = 10f)
-        => world.Events.Add(time, () => world.Party.GiveInvuln(role, seconds));
+        => world.Events.Add(time, () =>
+        {
+            world.Party.GiveInvuln(role, seconds);
+            MultiplayerContext.InvulnGranted?.Invoke((int)role, seconds);
+        });
 
     public void Automarker(float time, Func<Dictionary<PartyRole, Sign>> mapping)
     {

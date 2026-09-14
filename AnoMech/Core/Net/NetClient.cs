@@ -45,6 +45,7 @@ public sealed class NetClient : IDisposable
     public int PongsReceived { get; private set; }
     public string LastMessage { get; private set; } = "";
     public InviteCode? Invite { get; private set; }
+    public event Action<PacketHeader, NetPacketReader>? MessageReceived;
 
     public void Connect(InviteCode invite)
     {
@@ -99,6 +100,15 @@ public sealed class NetClient : IDisposable
         peer.Send(writer, DeliveryMethod.Unreliable);
     }
 
+    public void Send(MessageType type, Action<NetDataWriter> payload, DeliveryMethod method)
+    {
+        if (State != ClientState.Connected || peer == null) return;
+        writer.Reset();
+        new PacketHeader(type, ++sequence, PlayerId, NetProtocol.NowMs).Write(writer);
+        payload(writer);
+        peer.Send(writer, method);
+    }
+
     public void Dispose()
     {
         Disconnect();
@@ -138,8 +148,11 @@ public sealed class NetClient : IDisposable
                     LastRttMs = NetProtocol.NowMs - pong.EchoSentAtMs;
                     PongsReceived++;
                     break;
+                case MessageType.Welcome or MessageType.Pong:
+                    log($"[Net] Malformed {header.Type} from host");
+                    break;
                 default:
-                    log($"[Net] Unexpected or malformed {header.Type} from host");
+                    if (State == ClientState.Connected) MessageReceived?.Invoke(header, reader);
                     break;
             }
         }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using AnoMech.Core;
+using AnoMech.Core.Game;
 using AnoMech.Core.Game.Party;
 using static AnoMech.Scenarios.Top.TopConstants;
 
@@ -73,7 +74,7 @@ public sealed class TopP5DeltaState
 
     public TopP5DeltaState(TopP5DeltaStateOverrides overrides, PartyRole playerRole)
     {
-        var rng = new Random();
+        var rng = SimRandom.Current;
 
         var roles = ShuffleRoles(rng);
 

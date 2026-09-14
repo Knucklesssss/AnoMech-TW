@@ -62,6 +62,7 @@ public sealed class Game : IDisposable
 
     public IScenario? ActiveScenario => activeScenario;
     private float scenarioElapsed;
+    internal float ScenarioElapsed => scenarioElapsed;
     private bool firstDeathScheduled;
     private bool firstFreezeScheduled;
     private readonly OpcodeUpdater opcodeUpdater;
@@ -116,6 +117,15 @@ public sealed class Game : IDisposable
     public void RunScenario(IScenario scenario, PartyRole? roleOverride = null, int? selectedAi = 0, int selectedWaymark = 0)
     {
         Plugin.Framework.Run(() => RunScenarioInternal(scenario, roleOverride, selectedAi, selectedWaymark));
+    }
+
+    // Multiplayer starts run synchronously so the first fixed tick follows immediately.
+    internal bool StartScenarioNow(IScenario scenario, PartyRole role, int selectedAi, int selectedWaymark)
+    {
+        if (!ZoneSession.CanStartHere() || ZoneSession.IsPlayerBusy() || !World.Map.CanLoad(scenario.Phase.Zone.TerritoryId))
+            return false;
+        RunScenarioInternal(scenario, role, selectedAi, selectedWaymark);
+        return activeScenario == scenario;
     }
 
     // The selected preset, or [0] as the default.

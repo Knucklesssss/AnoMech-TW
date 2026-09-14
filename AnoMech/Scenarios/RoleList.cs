@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using AnoMech.Core.Game;
 using AnoMech.Core.Game.Party;
 using AnoMech.Core.SimObjects;
 using AnoMech.Helpers;
@@ -9,7 +10,7 @@ namespace AnoMech.Scenarios;
 
 public class RoleListBuilder
 {
-    private static readonly Random Rng = new();
+    private static Random Rng => SimRandom.Current;
 
     public int Size { get; init; } = 8;
     public bool? IncludePlayer { get; init; }
@@ -43,7 +44,7 @@ public class RoleListBuilder
 
 public class RoleList
 {
-    private static readonly Random Rng = new Random();
+    private static Random Rng => SimRandom.Current;
 
     private readonly List<PartyRole> list;
     private readonly SimParty party;
