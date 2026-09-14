@@ -47,6 +47,11 @@ public abstract class JobCombatBase : IJobCombat
     public virtual double CastTime(uint actionId) => 0;
     public virtual void AutoAttackHit() { }
     public virtual bool SurviveLethal() => false;
+    // Probability source for proc rolls; tests replace it to force a result.
+    public Func<double> Roll { get; set; } = Random.Shared.NextDouble;
+    protected bool Chance(double probability) => Roll() < probability;
+    // Natural MP per 3 s tick; Black Mage changes it with its element.
+    protected virtual int MpTickAmount => MpPerTick;
 
     // Combo predecessor from the Action sheet's ActionCombo column; 0 = none.
     protected abstract uint ComboFrom(uint actionId);
@@ -162,7 +167,7 @@ public abstract class JobCombatBase : IJobCombat
         Timing.Advance(seconds);
         comboRemaining = Decrease(comboRemaining, seconds);
         if (comboRemaining == 0) comboAction = 0;
-        for (mpTick += seconds; mpTick >= MpTickSeconds; mpTick -= MpTickSeconds) GainMp(MpPerTick);
+        for (mpTick += seconds; mpTick >= MpTickSeconds; mpTick -= MpTickSeconds) GainMp(MpTickAmount);
         foreach (var id in buffs.Keys.ToList())
         {
             var (remaining, param) = buffs[id];

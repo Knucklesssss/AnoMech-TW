@@ -5,6 +5,7 @@ CombatRecastChecks.Run();
 CombatTimingChecks.Run();
 TankCombatChecks.Run();
 HealerCombatChecks.Run();
+RangedCombatChecks.Run();
 DarkKnightCombatChecks.Run();
 CombatInputChecks.Run();
 StartLocationChecks.Run();
