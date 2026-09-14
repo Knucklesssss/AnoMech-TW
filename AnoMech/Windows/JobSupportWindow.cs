@@ -12,6 +12,8 @@ public sealed class JobSupportWindow : Window, IDisposable
 {
     private static readonly Vector4 Supported = new(0.45f, 0.9f, 0.45f, 1f);
     private static readonly (byte Role, string Name)[] Roles = [(1, "坦克"), (4, "治療"), (2, "近戰"), (3, "遠程")];
+    // Blue Mage is a limited job with no place in ultimate practice.
+    private const uint BlueMage = 36;
 
     public JobSupportWindow() : base("職業支援列表###AnoMechJobSupport")
     {
@@ -26,7 +28,7 @@ public sealed class JobSupportWindow : Window, IDisposable
         ImGui.TextDisabled("灰色：尚未支援，技能維持遊戲原本的樣子");
         ImGui.Separator();
         var current = Plugin.ClientState.IsLoggedIn && Plugin.PlayerState.ClassJob.IsValid ? Plugin.PlayerState.ClassJob.RowId : 0;
-        var jobs = Plugin.DataManager.GetExcelSheet<ClassJob>().Where(j => j.JobIndex > 0 && j.Role > 0).ToList();
+        var jobs = Plugin.DataManager.GetExcelSheet<ClassJob>().Where(j => j.JobIndex > 0 && j.Role > 0 && j.RowId != BlueMage).ToList();
         foreach (var (role, roleName) in Roles)
         {
             ImGui.TextUnformatted(roleName);
