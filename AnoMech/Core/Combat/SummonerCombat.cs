@@ -37,7 +37,7 @@ public sealed class SummonerCombat : CasterCombatBase
     public double AttunementRemaining => attunementRemaining;
     public int Aetherflow => aetherflow;
     protected override IReadOnlyList<uint> JobActions { get; } =
-        [3579, 25826, 7427, 25831, 7429, 16516, 3582, 25830, 25835, 25836, 25837, 25820, 25821, 16514, 16515, 25838,
+        [3579, 25826, 7427, 25831, 7429, 16516, 3582, 25830, 25835, 25885, 25836, 25837, 25820, 25821, 16514, 16515, 25838,
          25839, 25840, 25883, 25884, 25823, 25824, 25825, 25832, 25833, 25834, 16508, 16510, 181, 3578, 7426, 25798, 25799,
          25801, 25822, 173, 16230];
     protected override IReadOnlyList<ushort> JobStatusIds { get; } =

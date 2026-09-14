@@ -19,6 +19,8 @@ internal static class RangedCombatChecks
         var smn = new SummonerCombat();
         Check(smn.Adjust(163) == 3579 && smn.Adjust(25802) == 25838 && smn.Adjust(36990) == 181,
             "Ruin, Summon Ruby and Necrotize must map to level-90 actions.");
+        // Trait 480 (level 88, "守護之光效果提高") raises Radiant Aegis from the sheet's 1 charge to 2.
+        Check(smn.GetCooldown(25799).Charges == 2, "Radiant Aegis must have 2 charges per trait 480.");
         Check(!smn.CanUse(7427, true, true, false, checkTiming: false), "Summon Bahamut needs combat.");
         Hit(smn, 7427);
         Check(smn.CurrentTrance == SummonerCombat.Trance.Bahamut && smn.Adjust(3579) == 25820 && smn.Adjust(25822) == 3582
@@ -33,6 +35,9 @@ internal static class RangedCombatChecks
         smn.Advance(2.5);
         Hit(smn, 25822, aoe: true);
         Check(smn.Adjust(25822) == 25885, "Crimson Cyclone must ready Crimson Strike.");
+        smn.Advance(2.5);
+        Hit(smn, 25822, aoe: true);
+        Check(smn.Adjust(25822) != 25885, "Crimson Strike must be castable and spend its ready status.");
         smn.Advance(0.6);
         Hit(smn, 16508);
         Check(smn.Aetherflow == 2 && smn.CanUse(7426, true, true, true, checkTiming: false), "Energy Drain must grant Aetherflow and Further Ruin.");
