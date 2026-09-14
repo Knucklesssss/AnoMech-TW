@@ -50,4 +50,8 @@
     <Compile Include="../AnoMech/Scenarios/Top/P3HelloWorld/TopP3TransitionRules.cs" Link="Production/TopP3TransitionRules.cs" />
     <Compile Include="../AnoMech/Scenarios/Top/P3HelloWorld/TopP3Transition.cs" Link="Production/TopP3Transition.cs" />
   </ItemGroup>
+  <ItemGroup>
+    <Compile Include="../AnoMech/Core/Net/**/*.cs" Link="Production/Net/%(RecursiveDir)%(Filename)%(Extension)" />
+    <PackageReference Include="LiteNetLib" Version="2.1.4" />
+  </ItemGroup>
 </Project>
