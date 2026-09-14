@@ -7,7 +7,7 @@ namespace AnoMech.Core.Combat;
 public sealed class MachinistCombat : RangedCombatBase
 {
     private const ushort Reassembled = 851, Overheated = 2688, Wildfire = 1946, Flamethrower = 1205, Hypercharged = 3864, Tactician = 1951;
-    // ponytail: the client text gives a 12 s runtime; battery-scaled duration is not modelled.
+    // Client text: Automaton Queen's runtime is a flat 12 s, regardless of banked Battery.
     private const double QueenSeconds = 12;
     private int heat;
     private int battery;

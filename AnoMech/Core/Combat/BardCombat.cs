@@ -99,6 +99,10 @@ public sealed class BardCombat : RangedCombatBase
                 repertoire = 0;
                 return new JobHit(actionId, true, false);
             case 117: return new JobHit(actionId, true, false);
+            // Trait 169 (level 68): Empyreal Arrow triggers the current song's Repertoire effect.
+            case 3558:
+                if (song != Song.None) GainRepertoire();
+                return new JobHit(actionId, false, false);
             case 114: StartSong(Song.Ballad, MagesBallad, 1); return null;
             case 116: StartSong(Song.Paeon, ArmysPaeon, 2); return null;
             case 3559: StartSong(Song.Minuet, WanderersMinuet, 4); return null;

@@ -122,6 +122,9 @@ public sealed class RedMageCombat : CasterCombatBase
         // that Dualcast, not this cast, actually spent.
         var accel = accelerated;
         accelerated = false;
+        // Trait 216: Dualcast is removed by anything but an auto-attack or an ability. A GCD action clears
+        // it here; if this cast just consumed Dualcast via SpendJobInstant it is already gone (no-op).
+        if (JobTimingContract(actionId).Group == GlobalCooldownGroup) ClearBuff(Dualcast);
         if (hardcast) Buff(Dualcast, 15);
         switch (actionId)
         {

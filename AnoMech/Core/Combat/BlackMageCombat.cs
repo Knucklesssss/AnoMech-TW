@@ -10,9 +10,7 @@ public sealed class BlackMageCombat : CasterCombatBase
     private const ushort Firestarter = 165, Manaward = 168, LeyLines = 737, Triplecast = 1211, Thunderhead = 3870;
     private const double PolyglotSeconds = 30;
     private const int MaxPolyglot = 2;
-    // ponytail: element MP scaling and Umbral Ice regen are commonly cited values, not client text; the user calibrates.
-    private static readonly double[] OppositeCostScale = [1, 0.5, 0.25, 0];
-    private static readonly int[] UmbralIceTick = [0, 3200, 4700, 6200];
+    // Client trait text (296/458/459): ice spells cast in Umbral Ice restore MP, 2500/5000/10000 by stack.
     private static readonly int[] UmbralSoulMp = [0, 2500, 5000, 10000];
     private int element;
     private int hearts;
@@ -33,7 +31,7 @@ public sealed class BlackMageCombat : CasterCombatBase
     protected override IReadOnlyList<ushort> JobStatusIds { get; } = [Firestarter, Manaward, LeyLines, Triplecast, Thunderhead];
     protected override string JobDebugState => $"element={element} hearts={hearts} polyglot={polyglot}/{polyglotTimer:0.0} paradox={paradox}";
 
-    protected override int MpTickAmount => element > 0 ? 0 : element < 0 ? UmbralIceTick[-element] : base.MpTickAmount;
+    protected override int MpTickAmount => element > 0 ? 0 : base.MpTickAmount;
 
     public override uint Adjust(uint actionId) => actionId switch
     {
@@ -93,11 +91,10 @@ public sealed class BlackMageCombat : CasterCombatBase
         if (actionId == 25797) return element < 0 ? 0 : cost;
         if (IsFire(actionId))
         {
-            if (element < 0) return (int)(cost * OppositeCostScale[-element]);
+            if (element < 0) return 0; // opposite element (trait 296): free at any Umbral Ice stack
             return element > 0 && hearts == 0 && actionId is not (162 or 16505) ? cost * 2 : cost;
         }
-        if (IsIce(actionId))
-            return element < 0 ? 0 : element > 0 ? (int)(cost * OppositeCostScale[element]) : cost;
+        if (IsIce(actionId)) return element == 0 ? cost : 0;
         return cost;
     }
 
@@ -143,12 +140,15 @@ public sealed class BlackMageCombat : CasterCombatBase
                 return new JobHit(actionId, false, false);
             case 142:
                 SetElement(element > 0 ? 0 : Math.Max(-3, element - 1));
+                if (element < 0) GainMp(UmbralSoulMp[-element]);
                 return new JobHit(actionId, false, false);
             case 154 or 25795:
                 SetElement(-3);
+                GainMp(UmbralSoulMp[-element]);
                 return new JobHit(actionId, actionId == 25795, false);
             case 3576 or 159:
                 hearts = 3;
+                GainMp(UmbralSoulMp[-element]); // JobCanUse requires element < 0 here already
                 return new JobHit(actionId, actionId == 159, false);
             case 16506:
                 SetElement(Math.Max(-3, element - 1));

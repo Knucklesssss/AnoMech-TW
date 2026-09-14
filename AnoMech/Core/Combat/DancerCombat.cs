@@ -82,7 +82,7 @@ public sealed class DancerCombat : RangedCombatBase
     protected override bool RangedCanUse(uint actionId, bool inCombat)
     {
         if (Dancing && actionId is not (15999 or 16000 or 16001 or 16002 or 16003 or 16004 or 16010 or 16015 or 16012
-                or 7541 or 7548 or 7551 or 7553 or 7554))
+                or 7541 or 7548 or 7551 or 7553 or 7554 or 7557))
             return false;
         return actionId switch
         {
@@ -257,6 +257,8 @@ public sealed class DancerCombat : RangedCombatBase
     // ponytail: dance start does not also start the GCD, so the first step waits only the animation lock.
     protected override (int Group, double Recast, int Charges) JobTimingContract(uint actionId) => actionId switch
     {
+        // ponytail: the steps are missing from the client table; 1.5 s is from the Action sheet row, the
+        // in-game step GCD is unverified.
         15999 or 16000 or 16001 or 16002 => (GlobalCooldownGroup, 1.5, 1),
         15997 => (7, 30, 1),
         15998 => (20, 120, 1),

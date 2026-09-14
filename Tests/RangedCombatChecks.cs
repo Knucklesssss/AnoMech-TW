@@ -101,6 +101,18 @@ internal static class RangedCombatChecks
             "A Dualcast Verthunder III must spend only Dualcast, leaving Acceleration up.");
         Check(!both.CanUse(7510, true, true, true, checkTiming: false),
             "The Dualcast (not Acceleration-sourced) Verthunder III must roll for Verfire normally and miss on a non-proc roll.");
+
+        // Trait 216: Dualcast is removed by anything but an auto-attack or an ability, including a GCD
+        // weaponskill that doesn't itself consume it (Enchanted Riposte here, via Manafication's free cast).
+        var trait216 = new RedMageCombat { Roll = () => 0 };
+        Cast(trait216, 37004);
+        trait216.Advance(0.1); // cast release lock
+        Check(trait216.CastTime(25855) == 0, "A hardcast Jolt III must grant Dualcast.");
+        Check(trait216.TryUse(7521, false, false, true) == null, "Manafication must enable Enchanted Riposte via Magicked Swordplay.");
+        trait216.Advance(0.6); // Manafication's animation lock
+        Hit(trait216, 7504);
+        Check(trait216.CastTime(25855) == 5,
+            "Enchanted Riposte must clear Dualcast per trait 216, even though it didn't spend it itself.");
     }
 
     private static void Summoner()
@@ -149,10 +161,9 @@ internal static class RangedCombatChecks
         Check(blm.Mp == JobCombatBase.MaxMp - 2000 - 1600, "Fire IV costs double in Astral Fire without Umbral Hearts, with no natural regen.");
         blm.Advance(0.6);
         Check(Math.Abs(blm.CastTime(154) - 1.75) < 1e-9, "Blizzard III casts in half the time from Astral Fire III.");
-        var mp = blm.Mp;
         Cast(blm, 154);
-        Check(blm.Element == -3 && blm.Paradox && blm.Adjust(141) == 25797 && blm.Mp == mp,
-            "Blizzard III from Astral Fire III must be free, enter Umbral Ice III and ready Paradox.");
+        Check(blm.Element == -3 && blm.Paradox && blm.Adjust(141) == 25797 && blm.Mp == JobCombatBase.MaxMp,
+            "Blizzard III from Astral Fire III must be free, enter Umbral Ice III, ready Paradox and restore MP to full (trait 296, capped).");
         blm.Advance(0.8);
         Cast(blm, 3576);
         Check(blm.UmbralHearts == 3, "Blizzard IV must grant three Umbral Hearts.");
@@ -163,6 +174,14 @@ internal static class RangedCombatChecks
         Check(blm.CastTime(7422) == 0, "Foul must be instant per trait 461.");
         blm.TryUse(7421, false, false, true);
         Check(blm.CastTime(3576) == 0, "Triplecast must make Blizzard IV instant.");
+
+        // 16.25 s: >= 15 s lets Triplecast expire (real hardcast, not instant); the extra 1.25 s lands the
+        // natural MP tick clear of the 1.75 s cast below, so the assert isn't muddied by natural regen.
+        blm.Advance(16.25);
+        var mpBeforeFireIII = blm.Mp;
+        Cast(blm, 152);
+        Check(blm.Element == 3 && blm.Mp == mpBeforeFireIII,
+            "Fire III cast in Umbral Ice must cost 0 MP at any stack (trait 296 opposite-element rule).");
     }
 
     private static void Bard()
@@ -220,6 +239,14 @@ internal static class RangedCombatChecks
         Check(finale.CanUse(25785, true, true, true, checkTiming: false), "One coda must enable Radiant Finale.");
         finale.TryUse(25785, false, false, true);
         Check(finale.Codas == 0, "Radiant Finale must spend every coda.");
+
+        // Trait 169 (level 68): Empyreal Arrow triggers the current song's Repertoire effect.
+        var empyreal = new BardCombat { Roll = () => 0 };
+        empyreal.TryUse(3559, false, false, true); // Wanderer's Minuet
+        empyreal.Advance(0.6); // clear the song's own animation lock; well under the 3 s Repertoire tick
+        Hit(empyreal, 3558);
+        Check(empyreal.Repertoire == 1 && empyreal.SoulVoice == 5,
+            "Empyreal Arrow must raise Repertoire and Soul Voice under a song, before any natural tick.");
     }
 
     private static void Machinist()
