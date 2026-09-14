@@ -334,9 +334,12 @@ public sealed unsafe class LocalCombatSession : IDisposable
         castTarget = targetId;
         var presentationTarget = self ? null : target;
         castTargetObject = presentationTarget?.GameObjectId ?? player.GameObjectId;
+        // Before Start: SimCast reads its total from CastInfo, which the ActorCast packet doesn't fill for the
+        // local player; left at 0 from the previous cast it fired the release as soon as the cast began.
+        native.SetCast(id, 0, seconds, castTargetObject);
+        native.Mirror(AutoAttacking);
         cast.Start(id, presentationTarget == null ? Position(player) : Position(presentationTarget), (float)seconds,
             castTargetObject, 0, 0, 0, .1f);
-        native.SetCast(id, 0, seconds, castTargetObject);
         native.Mirror(AutoAttacking);
         Log($"CastBegin id={id} seconds={seconds:0.00}");
     }
