@@ -76,3 +76,23 @@ internal sealed unsafe class BlackMageNativeGauge : IJobGauge
         gauge->EnochianFlags = (EnochianFlags)((blm.Element != 0 ? 1 : 0) | (blm.Paradox ? 2 : 0));
     }
 }
+
+internal sealed unsafe class SummonerNativeGauge : IJobGauge
+{
+    private readonly SummonerGauge* gauge;
+
+    public SummonerNativeGauge() => gauge = (SummonerGauge*)HealerGauge.Current(27);
+    public bool Matches => HealerGauge.Matches(27, gauge);
+
+    public void Mirror(IJobCombat rules)
+    {
+        var smn = (SummonerCombat)rules;
+        gauge->SummonTimer = (ushort)Math.Ceiling(smn.TranceRemaining * 1000);
+        gauge->AttunementTimer = (ushort)Math.Ceiling(smn.AttunementRemaining * 1000);
+        gauge->ReturnSummon = (byte)smn.CurrentTrance;
+        // ponytail: bit layout from FFXIVClientStructs (count << 2 | element); unverified in game.
+        gauge->Attunement = (byte)((smn.AttunementStacks << 2) | (int)smn.Attunement);
+        gauge->AetherFlags = (AetherFlags)(smn.Aetherflow | ((int)smn.Attunement << 2) | (smn.PhoenixNext ? 16 : 0)
+            | (smn.Ruby ? 32 : 0) | (smn.Topaz ? 64 : 0) | (smn.Emerald ? 128 : 0));
+    }
+}

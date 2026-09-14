@@ -9,7 +9,33 @@ internal static class RangedCombatChecks
         Machinist();
         Dancer();
         BlackMage();
+        Summoner();
         Console.WriteLine("PASS: ranged and caster role actions.");
+    }
+
+    private static void Summoner()
+    {
+        Check(JobCombatRegistry.Find(27, 90) != null, "Summoner level 90 must be registered.");
+        var smn = new SummonerCombat();
+        Check(smn.Adjust(163) == 3579 && smn.Adjust(25802) == 25838 && smn.Adjust(36990) == 181,
+            "Ruin, Summon Ruby and Necrotize must map to level-90 actions.");
+        Check(!smn.CanUse(7427, true, true, false, checkTiming: false), "Summon Bahamut needs combat.");
+        Hit(smn, 7427);
+        Check(smn.CurrentTrance == SummonerCombat.Trance.Bahamut && smn.Adjust(3579) == 25820 && smn.Adjust(25822) == 3582
+                && smn.Ruby && smn.Topaz && smn.Emerald,
+            "Summon Bahamut must enter its trance, substitute Astral spells and grant three arcana.");
+        smn.Advance(15);
+        Check(smn.CurrentTrance == SummonerCombat.Trance.None && smn.Adjust(7427) == 25831, "Bahamut ends after 15 s and Phoenix comes next.");
+        Hit(smn, 25802, aoe: true);
+        Check(smn.Attunement == SummonerCombat.Primal.Ifrit && smn.AttunementStacks == 2 && smn.Adjust(25883) == 25823
+                && smn.Adjust(25822) == 25835 && smn.CastTime(25823) == 2.8 && !smn.Ruby,
+            "Summon Ifrit II must spend Ruby Arcanum, attune two Ruby Rites and ready Crimson Cyclone.");
+        smn.Advance(2.5);
+        Hit(smn, 25822, aoe: true);
+        Check(smn.Adjust(25822) == 25885, "Crimson Cyclone must ready Crimson Strike.");
+        smn.Advance(0.6);
+        Hit(smn, 16508);
+        Check(smn.Aetherflow == 2 && smn.CanUse(7426, true, true, true, checkTiming: false), "Energy Drain must grant Aetherflow and Further Ruin.");
     }
 
     private static void BlackMage()
