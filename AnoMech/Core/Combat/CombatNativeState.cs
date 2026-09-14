@@ -158,15 +158,6 @@ public sealed unsafe class CombatNativeState : IDisposable
         return text + records;
     }
 
-    public string CastDebugState()
-    {
-        if (ActionManager.Instance() != manager || !PlayerMatches) return "cast=unavailable";
-        var conditions = Conditions.Instance();
-        var casting = conditions != null && conditions->Flags[(int)Dalamud.Game.ClientState.Conditions.ConditionFlag.Casting];
-        return $"manager={manager->CastActionId}/{manager->CastSpellId} type={manager->CastActionType} elapsed={manager->CastTimeElapsed:0.00}/{manager->CastTimeTotal:0.00} "
-            + $"castInfo={player->CastInfo.IsCasting}:{player->CastInfo.ActionId}:{player->CastInfo.CurrentCastTime:0.00}/{player->CastInfo.TotalCastTime:0.00} condition={casting}";
-    }
-
     public double AdditionalRemaining(uint action)
     {
         if (!MatchesIdentity) throw new InvalidOperationException("Local combat player identity changed.");
@@ -225,10 +216,6 @@ public sealed unsafe class CombatNativeState : IDisposable
                 manager->CastTimeElapsed = 0;
                 manager->CastTimeTotal = 0;
             }
-            // The cast bar UI may also require the client's Casting condition.
-            var conditions = Conditions.Instance();
-            if (conditions != null && (castAction != 0 || castWritten))
-                conditions->Flags[(int)Dalamud.Game.ClientState.Conditions.ConditionFlag.Casting] = castAction != 0;
             foreach (var recast in recasts)
             {
                 // Native Update advances additional groups initialized by
