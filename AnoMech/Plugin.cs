@@ -61,6 +61,7 @@ public sealed class Plugin : IDalamudPlugin
     internal static LogManager LogManager { get; private set; } = null!;
     private ConfigWindow ConfigWindow { get; init; }
     private MainWindow MainWindow { get; init; }
+    private ConnectionTestWindow ConnectionTestWindow { get; init; }
 #if DEBUG
     private DamageDebugWindow DamageDebugWindow { get; init; }
 #endif
@@ -78,9 +79,11 @@ public sealed class Plugin : IDalamudPlugin
         GameInstance = Game;
         ConfigWindow = new ConfigWindow(this);
         MainWindow = new MainWindow(this);
+        ConnectionTestWindow = new ConnectionTestWindow();
 
         WindowSystem.AddWindow(ConfigWindow);
         WindowSystem.AddWindow(MainWindow);
+        WindowSystem.AddWindow(ConnectionTestWindow);
 #if DEBUG
         DamageDebugWindow = new DamageDebugWindow(this);
         WindowSystem.AddWindow(DamageDebugWindow);
@@ -91,7 +94,7 @@ public sealed class Plugin : IDalamudPlugin
 
         CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
         {
-            HelpMessage = "開啟 AnoMech。子指令：config、start、reset、leave、mark、actions"
+            HelpMessage = "開啟 AnoMech。子指令：config、start、reset、leave、mark、actions、net"
         });
         CommandManager.AddHandler(CommandAlias, new CommandInfo(OnCommand)
         {
@@ -155,6 +158,7 @@ public sealed class Plugin : IDalamudPlugin
         LogManager.Dispose();
         ConfigWindow.Dispose();
         MainWindow.Dispose();
+        ConnectionTestWindow.Dispose();
 #if DEBUG
         DamageDebugWindow.Dispose();
 #endif
@@ -165,6 +169,7 @@ public sealed class Plugin : IDalamudPlugin
 
     private unsafe void OnFrameworkUpdate(IFramework framework)
     {
+        ConnectionTestWindow.Poll();
         Markings.TickPriming();
         // FrameDeltaTime, not framework.UpdateDelta: UpdateDelta is wall-clock
         // truncated to whole ms, so summing it drifts. FrameDeltaTime is the
@@ -234,6 +239,9 @@ public sealed class Plugin : IDalamudPlugin
                 break;
             case "leave":
                 Game.Leave();
+                break;
+            case "net":
+                ConnectionTestWindow.Toggle();
                 break;
             default:
                 MainWindow.Toggle();
