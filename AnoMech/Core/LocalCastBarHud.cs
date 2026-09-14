@@ -42,7 +42,11 @@ internal sealed unsafe class LocalCastBarHud : IDisposable
             MarkArraysDirty();
             SetShown(true);
         }
-        else if (shown) SetShown(false);
+        else
+        {
+            loadedIcon = 0;
+            if (shown) SetShown(false);
+        }
     }
 
     public void Clear()
