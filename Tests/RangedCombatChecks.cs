@@ -10,7 +10,49 @@ internal static class RangedCombatChecks
         Dancer();
         BlackMage();
         Summoner();
+        RedMage();
         Console.WriteLine("PASS: ranged and caster role actions.");
+    }
+
+    private static void RedMage()
+    {
+        Check(JobCombatRegistry.Find(35, 90) != null, "Red Mage level 90 must be registered.");
+        var rdm = new RedMageCombat { Roll = () => 0 };
+        Check(rdm.Adjust(7503) == 37004 && rdm.Adjust(7505) == 25855 && rdm.CastTime(37004) == 2,
+            "Jolt and Verthunder must map to level-90 actions.");
+        Cast(rdm, 37004);
+        Check(rdm.Black == 2 && rdm.White == 2 && rdm.CastTime(25855) == 0, "A hardcast Jolt III must grant mana and Dualcast.");
+        rdm.Advance(0.5);
+        Hit(rdm, 25855);
+        Check(rdm.Black == 8 && rdm.CastTime(25855) == 5 && rdm.CanUse(7510, true, true, true, checkTiming: false),
+            "The Dualcast Verthunder III must spend Dualcast, add 6 Black Mana and proc Verfire.");
+        rdm.Advance(2.5);
+        // Trait 305 (level 78, "魔元化效果提高") shortens Manafication's recast from the sheet's 120s to 110s.
+        Check(rdm.GetCooldown(7521).Recast == 110, "Manafication recast must be 110s per trait 305.");
+        // Trait 306 (level 74, "赤魔法精通") shortens Contre Sixte's recast from the sheet's 45s to 35s.
+        Check(rdm.GetCooldown(7519).Recast == 35, "Contre Sixte recast must be 35s per trait 306.");
+        // Trait 485 (level 88, "促進效果提高") gives Acceleration 2 charges instead of the sheet's 1.
+        Check(rdm.GetCooldown(7518).Charges == 2, "Acceleration must have 2 charges per trait 485.");
+        Check(rdm.TryUse(7521, false, false, true) == null && rdm.Adjust(7504) == 7527, "Manafication must enable Enchanted Riposte.");
+        // Trait 486 (level 90, "魔元化效果提高II") raises Manafication's max stacks from the sheet's base 3 to 6.
+        Check(rdm.Statuses().Any(s => s.Id == 1971 && s.Param == 6), "Manafication must carry 6 stacks per trait 486.");
+        rdm.Advance(0.6);
+        Hit(rdm, 7504);
+        Check(rdm.ManaStacks == 1 && rdm.Black == 8 && rdm.IsHighlighted(7512), "Magicked Swordplay must make Enchanted Riposte free and add a Mana Stack.");
+        rdm.Advance(1.6);
+        Hit(rdm, 7512);
+        rdm.Advance(1.6);
+        Hit(rdm, 7516);
+        Check(rdm.ManaStacks == 3 && rdm.Adjust(25855) == 7525, "A third Enchanted hit must fill Mana Stacks and ready Verflare.");
+        rdm.Advance(2.3);
+        Hit(rdm, 25855, aoe: true);
+        Check(rdm.ManaStacks == 0 && rdm.Adjust(37004) == 16530, "Verflare must spend Mana Stacks and ready Scorch off Jolt III.");
+        rdm.Advance(2.6);
+        Hit(rdm, 37004, aoe: true);
+        Check(rdm.Adjust(37004) == 25858, "Scorch must ready Resolution off Jolt III.");
+        rdm.Advance(2.6);
+        Hit(rdm, 37004, aoe: true);
+        Check(rdm.ComboAction == 0, "Resolution must complete the Verflare finisher chain.");
     }
 
     private static void Summoner()

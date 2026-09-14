@@ -96,3 +96,19 @@ internal sealed unsafe class SummonerNativeGauge : IJobGauge
             | (smn.Ruby ? 32 : 0) | (smn.Topaz ? 64 : 0) | (smn.Emerald ? 128 : 0));
     }
 }
+
+internal sealed unsafe class RedMageNativeGauge : IJobGauge
+{
+    private readonly RedMageGauge* gauge;
+
+    public RedMageNativeGauge() => gauge = (RedMageGauge*)HealerGauge.Current(35);
+    public bool Matches => HealerGauge.Matches(35, gauge);
+
+    public void Mirror(IJobCombat rules)
+    {
+        var rdm = (RedMageCombat)rules;
+        gauge->BlackMana = (byte)rdm.Black;
+        gauge->WhiteMana = (byte)rdm.White;
+        gauge->ManaStacks = (byte)rdm.ManaStacks;
+    }
+}
