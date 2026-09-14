@@ -181,15 +181,17 @@ internal static class NetChecks
     {
         var publicIp = IPAddress.Parse("203.0.113.7");
 
-        var ok = HostReadiness.Evaluate(42420, publicIp);
+        var ok = HostReadiness.Evaluate(42420, publicIp, []);
         Check(ok.CanHost && ok.PublicIp!.Equals(publicIp) && ok.Problems.Count == 0, "a public address can host");
         Check(ok.Invite(9) is { } invite && InviteCode.TryDecode(invite, out var decoded) == InviteError.None && decoded.Port == 42420, "a passing report produces a valid invite");
         Check(ok.Steps.Any(s => s.Name == "路由器轉發" && s.Ok is null), "router forwarding is shown as not checkable");
+        var direct = HostReadiness.Evaluate(42420, publicIp, [IPAddress.Parse("192.168.1.5"), publicIp]);
+        Check(direct.CanHost && !direct.NeedsRouterForwarding && ok.NeedsRouterForwarding && direct.Steps.Any(s => s.Name == "路由器" && s.Ok == true), "a public address on this PC needs no router forwarding");
 
-        var offline = HostReadiness.Evaluate(42420, null);
+        var offline = HostReadiness.Evaluate(42420, null, []);
         Check(!offline.CanHost && offline.Problems.Any(p => p.Contains("查不到")) && offline.Invite(9) is null, "no public address cannot host and has no invite");
 
-        var cgnat = HostReadiness.Evaluate(42420, IPAddress.Parse("100.72.1.2"));
+        var cgnat = HostReadiness.Evaluate(42420, IPAddress.Parse("100.72.1.2"), []);
         Check(!cgnat.CanHost && cgnat.Problems.Any(p => p.Contains("CGNAT")), "a carrier-grade NAT address cannot host");
 
         var local = HostReadiness.LocalOnly(42420);

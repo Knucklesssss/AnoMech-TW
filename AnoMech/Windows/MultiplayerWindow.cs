@@ -73,7 +73,8 @@ internal sealed class MultiplayerWindow : Window, IDisposable
         ImGui.EndDisabled();
         if (hosting && ImGui.Button("關閉房間##hoststop")) net.StopHosting();
 
-        if (hostMode == (int)HostMode.Internet && ImGui.TreeNode("第一次開房請看：路由器要怎麼設定##forwardhelp"))
+        var needsRouter = net.Report?.NeedsRouterForwarding ?? true;
+        if (hostMode == (int)HostMode.Internet && needsRouter && ImGui.TreeNode("第一次開房請看：路由器要怎麼設定##forwardhelp"))
         {
             ImGui.TextWrapped(HostReadiness.ManualForwardingHelp(net.Report?.Port ?? NetProtocol.DefaultPort));
             ImGui.TreePop();
@@ -103,7 +104,9 @@ internal sealed class MultiplayerWindow : Window, IDisposable
             ImGui.InputText("邀請碼##invitecode", ref shown, 64, ImGuiInputTextFlags.ReadOnly);
             ImGui.SameLine();
             if (ImGui.Button("複製##copyinvite")) ImGui.SetClipboardText(invite);
-            ImGui.TextWrapped("把邀請碼傳給要一起玩的朋友，朋友連得進來才算成功；連不進來請檢查路由器轉發和 Windows 防火牆。邀請碼含有你的網路位址，請不要公開。");
+            ImGui.TextWrapped(needsRouter
+                ? "把邀請碼傳給要一起玩的朋友，朋友連得進來才算成功；連不進來請檢查路由器設定，以及 Windows 跳出的防火牆詢問有沒有按「允許」。邀請碼含有你的網路位址，請不要公開。"
+                : "把邀請碼傳給要一起玩的朋友。你的電腦直接連上網路，不用設定路由器；連不進來請檢查 Windows 跳出的防火牆詢問有沒有按「允許」。邀請碼含有你的網路位址，請不要公開。");
         }
 
         if (net.Host is not { } host) return;

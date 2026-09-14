@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
@@ -14,25 +15,26 @@ public sealed record HostReadinessReport(
     IPAddress? PublicIp,
     bool CanHost,
     IReadOnlyList<ReadinessStep> Steps,
-    IReadOnlyList<string> Problems)
+    IReadOnlyList<string> Problems,
+    bool NeedsRouterForwarding = true)
 {
     public string? Invite(uint roomId)
         => CanHost && PublicIp is not null ? InviteCode.Create(PublicIp, (ushort)Port, roomId).Encode() : null;
 }
 
-// The player forwards the port on their router by hand. This machine can confirm the port is
-// open locally and what address the internet sees; whether the router forwards it is only proven
-// when a friend actually connects.
+// Behind a home router the player forwards the port by hand; this machine can only confirm the
+// port is open locally and what address the internet sees. When the public address sits on one of
+// this PC's own interfaces (the PC dials PPPoE itself, modem bridged) there is no router to forward.
 public static class HostReadiness
 {
     public static async Task<HostReadinessReport> RunAsync(int port, CancellationToken ct)
-        => Evaluate(port, await StunClient.QueryPublicIpAsync(TimeSpan.FromSeconds(3), ct));
+        => Evaluate(port, await StunClient.QueryPublicIpAsync(TimeSpan.FromSeconds(3), ct), LocalAddresses());
 
     public static HostReadinessReport LocalOnly(int port)
         => new(port, IPAddress.Loopback, true,
-               [new ReadinessStep("只在這台電腦測試", true, "這個邀請碼只能在同一台電腦上使用，朋友無法加入。")], []);
+               [new ReadinessStep("只在這台電腦測試", true, "這個邀請碼只能在同一台電腦上使用，朋友無法加入。")], [], false);
 
-    public static HostReadinessReport Evaluate(int port, IPAddress? publicIp)
+    public static HostReadinessReport Evaluate(int port, IPAddress? publicIp, IReadOnlyCollection<IPAddress> localAddresses)
     {
         var problems = new List<string>();
         var kind = NetworkClassifier.Classify(publicIp);
@@ -47,10 +49,25 @@ public static class HostReadiness
         else if (kind != AddressKind.Public)
             problems.Add("查不到你的外部網路位址，請確認這台電腦可以上網。");
 
-        steps.Add(new ReadinessStep("路由器轉發", null, $"插件無法自動確認，請先在路由器把 UDP {port} 轉發到這台電腦。"));
+        var direct = publicIp is not null && localAddresses.Contains(publicIp);
+        steps.Add(direct
+            ? new ReadinessStep("路由器", true, "這台電腦直接連上網路，不用設定路由器。")
+            : new ReadinessStep("路由器轉發", null, $"插件無法自動確認，請先在路由器把 UDP {port} 轉發到這台電腦。"));
         var canHost = problems.Count == 0;
         steps.Add(new ReadinessStep("邀請碼", canHost, canHost ? "已產生" : "沒有產生"));
-        return new HostReadinessReport(port, canHost ? publicIp : null, canHost, steps, problems);
+        return new HostReadinessReport(port, canHost ? publicIp : null, canHost, steps, problems, !direct);
+    }
+
+    private static IPAddress[] LocalAddresses()
+    {
+        try
+        {
+            return System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces()
+                .SelectMany(n => n.GetIPProperties().UnicastAddresses)
+                .Select(a => a.Address)
+                .ToArray();
+        }
+        catch (System.Net.NetworkInformation.NetworkInformationException) { return []; }
     }
 
     public static string ManualForwardingHelp(int port) =>
