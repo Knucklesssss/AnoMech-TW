@@ -10,6 +10,9 @@ public interface IJobCombat
     IReadOnlyList<ushort> StatusIds { get; }
     CombatTiming Timing { get; }
     uint ComboAction { get; }
+    int Mp { get; }
+    // Hotbar glow: the action continues the current combo.
+    bool IsHighlighted(uint actionId);
     double ComboRemaining { get; }
     uint Adjust(uint actionId);
     bool Supports(uint actionId);

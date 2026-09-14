@@ -8,6 +8,7 @@
   <ItemGroup>
     <Compile Include="../AnoMech/Core/Combat/CombatTiming.cs" />
     <Compile Include="../AnoMech/Core/Combat/CombatRecastView.cs" />
+    <Compile Include="../AnoMech/Core/Combat/JobCombatBase.cs" />
     <Compile Include="../AnoMech/Core/Combat/WarriorCombat.cs" />
     <Compile Include="../AnoMech/Core/Combat/DarkKnightCombat.cs" />
     <Compile Include="../AnoMech/Core/Combat/IJobCombat.cs" />

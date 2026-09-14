@@ -112,6 +112,7 @@ public sealed unsafe class LocalCombatSession : IDisposable
     }
     public uint Adjust(uint id) => model.Adjust(id);
     public bool Supports(uint id) => model.Supports(id);
+    public bool IsHighlighted(uint id) => model.IsHighlighted(id);
 
     public uint ActionStatus(uint id, ulong targetId, bool checkTiming)
     {

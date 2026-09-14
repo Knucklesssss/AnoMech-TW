@@ -81,6 +81,7 @@ public sealed unsafe class LocalPlayerInputHooks : IDisposable
     private readonly Hook<ActionManager.Delegates.UseActionLocation>? useActionLocationHook;
     private readonly Hook<ActionManager.Delegates.GetAdjustedActionId>? adjustedActionHook;
     private readonly Hook<ActionManager.Delegates.GetActionStatus>? actionStatusHook;
+    private readonly Hook<ActionManager.Delegates.IsActionHighlighted>? highlightHook;
     public bool CombatHooksReady => updateHook?.IsEnabled == true && useActionHook?.IsEnabled == true
         && useActionLocationHook?.IsEnabled == true && adjustedActionHook?.IsEnabled == true && actionStatusHook?.IsEnabled == true;
     private static LocalCombatSession? Combat => Plugin.GameInstance?.World.Combat is { Active: true } session ? session : null;
@@ -115,6 +116,10 @@ public sealed unsafe class LocalPlayerInputHooks : IDisposable
         var statusAddr = SignatureReport.TrackAddress("ActionManager.GetActionStatus", ActionManager.Addresses.GetActionStatus.Value);
         if (statusAddr != 0)
             actionStatusHook = hook.HookFromAddress<ActionManager.Delegates.GetActionStatus>(statusAddr, ActionStatusDetour);
+        var highlightAddr = SignatureReport.TrackAddress("ActionManager.IsActionHighlighted", ActionManager.Addresses.IsActionHighlighted.Value);
+        if (highlightAddr != 0)
+            highlightHook = hook.HookFromAddress<ActionManager.Delegates.IsActionHighlighted>(highlightAddr, HighlightDetour);
+        highlightHook?.Enable();
         adjustedActionHook?.Enable();
         actionStatusHook?.Enable();
         rmiWalkHook?.Enable();
@@ -135,6 +140,7 @@ public sealed unsafe class LocalPlayerInputHooks : IDisposable
         useActionLocationHook?.Dispose();
         adjustedActionHook?.Dispose();
         actionStatusHook?.Dispose();
+        highlightHook?.Dispose();
     }
 
     private void RMIWalkDetour(void* self, float* sumLeft, float* sumForward, float* sumTurnLeft, byte* haveBackwardOrStrafe, byte* a6, byte bAdditiveUnk)
@@ -231,6 +237,18 @@ public sealed unsafe class LocalPlayerInputHooks : IDisposable
                 ? session.Adjust(id) : adjustedActionHook!.Original(self, id);
         }
         catch (Exception ex) { StopCombat(session, ex); return id; }
+    }
+
+    // Combo glow follows the simulated combo; the server-driven native state is frozen.
+    private bool HighlightDetour(ActionManager* self, ActionType type, uint id)
+    {
+        var session = Combat;
+        try
+        {
+            return session != null && type == ActionType.Action && session.CheckIdentity() && session.Supports(id)
+                ? session.IsHighlighted(id) : highlightHook!.Original(self, type, id);
+        }
+        catch (Exception ex) { StopCombat(session, ex); return false; }
     }
 
     private uint ActionStatusDetour(ActionManager* self, ActionType type, uint id, ulong target, bool checkRecast, bool checkCasting, uint* extra)

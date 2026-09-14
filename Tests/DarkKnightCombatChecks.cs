@@ -9,7 +9,9 @@ internal static class DarkKnightCombatChecks
             "Blood Weapon, Flood and Edge of Darkness must translate to their level-90 actions.");
 
         // Single-target combo: Souleater grants 20 Blood only after Syphon Strike.
-        Hit(drk, 3617); drk.Advance(2.5);
+        Hit(drk, 3617);
+        Check(drk.IsHighlighted(3623) && !drk.IsHighlighted(3632) && !drk.IsHighlighted(3617), "Only the next combo step must glow.");
+        drk.Advance(2.5);
         Hit(drk, 3623); drk.Advance(2.5);
         Check(drk.ComboAction == 3623, "Syphon Strike must continue the combo.");
         Hit(drk, 3624); drk.Advance(2.5);
@@ -50,6 +52,12 @@ internal static class DarkKnightCombatChecks
         Hit(drk, 16469, aoe: true); drk.Advance(1);
         Hit(drk, 16470);
         Check(drk.DarksideRemaining == 60, "Darkside must cap at 60 seconds.");
+        Check(drk.Mp == 1000 && !drk.CanUse(16470, true, true, true, checkTiming: false), "Edge of Shadow must cost 3000 MP and need enough MP.");
+        drk.Advance(3);
+        Check(drk.Mp == 1200, "MP must regenerate 200 every 3 seconds.");
+        drk.Reset();
+        Check(drk.Mp == JobCombatBase.MaxMp, "A fresh run must start with full MP.");
+        Hit(drk, 16470); drk.Advance(1);
         drk.Advance(1);
         Hit(drk, 25757, aoe: true); drk.Advance(0.6);
         Hit(drk, 25757, aoe: true); drk.Advance(0.6);

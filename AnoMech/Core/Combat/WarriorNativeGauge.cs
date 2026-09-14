@@ -7,7 +7,6 @@ namespace AnoMech.Core.Combat;
 internal sealed unsafe class WarriorNativeGauge : IJobGauge
 {
     private readonly WarriorGauge* gauge;
-    private readonly byte beast;
 
     public WarriorNativeGauge()
     {
@@ -15,7 +14,6 @@ internal sealed unsafe class WarriorNativeGauge : IJobGauge
         if (job == null || job->ClassJobId != 21 || job->CurrentGauge == null)
             throw new InvalidOperationException("Warrior native gauge is unavailable.");
         gauge = (WarriorGauge*)job->CurrentGauge;
-        beast = gauge->BeastGauge;
     }
 
     public bool Matches
@@ -28,6 +26,4 @@ internal sealed unsafe class WarriorNativeGauge : IJobGauge
     }
 
     public void Mirror(IJobCombat rules) => gauge->BeastGauge = (byte)((WarriorCombat)rules).Beast;
-
-    public void Restore() => gauge->BeastGauge = beast;
 }
