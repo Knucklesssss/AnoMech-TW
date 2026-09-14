@@ -18,6 +18,7 @@ internal sealed class MultiplayerWindow : Window, IDisposable
     private readonly MultiplayerSession session;
     private int hostMode = (int)HostMode.Internet;
     private string inviteInput = "";
+    private bool directConnection;
 
     public MultiplayerWindow(MultiplayerSession session)
         : base("多人同步###AnoMechConnectionTest")
@@ -29,6 +30,8 @@ internal sealed class MultiplayerWindow : Window, IDisposable
         };
         this.session = session;
     }
+
+    public override void OnOpen() => directConnection = HostReadiness.PublicAddressOnThisPc();
 
     public void Dispose() { }
 
@@ -74,7 +77,9 @@ internal sealed class MultiplayerWindow : Window, IDisposable
         ImGui.EndDisabled();
         if (hosting && ImGui.Button("關閉房間##hoststop")) net.StopHosting();
 
-        var needsRouter = net.Report?.NeedsRouterForwarding ?? true;
+        var needsRouter = net.Report?.NeedsRouterForwarding ?? !directConnection;
+        if (hostMode == (int)HostMode.Internet && !needsRouter)
+            ImGui.TextColored(Good, "你的電腦直接連上網路，開房不用設定路由器。");
         if (hostMode == (int)HostMode.Internet && needsRouter && ImGui.TreeNode("路由器要怎麼設定（插件說要設定才需要看）##forwardhelp"))
         {
             ImGui.TextWrapped(HostReadiness.ManualForwardingHelp(net.Report?.Port ?? NetProtocol.DefaultPort));

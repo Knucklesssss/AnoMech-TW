@@ -58,6 +58,10 @@ public static class HostReadiness
         return new HostReadinessReport(port, canHost ? publicIp : null, canHost, steps, problems, !direct);
     }
 
+    // Offline check before hosting: a public IPv4 on a local interface means no router to forward.
+    public static bool PublicAddressOnThisPc()
+        => LocalAddresses().Any(a => NetworkClassifier.Classify(a) == AddressKind.Public);
+
     private static IPAddress[] LocalAddresses()
     {
         try
