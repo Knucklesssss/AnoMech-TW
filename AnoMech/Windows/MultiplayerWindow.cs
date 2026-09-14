@@ -41,7 +41,7 @@ internal sealed class MultiplayerWindow : Window, IDisposable
 
     private static string RoleLabel(byte role) => role < 8 ? RoleLabels[role] : RoleLabels[UnassignedIndex];
 
-    private const string ConnectionExplanation =
+    private static readonly string ConnectionExplanation =
         "連線方式：房主的電腦當伺服器，朋友拿邀請碼直接連到房主，不經過任何中間伺服器。\n" +
         "遊戲判定都由房主決定；朋友的畫面會比房主晚約 0.2 秒播放，自己操作不會延遲。\n\n" +
         "誰能當房主：\n" +
