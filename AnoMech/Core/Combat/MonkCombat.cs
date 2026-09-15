@@ -9,7 +9,7 @@ public sealed class MonkCombat : MeleeCombatBase
 {
     private const ushort OpoOpoForm = 107, RaptorForm = 108, CoeurlForm = 109, PerfectBalance = 110, FormlessFist = 2513, Mantra = 102,
         RiddleOfEarth = 1179, EarthsRuminationReady = 3841, RiddleOfFire = 1181, Brotherhood = 1185, MeditativeBrotherhood = 1182,
-        RiddleOfWind = 1244, SixSidedStar = 2514;
+        RiddleOfWind = 2687, SixSidedStar = 2514;
     // Spec decision: the simulation has no stats, so a weaponskill critical is a fixed 40% roll.
     private const double CritChance = 0.4;
     private readonly int[] beastChakra = new int[3];

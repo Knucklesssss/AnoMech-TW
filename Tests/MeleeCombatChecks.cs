@@ -98,6 +98,11 @@ internal static class MeleeCombatChecks
         earth.Advance(0.6);
         Check(earth.TryUse(36944, false, false, true) == null && !earth.CanUse(36944, false, false, true, checkTiming: false),
             "Riddle of Earth must ready Earth's Reply once.");
+
+        var wind = new MonkCombat();
+        Check(wind.TryUse(25766, false, false, true) == null && wind.Statuses().Any(s => s.Id == 2687 && s.Remaining == 15),
+            "Riddle of Wind must grant status 2687.");
+
         mnk.Advance(0.6);
         Check(mnk.TryUse(25762, true, true, true) is { GapCloser: true }, "Thunderclap must slide to its target.");
     }
