@@ -295,9 +295,9 @@ public unsafe class MainWindow : Window, IDisposable
         if (!canStart && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
         {
             ImGui.SetTooltip(!inInn
-                ? "場景只能在旅館、個人／公會住宅或個人房間內開始。"
+                ? "場景只能在旅館、住宅室內、公會工坊或公寓大廳開始。"
                 : busy
-                    ? "忙碌中無法開始（過場動畫、NPC 事件、製作、交易、區域切換等）。"
+                    ? $"忙碌中無法開始（過場動畫、NPC 事件、製作、交易、區域切換等；目前：{ZoneSession.BusyReason()}）。"
                     : !sameZone
                         ? "目前在其他絕本的場地，請先按「離開」回到房間再開始。"
                         : "這個地區目前還沒有可用的戰術。");
@@ -318,8 +318,8 @@ public unsafe class MainWindow : Window, IDisposable
             if (!envReady && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
             {
                 ImGui.SetTooltip(!inInn
-                    ? "場景只能在旅館、個人／公會住宅或個人房間內開始。"
-                    : "忙碌中無法開始（過場動畫、NPC 事件、製作、交易、區域切換等）。");
+                    ? "場景只能在旅館、住宅室內、公會工坊或公寓大廳開始。"
+                    : $"忙碌中無法開始（過場動畫、NPC 事件、製作、交易、區域切換等；目前：{ZoneSession.BusyReason()}）。");
             }
         }
 
@@ -520,6 +520,6 @@ public unsafe class MainWindow : Window, IDisposable
         if (ZoneSession.CanStartHere()) return;
         ImGui.TextDisabled("請進入旅館或住宅室內開始");
         ImGui.SameLine();
-        ImGuiComponents.HelpMarker("支援旅館、個人／公會住宅與個人房間。不支援屋外住宅區、工房或公寓大廳。");
+        ImGuiComponents.HelpMarker("支援旅館、個人／公會住宅、個人房間、公會工坊與公寓大廳。不支援屋外住宅區。");
     }
 }

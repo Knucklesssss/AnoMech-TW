@@ -12,8 +12,9 @@ internal static class StartLocationChecks
             (14, "w1i3", true),
             (14, "e1i4", true),
             (14, "r1i4_2", true),
-            (14, "s1i5", false),
-            (14, "s1i6", false),
+            (14, "s1i5", true),
+            (14, "r1i6", true),
+            (13, "s1h1", false),
             (13, "s1i1", false),
             (1, "s1i1", false),
             (16, "s1i1", false),
@@ -25,6 +26,6 @@ internal static class StartLocationChecks
             if (StartLocationRules.IsAllowed(use, name) != allowed)
                 throw new Exception($"Start location {use}/{name}: expected {allowed}");
         }
-        Console.WriteLine("Start locations: inns and residential interiors allowed; wards, workshops and lobbies rejected.");
+        Console.WriteLine("Start locations: inns, residential interiors, workshops and lobbies allowed; wards rejected.");
     }
 }
