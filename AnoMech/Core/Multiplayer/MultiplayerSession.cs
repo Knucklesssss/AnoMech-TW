@@ -74,6 +74,7 @@ internal sealed unsafe class MultiplayerSession : IDisposable
         public NetPose[] VisualCurrent { get; } = new NetPose[Wire.Slots];
         public NetworkPuppet?[] Puppets { get; } = new NetworkPuppet?[Wire.Slots];
         public float SendTimer { get; set; }
+        public byte[] LastMarkers { get; set; } = Enumerable.Repeat(Wire.NoRole, Wire.MarkerSlots).ToArray();
         public float PreviousTimeScale { get; init; }
         public bool PreviousGodMode { get; init; }
     }
@@ -293,6 +294,9 @@ internal sealed unsafe class MultiplayerSession : IDisposable
             case MessageType.Transform when TransformDto.TryRead(reader, out var transform):
                 if (hostRun is { } run && transform.RunId == run.RunId && run.Remote.TryGetValue(player.Id, out var remote))
                     remote.Buffer.Add(NetProtocol.NowMs, transform.Pose);
+                break;
+            case MessageType.Markers when MarkersDto.TryRead(reader, out var marks):
+                if (hostRun is { } markRun && marks.RunId == markRun.RunId) ApplyMarkers(game.World.Party, marks.Markers);
                 break;
             case MessageType.RunFailed when RunFailedDto.TryRead(reader, out var failed):
                 Chat($"{entry.Name} 無法開始場景：{failed.Reason}");
@@ -557,6 +561,14 @@ internal sealed unsafe class MultiplayerSession : IDisposable
         for (var slot = 0; slot < Wire.Slots; slot++)
             run.Puppets[slot]?.Apply(PoseBuffer.Lerp(run.VisualPrevious[slot], run.VisualCurrent[slot], alpha), deltaSeconds);
 
+        // Signs the player placed by hand; the host relays them. The one-frame priming stamp is not a sign.
+        var marks = ReadMarkers(game.World.Party);
+        if (!Markings.Priming && !marks.SequenceEqual(run.LastMarkers))
+        {
+            run.LastMarkers = marks;
+            Net.Client.Send(MessageType.Markers, new MarkersDto(run.RunId, marks).Write, DeliveryMethod.ReliableOrdered);
+        }
+
         run.SendTimer += deltaSeconds;
         if (run.SendTimer < SendIntervalSeconds || Plugin.ObjectTable.LocalPlayer is not { } local) return;
         run.SendTimer = 0f;
@@ -567,7 +579,11 @@ internal sealed unsafe class MultiplayerSession : IDisposable
     private void RunClientTick(ClientRun run, TickFrame frame)
     {
         var party = game.World.Party;
-        if (frame.Markers is { } markers) ApplyMarkers(party, markers);
+        if (frame.Markers is { } markers)
+        {
+            ApplyMarkers(party, markers);
+            run.LastMarkers = ReadMarkers(party); // the host's signs are not echoed back
+        }
         foreach (var (role, seconds) in frame.Invulns) party.GiveInvuln((PartyRole)role, seconds);
 
         for (var slot = 0; slot < Wire.Slots; slot++)

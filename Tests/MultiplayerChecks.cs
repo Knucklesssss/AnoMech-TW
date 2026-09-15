@@ -189,6 +189,12 @@ internal static class MultiplayerChecks
 
         var transform = RoundTrip(new TransformDto(4, poses[3]).Write, (NetDataReader r, out TransformDto v) => TransformDto.TryRead(r, out v), "Transform");
         Check(transform == new TransformDto(4, poses[3]), "Transform survives");
+        var marks = Enumerable.Repeat(Wire.NoRole, Wire.MarkerSlots).ToArray();
+        marks[5] = 2;
+        var marksBack = RoundTrip(new MarkersDto(4, marks).Write, (NetDataReader r, out MarkersDto v) => MarkersDto.TryRead(r, out v), "Markers");
+        Check(marksBack.RunId == 4 && marksBack.Markers.SequenceEqual(marks), "a client's markers survive");
+        Check(Rejects(new MarkersDto(4, Enumerable.Repeat((byte)8, Wire.MarkerSlots).ToArray()).Write,
+            (NetDataReader r, out MarkersDto v) => MarkersDto.TryRead(r, out v)), "a client marker on slot 8 is rejected");
         var lobby = RoundTrip(new LobbyStateDto([new LobbyPlayerDto(0, "房主", 0, true, true), new LobbyPlayerDto(1, "朋友", Wire.NoRole, false, true)], true).Write,
             (NetDataReader r, out LobbyStateDto v) => LobbyStateDto.TryRead(r, out v), "LobbyState");
         Check(lobby.RunActive && lobby.Players.Count == 2 && lobby.Players[1] == new LobbyPlayerDto(1, "朋友", Wire.NoRole, false, true), "LobbyState survives");

@@ -34,6 +34,7 @@ public enum MessageType : byte
     StopRun = 15,
     Transform = 16,
     RunFailed = 17,
+    Markers = 18,
 }
 
 public enum RejectReason : byte

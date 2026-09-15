@@ -69,6 +69,7 @@ internal static unsafe class Markings
     }
 
     private static bool clearPrimingNextFrame;
+    internal static bool Priming => clearPrimingNextFrame;
 
     // A doppel is invisible to the <mo> placeholder until it has carried a sign at least
     // once, which is why a player's own /mk macro silently does nothing on a fresh party

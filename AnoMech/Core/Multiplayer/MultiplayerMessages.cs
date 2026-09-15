@@ -220,6 +220,27 @@ public readonly record struct TransformDto(uint RunId, NetPose Pose)
     }
 }
 
+// A client's hand-placed party signs; the host applies them and its next frame relays them to everyone.
+public sealed record MarkersDto(uint RunId, byte[] Markers)
+{
+    public void Write(NetDataWriter writer)
+    {
+        writer.Put(RunId);
+        for (var i = 0; i < Wire.MarkerSlots; i++) writer.Put(Markers[i]);
+    }
+
+    public static bool TryRead(NetDataReader reader, out MarkersDto markers)
+    {
+        markers = null!;
+        if (!reader.TryGetUInt(out var runId)) return false;
+        var slots = new byte[Wire.MarkerSlots];
+        for (var i = 0; i < Wire.MarkerSlots; i++)
+            if (!reader.TryGetByte(out slots[i]) || !Wire.ValidRole(slots[i], true)) return false;
+        markers = new MarkersDto(runId, slots);
+        return true;
+    }
+}
+
 public sealed record SyncStateDto(float ScenarioElapsed, bool[] Dead, (ushort Id, ushort Stacks)[][] Statuses)
 {
     public void Write(NetDataWriter writer)
