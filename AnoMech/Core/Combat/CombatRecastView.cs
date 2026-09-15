@@ -15,6 +15,12 @@ public readonly record struct CombatRecastView(bool IsActive, double Elapsed, do
         return new(available < maxCharges, available == maxCharges ? total : available * recast + recast - nextRemaining, total);
     }
 
+    // An idle record is 0/0 like the client's own: Elapsed == Total made icons of actions that also start the GCD
+    // flash every time the GCD rolled. The client splits a record by its own charge count (a level-100 character
+    // keeps its level-100 charges when synced; Drill read as two 9.59 s charges), so the record spans that count.
+    public static CombatRecastView Mirror(double recast, int charges, int clientCharges, int available, double nextRemaining)
+        => available == charges ? new(false, 0, 0) : Project(recast, Math.Max(charges, clientCharges), available, nextRemaining);
+
     public static CombatRecastView Restore(bool active, double elapsed, double total, double sessionSeconds)
     {
         Validate(elapsed);

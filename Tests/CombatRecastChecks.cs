@@ -16,6 +16,8 @@ internal static class CombatRecastChecks
         Expect(Call("Restore", true, 10d, 60d, 60d), false, 60, 60);
         Expect(Call("Project", 30d, 3, 2, 20d), true, 70, 90);
         Expect(Call("Project", 30d, 3, 3, 0d), false, 90, 90);
+        Expect(Call("Mirror", 30d, 3, 3, 3, 0d), false, 0, 0);
+        Expect(Call("Mirror", 20d, 1, 2, 0, 5d), true, 15, 40);
         foreach (var invalid in new[] { -1d, double.NaN, double.PositiveInfinity, double.MaxValue })
         {
             try { Call("Project", invalid, 3, 2, 20d); throw new Exception("Invalid native recast accepted."); }

@@ -55,7 +55,7 @@ public sealed unsafe class CombatNativeState : IDisposable
     private readonly ActionManager* manager;
     private readonly UIState* ui;
     private readonly ulong objectId;
-    private readonly List<(int NativeGroup, uint BindingAction, bool Additional)> recasts = [];
+    private readonly List<(int NativeGroup, uint BindingAction, bool Additional, int ClientCharges)> recasts = [];
     private bool disposed;
     private uint castAction;
     private float castElapsed;
@@ -123,7 +123,7 @@ public sealed unsafe class CombatNativeState : IDisposable
         if (group < 0) throw new InvalidOperationException($"Missing native recast binding for {action}.");
         if (recasts.Exists(r => r.NativeGroup == group)) return;
         if (manager->GetRecastGroupDetail(group) == null) throw new InvalidOperationException($"Missing native recast record for {action}.");
-        recasts.Add((group, action, additional));
+        recasts.Add((group, action, additional, ActionManager.GetMaxCharges(action, 0)));
     }
 
     private bool PlayerMatches => Plugin.ClientState.IsLoggedIn && Plugin.ObjectTable.LocalPlayer?.Address == (nint)player
@@ -280,7 +280,7 @@ public sealed unsafe class CombatNativeState : IDisposable
                     ? new CombatRecastView(false, 0, 0)
                     // The GCD group mixes skill-speed and spell-speed recasts (Paladin: 2.49 s Fast Blade, 2.50 s Holy Spirit);
                     // the bound action's recast may be shorter than what the last use left.
-                    : CombatRecastView.Project(seconds, charges, rules.Timing.Charges(group, seconds, charges), Math.Min(seconds, rules.Timing.Remaining(group)));
+                    : CombatRecastView.Mirror(seconds, charges, recast.ClientCharges, rules.Timing.Charges(group, seconds, charges), Math.Min(seconds, rules.Timing.Remaining(group)));
                 detail->ActionId = recast.BindingAction;
                 detail->IsActive = view.IsActive;
                 detail->Elapsed = (float)view.Elapsed;
