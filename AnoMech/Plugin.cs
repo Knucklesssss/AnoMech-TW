@@ -205,7 +205,9 @@ public sealed class Plugin : IDalamudPlugin
 
         if (!isInn)
         {
-            MainWindow.IsOpen = false;
+            // The simulation's own map load also lands here; closing then would hide Reset/Leave.
+            if (!Game.World.Map.IsInInstance)
+                MainWindow.IsOpen = false;
             return;
         }
         if (Config.OpenSimMenuOnInn)

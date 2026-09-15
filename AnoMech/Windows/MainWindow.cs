@@ -104,31 +104,23 @@ public unsafe class MainWindow : Window, IDisposable
 
     private bool _wasInInstance;
 
-    // While the fake-zone instance is loaded, pin the window open and uncollapsible
-    // so the user can always reach Reset/Leave/God-mode without re-opening it.
+    // Entering the fake-zone instance collapses the window out of the way and leaving opens and
+    // expands it; in between it collapses and closes normally (/anomech reopens it).
+    // Esc stays ignored inside the instance because players press it to clear targets.
     public override void PreOpenCheck()
     {
         var inInstance = plugin.Game.World.Map.IsInInstance;
-        if (inInstance)
+        if (inInstance != _wasInInstance)
         {
             IsOpen = true;
-            ShowCloseButton = false;
-            RespectCloseHotkey = false;
-            Flags |= ImGuiWindowFlags.NoCollapse;
-            if (!_wasInInstance)
-            {
-                Collapsed = false;
-                CollapsedCondition = ImGuiCond.Always;
-            }
+            Collapsed = inInstance;
+            CollapsedCondition = ImGuiCond.Always;
         }
         else
         {
-            ShowCloseButton = true;
-            RespectCloseHotkey = true;
-            Flags &= ~ImGuiWindowFlags.NoCollapse;
-            if (_wasInInstance)
-                CollapsedCondition = ImGuiCond.FirstUseEver;
+            Collapsed = null;
         }
+        RespectCloseHotkey = !inInstance;
         _wasInInstance = inInstance;
     }
 
