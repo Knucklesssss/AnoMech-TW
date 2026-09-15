@@ -14,6 +14,8 @@ public static class NetProtocol
     public const int MaxPacketBytes = 1200;
     public const int MaxNameLength = 32;
     public const int DisconnectTimeoutMs = 5000;
+    // LiteNetLib flushes queued sends on its logic thread every UpdateTime; the default 15 ms added that much lag.
+    public const int UpdateTimeMs = 2;
     public const ushort DefaultPort = 42420;
     public const int PortCandidates = 10;
 

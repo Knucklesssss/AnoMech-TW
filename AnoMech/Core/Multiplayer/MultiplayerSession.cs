@@ -25,9 +25,11 @@ internal sealed unsafe class MultiplayerSession : IDisposable
 {
     public const float Step = PlaybackClock.Step;
     private const int MaxHostTicksPerFrame = 5;
-    private const float SendIntervalSeconds = 0.05f;
-    private const double RemoteInterpolationMs = 100;
-    private const double RemoteExtrapolationMs = 150;
+    // Every tick goes out on the frame it runs; a batch only groups the ticks of one slow frame.
+    private const float SendIntervalSeconds = Step;
+    // Three 60 Hz reports behind, so one late report still interpolates instead of extrapolating.
+    private const double RemoteInterpolationMs = 50;
+    private const double RemoteExtrapolationMs = 100;
     private const int SyncIntervalTicks = 60;
     private const int FrameBatchBytes = 1000;
 
@@ -518,7 +520,7 @@ internal sealed unsafe class MultiplayerSession : IDisposable
             return;
         }
 
-        var run = new ClientRun(start.RunId, start.Seed, (byte)role, Math.Clamp(Plugin.Config.MultiplayerPlaybackDelay, 0.05f, 1f))
+        var run = new ClientRun(start.RunId, start.Seed, (byte)role, Math.Clamp(Plugin.Config.MultiplayerPlaybackDelay, Step, 1f))
         {
             PreviousTimeScale = previousTimeScale,
             PreviousGodMode = previousGodMode,

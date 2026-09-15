@@ -114,6 +114,11 @@ internal class Movement(SimCharacter parent)
 
     }
 
+    // Gap closers slide along the dash instead of teleporting. The action's own animation is already
+    // playing, so no movement timeline (0) is started over it.
+    public void Dash(Vector3 dashDestination, float dashSpeed)
+        => InternalMoveTo(dashDestination, dashSpeed, tl: 0, baseOverride: false, avoid: false);
+
     // Shared move entry for MoveTo (locomotion) and Knockback (one-shot action).
     // `baseOverride` selects the animation mechanism in StartAnim: true for a
     // looping locomotion clip (run/walk), false for a one-shot action timeline
@@ -240,6 +245,7 @@ internal class Movement(SimCharacter parent)
     //     loop the pose forever (the original "knockback stuck" bug).
     protected void StartAnim()
     {
+        if (timelineId == 0) return;
         parent.PlayActionTimeline(timelineId, baseOverride: timelineBaseOverride ? timelineId : (ushort)0);
         animActive = true;
     }

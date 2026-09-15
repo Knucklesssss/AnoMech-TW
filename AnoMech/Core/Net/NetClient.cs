@@ -34,6 +34,7 @@ public sealed class NetClient : IDisposable
             AutoRecycle = true,
             IPv6Enabled = false,
             DisconnectTimeout = NetProtocol.DisconnectTimeoutMs,
+            UpdateTime = NetProtocol.UpdateTimeMs,
         };
         listener.PeerDisconnectedEvent += OnPeerDisconnected;
         listener.NetworkReceiveEvent += OnNetworkReceive;

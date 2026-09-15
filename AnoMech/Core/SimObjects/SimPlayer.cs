@@ -46,6 +46,7 @@ public sealed unsafe class SimPlayer(Coordinates coordinates) : SimCharacter(coo
     private protected override PlayerMovement Movement => playerMovement ??= new PlayerMovement(this);
 
     public void Knockback(Vector3 source, float distance, float speed) => Movement.Knockback(source, distance, speed);
+    public void Dash(Vector3 destination, float speed) => Movement.Dash(destination, speed);
 
     // The player's input lock is a pure function of its own state, re-derived
     // every tick: movement is frozen while KO'd or being force-slid by a

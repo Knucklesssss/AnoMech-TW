@@ -30,7 +30,7 @@ public class Configuration : IPluginConfiguration
     public bool SafeMode { get; set; } = true;
 
     // Seconds a multiplayer client plays behind the host (NetworkPlaybackDelay).
-    public float MultiplayerPlaybackDelay { get; set; } = 0.2f;
+    public float MultiplayerPlaybackDelay { get; set; } = 0.05f;
 
     // The below exists just to make saving less cumbersome
     public void Save()

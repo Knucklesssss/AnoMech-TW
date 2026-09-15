@@ -165,12 +165,12 @@ internal sealed class MultiplayerWindow : Window, IDisposable
 
         var delay = Plugin.Config.MultiplayerPlaybackDelay;
         ImGui.SetNextItemWidth(200);
-        if (ImGui.SliderFloat("播放延遲（秒）##mpdelay", ref delay, 0.1f, 0.5f))
+        if (ImGui.SliderFloat("播放延遲（秒）##mpdelay", ref delay, 0.017f, 0.5f, "%.3f"))
         {
             Plugin.Config.MultiplayerPlaybackDelay = delay;
             Plugin.Config.Save();
         }
-        ImGui.TextDisabled("延遲越大越不容易卡頓，但王的動作會晚一點出現；下一場開始時生效。");
+        ImGui.TextDisabled("最低 0.017 秒（一幀）。越低王的動作越即時；網路不穩、畫面會停頓時調高到 0.05～0.1。下一場開始時生效。");
 
         if (session.ClientLobby is not { } lobby) return;
         ImGui.TextUnformatted("房間成員：");

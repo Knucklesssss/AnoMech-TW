@@ -43,6 +43,7 @@ public sealed class NetHost : IDisposable
             AutoRecycle = true,
             IPv6Enabled = false,
             DisconnectTimeout = NetProtocol.DisconnectTimeoutMs,
+            UpdateTime = NetProtocol.UpdateTimeMs,
         };
         listener.ConnectionRequestEvent += OnConnectionRequest;
         listener.PeerConnectedEvent += OnPeerConnected;

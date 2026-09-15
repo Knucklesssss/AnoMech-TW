@@ -14,6 +14,8 @@ public sealed unsafe class LocalCombatSession : IDisposable
 {
     // The game lets a cast finish when movement starts in its last half second.
     private const double SlidecastSeconds = 0.5;
+    // ponytail: dash length is not in client data; a quarter second looked like the game's gap closers, tune in game.
+    private const float DashSeconds = 0.25f;
     private readonly SimWorld world;
     private readonly SimPlayer player;
     private readonly IJobCombat model;
@@ -363,7 +365,11 @@ public sealed unsafe class LocalCombatSession : IDisposable
         Plugin.PlayerInputHooks.RecordLocalAction();
         if (hit is { } action)
         {
-            if (action.GapCloser && target != null) player.SetPosition(GapEndpoint(target));
+            if (action.GapCloser && target != null)
+            {
+                var end = GapEndpoint(target);
+                player.Dash(end, MathF.Max(1f, Vector3.Distance(Position(player), end) / DashSeconds));
+            }
             inCombat = true;
         }
         var presentationTarget = self ? null : target;
