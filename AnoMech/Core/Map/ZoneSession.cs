@@ -120,7 +120,8 @@ public sealed unsafe class ZoneSession : IDisposable
         ConditionFlag.Crafting, ConditionFlag.ExecutingCraftingAction, ConditionFlag.PreparingToCraft,
         ConditionFlag.Gathering, ConditionFlag.ExecutingGatheringAction, ConditionFlag.Fishing, ConditionFlag.TradeOpen,
         ConditionFlag.BetweenAreas, ConditionFlag.LoggingOut, ConditionFlag.WaitingForDutyFinder, ConditionFlag.InDutyQueue,
-        ConditionFlag.InCombat, ConditionFlag.Mounted, ConditionFlag.Jumping, ConditionFlag.Occupied,
+        // No Jumping: the TC client also raises it while walking, and a start mid-jump is fine.
+        ConditionFlag.InCombat, ConditionFlag.Mounted, ConditionFlag.Occupied,
     ];
 
     // The first condition that makes the player busy, shown on the disabled start button.
