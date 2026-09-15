@@ -30,7 +30,7 @@ public class TopP5DeltaAi : IScenarioAi<TopP5DeltaState>
         var ai = new AiManager(world);
         ai.Move(0.5f, InitialPositions);
         ai.Move(13f, TetherPrePosition);
-        ai.Move(21f, FistResolveSlots);
+        ai.Move(17.8f, FistResolveSlots); // half a second after the fists spawn (17.3 s)
         ai.Move(28.8f, TetherResolveStep);
         ai.Move(31.2f, HyperPulseBaitArms);
         ai.Move(36.2f, HyperPulseDodge, 0);
