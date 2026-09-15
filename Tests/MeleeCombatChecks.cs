@@ -6,7 +6,100 @@ internal static class MeleeCombatChecks
     {
         RoleActions();
         Movement();
-        Console.WriteLine("PASS: melee role actions and movement requests.");
+        Monk();
+        Console.WriteLine("PASS: melee role actions, movement requests and Monk.");
+    }
+
+    private static void Monk()
+    {
+        Check(JobCombatRegistry.Find(20, 90) != null, "Monk level 90 must be registered.");
+        var mnk = new MonkCombat { Roll = () => 0.99 };
+        // Trait 431 (level 84, "輕身步法效果提高") raises Thunderclap from the sheet's 2 charges to 3.
+        Check(mnk.GetCooldown(25762) == (15, 30, 3), "Thunderclap must have 3 charges per trait 431.");
+        Check(mnk.GetCooldown(69) == (14, 40, 2), "Perfect Balance must have 2 charges.");
+        Check(mnk.Adjust(36945) == 53 && mnk.Adjust(36946) == 54 && mnk.Adjust(36947) == 56 && mnk.Adjust(62) == 25767
+              && mnk.Adjust(25761) == 3547 && mnk.Adjust(25763) == 16474 && mnk.Adjust(36940) == 36942 && mnk.Adjust(36941) == 36943,
+            "Level-100 hotbar ids and trait upgrades must map to level-90 actions.");
+        Check(!mnk.CanUse(54, true, true, true, checkTiming: false), "True Strike needs Raptor Form.");
+        Hit(mnk, 53);
+        Check(mnk.Chakra == 0 && mnk.CanUse(54, true, true, true, checkTiming: false) && mnk.IsHighlighted(54),
+            "A non-critical Bootshine outside Opo-opo Form must give no chakra and Raptor Form.");
+        Gcd(mnk); Hit(mnk, 61);
+        Check(mnk.RaptorFury == 1 && mnk.CanUse(66, true, true, true, checkTiming: false), "Twin Snakes must give Raptor's Fury and Coeurl Form.");
+        Gcd(mnk); Hit(mnk, 66);
+        Check(mnk.CoeurlFury == 2, "Demolish must give two Coeurl's Fury.");
+        Gcd(mnk); Hit(mnk, 74);
+        Check(mnk.OpoOpoFury == 1 && mnk.Chakra == 0, "Dragon Kick in Opo-opo Form must give Opo-opo's Fury.");
+        Gcd(mnk); Hit(mnk, 54);
+        Check(mnk.RaptorFury == 0, "True Strike must spend Raptor's Fury.");
+        Gcd(mnk); Hit(mnk, 56);
+        Check(mnk.CoeurlFury == 1, "Snap Punch must spend one Coeurl's Fury.");
+        Gcd(mnk); Hit(mnk, 53);
+        Check(mnk.Chakra == 1 && mnk.OpoOpoFury == 0, "Bootshine in Opo-opo Form must always crit for chakra and spend Opo-opo's Fury.");
+
+        var crit = new MonkCombat { Roll = () => 0.39 };
+        Hit(crit, 74);
+        var miss = new MonkCombat { Roll = () => 0.4 };
+        Hit(miss, 74);
+        Check(crit.Chakra == 1 && miss.Chakra == 0, "Weaponskill chakra must use a fixed 40% critical chance.");
+
+        var meditation = new MonkCombat();
+        Check(meditation.TryUse(36942, false, false, false) == null && meditation.Chakra == 5, "Meditation out of combat must fill 5 chakra.");
+        Check(!meditation.CanUse(36942, false, false, true, checkTiming: false), "Meditation needs fewer than 5 chakra.");
+        Check(meditation.CanUse(3547, true, true, true, checkTiming: false) && !meditation.CanUse(3547, true, true, false, checkTiming: false),
+            "The Forbidden Chakra needs 5 chakra and combat.");
+        meditation.Advance(0.6);
+        Hit(meditation, 3547);
+        Check(meditation.Chakra == 0, "The Forbidden Chakra must spend 5 chakra.");
+        meditation.Advance(1);
+        Check(meditation.TryUse(36942, false, false, true) == null && meditation.Chakra == 1, "Meditation in combat must give 1 chakra.");
+
+        var pb = new MonkCombat { Roll = () => 0.99 };
+        Check(!pb.CanUse(69, false, false, false, checkTiming: false), "Perfect Balance needs combat.");
+        Check(pb.TryUse(69, false, false, true) == null, "Perfect Balance must start.");
+        pb.Advance(0.6);
+        Hit(pb, 53); Gcd(pb); Hit(pb, 74); Gcd(pb); Hit(pb, 25767, aoe: true);
+        Check(pb.BeastChakra.SequenceEqual(new[] { 3, 3, 3 }) && pb.Adjust(25764) == 3545, "Three Opo-opo weaponskills must ready Elixir Field.");
+        Gcd(pb); Hit(pb, 25764, aoe: true);
+        Check(pb.LunarNadi && !pb.SolarNadi && pb.BeastChakra.All(b => b == 0) && pb.CanUse(56, true, true, true, checkTiming: false),
+            "Elixir Field must give Lunar Nadi and Formless Fist.");
+        Gcd(pb);
+        Check(pb.TryUse(69, false, false, true) == null, "The second Perfect Balance charge must start.");
+        pb.Advance(0.6);
+        Hit(pb, 53); Gcd(pb); Hit(pb, 54); Gcd(pb); Hit(pb, 56);
+        Check(pb.Adjust(25764) == 25768, "Three different Beast Chakra must ready Rising Phoenix.");
+        Gcd(pb); Hit(pb, 25764, aoe: true);
+        Check(pb.LunarNadi && pb.SolarNadi, "Rising Phoenix must give Solar Nadi.");
+        pb.Advance(40);
+        Check(pb.TryUse(69, false, false, true) == null, "Perfect Balance must recharge.");
+        pb.Advance(0.6);
+        Hit(pb, 53); Gcd(pb); Hit(pb, 53); Gcd(pb); Hit(pb, 54);
+        Check(pb.Adjust(25764) == 25769, "Both Nadi must turn the blitz into Phantom Rush.");
+        Gcd(pb); Hit(pb, 25764, aoe: true);
+        Check(!pb.LunarNadi && !pb.SolarNadi, "Phantom Rush must clear both Nadi.");
+
+        var celestial = new MonkCombat { Roll = () => 0.99 };
+        celestial.TryUse(69, false, false, true);
+        celestial.Advance(0.6);
+        Hit(celestial, 53); Gcd(celestial); Hit(celestial, 53); Gcd(celestial); Hit(celestial, 54);
+        Check(celestial.Adjust(25764) == 25765, "Two kinds of Beast Chakra must ready Celestial Revolution.");
+        Gcd(celestial); Hit(celestial, 25764);
+        Check(celestial.LunarNadi && !celestial.SolarNadi, "Celestial Revolution without Lunar Nadi must give Lunar Nadi.");
+
+        var brotherhood = new MonkCombat { Roll = () => 0.99 };
+        brotherhood.TryUse(7396, false, false, true);
+        brotherhood.Advance(0.6);
+        for (var i = 0; i < 6; i++) { Hit(brotherhood, 74); Gcd(brotherhood); }
+        Check(brotherhood.Chakra == 6, "Meditative Brotherhood must give chakra every weaponskill and allow more than 5.");
+
+        var earth = new MonkCombat();
+        Check(!earth.CanUse(36944, false, false, true, checkTiming: false), "Earth's Reply needs Earth's Rumination Ready.");
+        earth.TryUse(7394, false, false, true);
+        earth.Advance(0.6);
+        Check(earth.TryUse(36944, false, false, true) == null && !earth.CanUse(36944, false, false, true, checkTiming: false),
+            "Riddle of Earth must ready Earth's Reply once.");
+        mnk.Advance(0.6);
+        Check(mnk.TryUse(25762, true, true, true) is { GapCloser: true }, "Thunderclap must slide to its target.");
     }
 
     private static void RoleActions()

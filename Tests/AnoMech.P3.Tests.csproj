@@ -15,6 +15,7 @@
     <Compile Include="../AnoMech/Core/Combat/CasterCombatBase.cs" />
     <Compile Include="../AnoMech/Core/Combat/RangedCombatBase.cs" />
     <Compile Include="../AnoMech/Core/Combat/MeleeCombatBase.cs" />
+    <Compile Include="../AnoMech/Core/Combat/MonkCombat.cs" />
     <Compile Include="../AnoMech/Core/Combat/BardCombat.cs" />
     <Compile Include="../AnoMech/Core/Combat/MachinistCombat.cs" />
     <Compile Include="../AnoMech/Core/Combat/DancerCombat.cs" />
