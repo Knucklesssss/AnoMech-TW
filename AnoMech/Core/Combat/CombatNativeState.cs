@@ -167,6 +167,31 @@ public sealed unsafe class CombatNativeState : IDisposable
         return text + records;
     }
 
+    // The client's own recast answer for every action that also has an additional group, sampled each frame:
+    // a flashing hotbar icon shows up as flips. Skill log only.
+    private readonly Dictionary<uint, (bool Active, float Elapsed, float Total, int Flips)> hotbar = [];
+
+    public void SampleHotbarRecast()
+    {
+        if (ActionManager.Instance() != manager || ActionManager.Addresses.IsRecastTimerActive.Value == 0
+            || ActionManager.Addresses.GetRecastTimeElapsed.Value == 0 || ActionManager.Addresses.GetRecastTime.Value == 0) return;
+        foreach (var listed in rules.Actions)
+        {
+            var id = rules.Adjust(listed);
+            if (manager->GetAdditionalRecastGroup(ActionType.Action, id) < 0) continue;
+            var active = manager->IsRecastTimerActive(ActionType.Action, id);
+            var flips = hotbar.TryGetValue(id, out var last) ? last.Flips + (last.Active != active ? 1 : 0) : 0;
+            hotbar[id] = (active, manager->GetRecastTimeElapsed(ActionType.Action, id), manager->GetRecastTime(ActionType.Action, id), flips);
+        }
+    }
+
+    public string HotbarRecastDebugState()
+    {
+        var text = string.Join(" ", hotbar.Select(h => $"{h.Key}:{(h.Value.Active ? 1 : 0)}:{h.Value.Elapsed:0.00}/{h.Value.Total:0.00}:f{h.Value.Flips}"));
+        foreach (var id in hotbar.Keys.ToList()) hotbar[id] = hotbar[id] with { Flips = 0 };
+        return text;
+    }
+
     public string CastDebugState()
     {
         if (ActionManager.Instance() != manager || !PlayerMatches) return "cast=unavailable";

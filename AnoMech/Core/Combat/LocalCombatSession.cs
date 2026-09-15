@@ -125,7 +125,12 @@ public sealed unsafe class LocalCombatSession : IDisposable
         buffer.Advance(seconds);
         cast.Tick((float)seconds);
         snapshotClock += seconds;
-        if (snapshotClock >= 1) { snapshotClock = 0; LogState("Tick"); }
+        if (snapshotClock >= 1)
+        {
+            snapshotClock = 0;
+            LogState("Tick");
+            if (Plugin.LogManager.Enabled) Log($"Hotbar {native.HotbarRecastDebugState()}");
+        }
         if (!Alive)
         {
             CancelCast("dead");
@@ -156,7 +161,7 @@ public sealed unsafe class LocalCombatSession : IDisposable
         }
         if (castRemaining > 0) return;
         var id = model.CastingAction;
-        var target = ResolveTarget(castTarget);
+        var target = ResolveTarget(id, castTarget);
         var hasTarget = model.IsSelfAction(id) ? Enemies().Any(e => InEffectRange(id, Position(player), e)) : target != null;
         var done = model.CompleteCast(hasTarget, target != null && InRange(id, target), Alive, out var hit);
         if (hit != null) inCombat = true;
@@ -188,7 +193,7 @@ public sealed unsafe class LocalCombatSession : IDisposable
 
     private void TickAutoAttack(double seconds)
     {
-        if (!AutoAttacking || model.CastingAction != 0 || ResolveTarget(CurrentTargetId()) is not { } target || !InRange(7, target))
+        if (!AutoAttacking || model.CastingAction != 0 || ResolveTarget(7, CurrentTargetId()) is not { } target || !InRange(7, target))
         {
             autoAttackTimer = Math.Min(weaponDelay, autoAttackTimer + seconds);
             return;
@@ -222,7 +227,7 @@ public sealed unsafe class LocalCombatSession : IDisposable
         if (targetId == 0xE0000000 || targetId == 0) targetId = CurrentTargetId();
         if (id == 7)
             return Alive && !Plugin.GameInstance!.Paused && !RestrictedStatus(movement: false)
-                && (AutoAttacking || ResolveTarget(targetId) is { } target && InRange(7, target)) ? 0u : 572u;
+                && (AutoAttacking || ResolveTarget(7, targetId) is { } target && InRange(7, target)) ? 0u : 572u;
         var status = !Supports(id) ? 573u
             : !Validate(id, targetId, false) ? 572u
             : !checkTiming || Validate(id, targetId, true) ? 0u : 582u;
@@ -250,7 +255,7 @@ public sealed unsafe class LocalCombatSession : IDisposable
         if ((type == ActionType.GeneralAction && id == 1) || (type == ActionType.Action && id == 7))
         {
             if (!Alive || Plugin.GameInstance!.Paused || RestrictedStatus(movement: false)) { AutoAttacking = false; return true; }
-            if (!AutoAttacking && ResolveTarget(targetId == 0 || targetId == 0xE0000000 ? CurrentTargetId() : targetId) == null)
+            if (!AutoAttacking && ResolveTarget(7, targetId == 0 || targetId == 0xE0000000 ? CurrentTargetId() : targetId) == null)
             { Explain("自動攻擊需要目前可選取的模擬敵人。"); return true; }
             AutoAttacking = !AutoAttacking;
             accepted = true;
@@ -287,7 +292,7 @@ public sealed unsafe class LocalCombatSession : IDisposable
     {
         if (!Alive || Plugin.GameInstance!.Paused || RestrictedStatus(movement: false)) return false;
         id = Adjust(id);
-        var target = ResolveTarget(targetId);
+        var target = ResolveTarget(id, targetId);
         var hasTarget = model.IsSelfAction(id) ? Enemies().Any(e => InEffectRange(id, Position(player), e)) : target != null;
         if (model.IsGapCloser(id) && target != null && world.IsOutsideArena(GapEndpoint(target))) return false;
         return model.CanUse(id, hasTarget, target != null && InRange(id, target), inCombat, Alive, Bound, timing)
@@ -303,7 +308,7 @@ public sealed unsafe class LocalCombatSession : IDisposable
 
     private string WhyNotCore(uint id, ulong targetId)
     {
-        var target = ResolveTarget(targetId);
+        var target = ResolveTarget(id, targetId);
         var self = model.IsSelfAction(id);
         var hasTarget = self ? Enemies().Any(e => InEffectRange(id, Position(player), e)) : target != null;
         var inRange = target != null && InRange(id, target);
@@ -320,7 +325,7 @@ public sealed unsafe class LocalCombatSession : IDisposable
     private void BeginCast(uint id, ulong targetId)
     {
         id = Adjust(id);
-        var target = ResolveTarget(targetId);
+        var target = ResolveTarget(id, targetId);
         var self = model.IsSelfAction(id);
         var hasTarget = self ? Enemies().Any(e => InEffectRange(id, Position(player), e)) : target != null;
         var seconds = model.CastTime(id);
@@ -347,7 +352,7 @@ public sealed unsafe class LocalCombatSession : IDisposable
     private void Execute(uint id, ulong targetId)
     {
         id = Adjust(id);
-        var target = ResolveTarget(targetId);
+        var target = ResolveTarget(id, targetId);
         var self = model.IsSelfAction(id);
         var hasTarget = self ? Enemies().Any(e => InEffectRange(id, Position(player), e)) : target != null;
         var hit = model.TryUse(id, hasTarget, target != null && InRange(id, target), inCombat, Alive, Bound);
@@ -377,20 +382,30 @@ public sealed unsafe class LocalCombatSession : IDisposable
         return enemy.IsActive && p != null && p->Health > 0 && p->DrawObject != null && p->DrawObject->IsVisible
             && (p->TargetableStatus & ObjectTargetableFlags.IsTargetable) != 0;
     }
-    private SimEnemy? ResolveTarget(ulong id) => Enemies().FirstOrDefault(e => e.GameObjectId.ObjectId == id);
+    // Party-only actions (Aetherial Manipulation) take a party member; everything else a simulated enemy.
+    private SimCharacter? ResolveTarget(uint actionId, ulong id)
+    {
+        var row = Plugin.DataManager.GetExcelSheet<SheetAction>().GetRow(actionId);
+        if (!row.CanTargetParty || row.CanTargetHostile) return Enemies().FirstOrDefault(e => e.GameObjectId.ObjectId == id);
+        for (var role = 0; role < 8; role++)
+            if (world.Party.Get(role) is { } member && member != player && member.BattleCharaPtr != null && member.IsAlive()
+                && member.GameObjectId.ObjectId == id)
+                return member;
+        return null;
+    }
     private static ulong CurrentTargetId() => Plugin.TargetManager.Target?.GameObjectId ?? 0xE0000000;
     private Vector3 Position(SimCharacter actor) => world.Coordinates.ToLocal(actor.BattleCharaPtr->Position);
-    private bool InRange(uint id, SimEnemy enemy)
+    private bool InRange(uint id, SimCharacter target)
     {
         var row = Plugin.DataManager.GetExcelSheet<SheetAction>().GetRow(id);
-        var distance = Vector3.Distance(Position(player), Position(enemy)) - player.HitboxRadius - enemy.HitboxRadius;
+        var distance = Vector3.Distance(Position(player), Position(target)) - player.HitboxRadius - target.HitboxRadius;
         var range = row.Range < 0 ? ActionManager.GetActionRange(id) : row.Range;
         return float.IsFinite(range) && range >= 0 && distance <= range;
     }
     private bool InEffectRange(uint id, Vector3 center, SimEnemy enemy)
         => Vector3.Distance(center, Position(enemy)) - enemy.HitboxRadius
             <= Plugin.DataManager.GetExcelSheet<SheetAction>().GetRow(id).EffectRange;
-    private Vector3 GapEndpoint(SimEnemy target)
+    private Vector3 GapEndpoint(SimCharacter target)
     {
         var from = Position(player);
         var to = Position(target);
@@ -407,7 +422,12 @@ public sealed unsafe class LocalCombatSession : IDisposable
         lastMessage = now;
         Plugin.ChatGui.PrintError($"[AnoMech] {text}");
     }
-    public void BeforeNativeUpdate() { if (CheckIdentity()) native.SuppressNativeAutoAttack(); }
+    public void BeforeNativeUpdate()
+    {
+        if (!CheckIdentity()) return;
+        native.SuppressNativeAutoAttack();
+        if (Plugin.LogManager.Enabled) native.SampleHotbarRecast();
+    }
     public void AfterNativeUpdate()
     {
         if (!CheckIdentity()) return;
@@ -415,6 +435,7 @@ public sealed unsafe class LocalCombatSession : IDisposable
         if (probe) Log($"CastProbe afterNativeUpdate {native.CastDebugState()}");
         if (model.CastingAction != 0) native.SetCast(model.CastingAction, castTotal - castRemaining, castTotal, castTargetObject);
         native.Mirror(AutoAttacking);
+        if (Plugin.LogManager.Enabled) native.SampleHotbarRecast();
         if (probe) { castProbeLogged = true; Log($"CastProbe afterMirror {native.CastDebugState()}"); }
     }
     public bool SurviveLethal()

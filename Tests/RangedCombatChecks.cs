@@ -175,6 +175,11 @@ internal static class RangedCombatChecks
         blm.TryUse(7421, false, false, true);
         Check(blm.CastTime(3576) == 0, "Triplecast must make Blizzard IV instant.");
 
+        var step = new BlackMageCombat();
+        Check(!step.CanUse(155, false, false, true) && !step.CanUse(155, true, true, true, bound: true),
+            "Aetherial Manipulation needs a party target in range and is refused while bound.");
+        Check(step.TryUse(155, true, true, true) is { GapCloser: true }, "Aetherial Manipulation must move the player to its target.");
+
         // 16.25 s: >= 15 s lets Triplecast expire (real hardcast, not instant); the extra 1.25 s lands the
         // natural MP tick clear of the 1.75 s cast below, so the assert isn't muddied by natural regen.
         blm.Advance(16.25);

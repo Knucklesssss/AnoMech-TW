@@ -45,12 +45,12 @@ public sealed class BlackMageCombat : CasterCombatBase
         _ => actionId,
     };
 
-    public override bool IsGapCloser(uint actionId) => false;
+    public override bool IsGapCloser(uint actionId) => actionId == 155;
     protected override uint ComboFrom(uint actionId) => 0;
 
     // Aetherial Manipulation targets a party member; the dash is not simulated.
     protected override bool IsJobSelfAction(uint actionId)
-        => actionId is 149 or 155 or 157 or 158 or 3573 or 7419 or 7421 or 16506 or 25796;
+        => actionId is 149 or 157 or 158 or 3573 or 7419 or 7421 or 16506 or 25796;
 
     private static bool IsFire(uint actionId) => actionId is 141 or 25794 or 152 or 3577 or 162 or 16505;
     private static bool IsIce(uint actionId) => actionId is 142 or 25795 or 154 or 3576 or 159;
@@ -177,6 +177,7 @@ public sealed class BlackMageCombat : CasterCombatBase
             case 7421: Buff(Triplecast, 15, 3); return null;
             case 3573: Buff(LeyLines, 20); return null;
             case 157: Buff(Manaward, 20); return null;
+            case 155: return new JobHit(actionId, false, true);
             case 156: return new JobHit(actionId, false, false);
         }
         return null;
