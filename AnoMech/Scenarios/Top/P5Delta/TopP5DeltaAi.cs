@@ -37,6 +37,7 @@ public class TopP5DeltaAi : IScenarioAi<TopP5DeltaState>
         ai.Move(38.4f, MonitorPositions);
         ai.Move(40, MonitorAdjustment, 0);
         ai.Move(46f, SwivelDodge);
+        ai.Move(46.4f, BreakBeetleSideTether);
         ai.Move(50f, RescueUnsafe);
         ai.Move(56f, ReturnToMiddle);
         ai.Move(56.5f, TankForward);
@@ -84,22 +85,17 @@ public class TopP5DeltaAi : IScenarioAi<TopP5DeltaState>
         move.MultiplyY(state.SwivelCannonSide.Mul * state.EyeSpawn.Mul);
     }
 
-    private void SwivelSwaps(IAiRoles s)
+    private void WorldSwaps(IAiRoles s)
     {
         s.ByRole(state.TetherOrder[0], state.FarWorldRole);
         s.ByRole(state.FarWorldTetherIndex == 1 ? state.TetherOrder[0] : state.TetherOrder[1] , state.NearWorldRole);
-        // make safe side plant consistent for Swivel Cannon
-        if (state.SwivelCannonSide.Mul * state.EyeSpawn.Mul > 0)
-            s.ByPosition(6, 7);
     }
 
-    private void SwivelCannonAdjust(IAiPositions move)
-    {
-        var cannonMul = state.SwivelCannonSide.Mul * state.EyeSpawn.Mul;
-        // 4/5 should not be adjusted by swivel side, so pre-unadjust it
-        move.MultiplyY(4, cannonMul);
-        move.MultiplyY(5, cannonMul);
-    }
+    private int SafeSide => state.SwivelCannonSide.Mul * (int)state.EyeSpawn.Mul;
+
+    // With the beetle drawn north, the far-side local tether turns clockwise: its left player (+Y while the
+    // beetle is west, mirrored when it is east) runs to the beetle's feet, the right one away from it.
+    private int FeetSlot => state.EyeSpawn.Mul > 0 ? 7 : 6;
 
     protected void AdjustEyePosition(IAiPositions move)
     {
@@ -226,49 +222,69 @@ public class TopP5DeltaAi : IScenarioAi<TopP5DeltaState>
         );
     }
 
+    // Y is written for a +Y safe half and flipped by SwivelSafeSide. Monitor positions left the beetle-side local
+    // tether at (-10, ±12): its safe-half player hugs the edge beside the beetle now, its danger-half player breaks
+    // the tether later. The far-side pair keeps its tether: feet player to the beetle, the other to the safe half's
+    // far edge. The guide stands there three edge ticks (30°) past the waymark; Swivel Cannon's 105° cone reaches
+    // the edge at 31°, so 34° keeps a yalm of margin.
     protected virtual IAiMove SwivelDodge()
     {
-        return AiMove.Create(
+        var points = new Vector2?[]
+        {
             new(0f, 19f), // far
             new(0f, 6f),  // near
             new(9.5f, 17f),
             new(9.5f, 17f),
-            new(-9.5f, -9.5f),
-            new(-9.5f, 9.5f),
-            new(16f, 10f),
-            new(-19f, 1f)
-        )
-        .Assignments(state.TetherOrder)
-        .ApplySwaps(SwivelSwaps, Swap45)
-        .ApplyPositions(SwivelCannonAdjust, SwivelSafeSide, AdjustEyePosition);
+            SafeSide < 0 ? new Vector2(-13.8f, 13.8f) : null,
+            SafeSide > 0 ? new Vector2(-13.8f, 13.8f) : null,
+            null,
+            null,
+        };
+        points[FeetSlot] = new(-19f, 1.5f);
+        points[13 - FeetSlot] = new(15.75f, 10.62f);
+        return AiMove.Create(points)
+            .Assignments(state.TetherOrder)
+            .ApplySwaps(WorldSwaps, Swap45)
+            .ApplyPositions(SwivelSafeSide, AdjustEyePosition);
     }
 
-    protected virtual IAiMove RescueUnsafe()
+    // Leaves when the run crosses the 10 y break distance at 15 s left on the tether (applied 28.1 s, 36 s), and
+    // reaches the safe waymark beside the beetle leaning away from Hello Near World before Swivel Cannon lands.
+    protected virtual IAiMove BreakBeetleSideTether()
     {
-        return AiMove.Single(
-            state.SwivelCannonSide.Mul * state.EyeSpawn.Mul > 0 ? 4 : 5,
-            new(-9.5f, 3.5f)
+        return AiMove.Create(
+            null, null, null, null,
+            SafeSide > 0 ? new Vector2(-10.3f, 9.9f) : null,
+            SafeSide < 0 ? new Vector2(-10.3f, 9.9f) : null,
+            null, null
         )
         .Assignments(state.TetherOrder)
         .ApplySwaps(Swap45)
         .ApplyPositions(SwivelSafeSide, AdjustEyePosition);
     }
 
+    // The danger-half beetle-side player is already safe from BreakBeetleSideTether.
+    protected virtual IAiMove RescueUnsafe() => AiMove.Create().NaturalOrder();
+
     protected virtual IAiMove ReturnToMiddle()
     {
-        return AiMove.Create(
+        var points = new Vector2?[]
+        {
             new(-0.7f, 5.7f),
             new(-0.7f, 6.5f),
             new(-0.7f, 7.3f),
             new(0.7f, 5.7f),
             new(0.7f, 6.5f),
             new(0.7f, 7.3f),
-            new(8f, 4f),
-            new(-9f, 1f)
-        )
-        .Assignments(state.TetherOrder)
-        .ApplySwaps(SwivelSwaps)
-        .ApplyPositions(SwivelSafeSide, AdjustEyePosition);
+            null,
+            null,
+        };
+        points[FeetSlot] = new(-9f, 1f);
+        points[13 - FeetSlot] = new(8f, 4f);
+        return AiMove.Create(points)
+            .Assignments(state.TetherOrder)
+            .ApplySwaps(WorldSwaps)
+            .ApplyPositions(SwivelSafeSide, AdjustEyePosition);
     }
 
     private IAiMove TankForward()
@@ -279,13 +295,11 @@ public class TopP5DeltaAi : IScenarioAi<TopP5DeltaState>
 
     protected virtual IAiMove BreakLastTether()
     {
-        return AiMove.Create(
-            null, null, null, null, null, null,
-            new(4f, 2.7f),
-            new(-4f, 2.5f)
-        )
-        .Assignments(state.TetherOrder)
-        .ApplySwaps(SwivelSwaps)
-        .ApplyPositions(SwivelSafeSide, AdjustEyePosition);
+        var points = new Vector2?[8];
+        points[FeetSlot] = new(-4f, 2.5f);
+        points[13 - FeetSlot] = new(4f, 2.7f);
+        return AiMove.Create(points)
+            .Assignments(state.TetherOrder)
+            .ApplyPositions(SwivelSafeSide, AdjustEyePosition);
     }
 }

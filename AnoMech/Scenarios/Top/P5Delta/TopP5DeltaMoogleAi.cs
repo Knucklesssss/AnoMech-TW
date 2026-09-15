@@ -74,6 +74,8 @@ public sealed class TopP5DeltaMoogleAi : TopP5DeltaAi
         return AiMove.Create(points).Assignments(state.TetherOrder).ApplyPositions(AdjustEyePosition);
     }
 
+    protected override IAiMove BreakBeetleSideTether() => AiMove.Create().NaturalOrder();
+
     protected override IAiMove RescueUnsafe() => AiMove.Single(
         state.TetherOrder[(SafeSouth>0)^OuterFistsSwap ? 6 : 7],new(-10,10*SafeSouth))
         .ApplyPositions(AdjustEyePosition);

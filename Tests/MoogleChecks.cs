@@ -104,6 +104,54 @@ internal static class MoogleChecks
         }
         Console.WriteLine("Moogle transition and monitor checks passed.");
         CheckP5();
+        CheckDeltaStandardLocalTethers();
+    }
+
+    // Standard Delta once Swivel Cannon is known, with AI jitter as margin: nobody in the cannon, Hello World reaches one
+    // player per hit (near into the beetle-side local tether, far to the beetle's feet then the far edge), the far-side
+    // local tether holds and the beetle-side one has broken.
+    private static void CheckDeltaStandardLocalTethers()
+    {
+        const float jitter = .3f;
+        var roles = Enum.GetValues<PartyRole>();
+        for (var run = 0; run < 256; run++)
+        {
+            var delta = new TopP5DeltaState(new(), PartyRole.MainTank);
+            var ai = new TopP5DeltaAi();
+            ai.Run(delta, new SimWorld());
+            var dodge = Move(ai, "SwivelDodge");
+            var breakTether = Move(ai, "BreakBeetleSideTether");
+            Vector2 P(PartyRole role) => (breakTether[(int)role] ?? dodge[(int)role])!.Value;
+            var beetle = new Vector2(-20 * delta.EyeSpawn.Mul, 0);
+            var cannon = MathF.PI / 2 * delta.EyeSpawn.Mul + delta.SwivelCannonSide.Mul * MathF.PI / 2;
+            var forward = new Vector2(MathF.Sin(cannon), MathF.Cos(cannon));
+            foreach (var role in roles)
+            {
+                var offset = P(role) - beetle;
+                var angle = MathF.Acos(Vector2.Dot(offset, forward) / offset.Length());
+                Check(angle > TopConstants.Geometry.SwivelCannonHalfAngle + MathF.Asin(jitter / offset.Length()) && P(role).Length() < TopConstants.Geometry.ArenaRadius - jitter,
+                    "Delta Standard positions must stay out of Swivel Cannon and inside the arena.");
+            }
+            PartyRole Next(PartyRole from, bool nearest) => nearest
+                ? roles.Where(r => r != from).MinBy(r => Vector2.Distance(P(from), P(r)))
+                : roles.Where(r => r != from).MaxBy(r => Vector2.Distance(P(from), P(r)));
+            bool Alone(PartyRole target, float radius) => roles.All(r => r == target || Vector2.Distance(P(r), P(target)) > radius + 2 * jitter);
+            var near1 = Next(delta.NearWorldRole, true);
+            var near2 = Next(near1, true);
+            var far1 = Next(delta.FarWorldRole, false);
+            var far2 = Next(far1, false);
+            Check(new[] { near1, near2 }.All(r => r == delta.TetherOrder[4] || r == delta.TetherOrder[5])
+                  && far1 == delta.TetherOrder[delta.EyeSpawn.Mul > 0 ? 7 : 6] && far2 == delta.TetherOrder[delta.EyeSpawn.Mul > 0 ? 6 : 7]
+                  && near1 != near2,
+                "Hello World must go near into the beetle-side local tether and far to the beetle's feet, then the far edge.");
+            Check(Alone(delta.NearWorldRole, TopConstants.Geometry.HelloWorldInitialAoeRadius) && Alone(delta.FarWorldRole, TopConstants.Geometry.HelloWorldInitialAoeRadius)
+                  && new[] { near1, near2, far1, far2 }.All(r => Alone(r, TopConstants.Geometry.HelloWorldJumpAoeRadius)),
+                "Each Hello World hit must reach exactly one player.");
+            Check(Vector2.Distance(P(delta.TetherOrder[6]), P(delta.TetherOrder[7])) > TopConstants.Geometry.HwTetherBreakDistance + 2 * jitter
+                  && Vector2.Distance(P(delta.TetherOrder[4]), P(delta.TetherOrder[5])) < TopConstants.Geometry.HwTetherBreakDistance - 2 * jitter,
+                "The far-side local tether must hold and the beetle-side one must break.");
+        }
+        Console.WriteLine("PASS: Delta Standard local tethers dodge Swivel Cannon and route Hello World.");
     }
 
     private static void CheckP5()
