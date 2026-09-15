@@ -33,6 +33,7 @@ public sealed unsafe class LocalCombatSession : IDisposable
     private double castTotal;
     private bool castProbeLogged;
     private GameObjectId castTargetObject;
+    private Vector3? returnPoint;
     private double autoAttackTimer;
     private readonly System.Collections.Generic.Dictionary<(uint Id, bool Timing), uint> statusSeen = [];
     private void Log(string text) { if (Plugin.LogManager.Enabled) Plugin.LogManager.LogSkill(text); }
@@ -221,6 +222,7 @@ public sealed unsafe class LocalCombatSession : IDisposable
     }
     public uint Adjust(uint id) => model.Adjust(id);
     public bool Supports(uint id) => model.Supports(id);
+    public bool IsGroundTargeted(uint id) => Plugin.DataManager.GetExcelSheet<SheetAction>().GetRow(Adjust(id)).TargetArea;
     public bool IsHighlighted(uint id) => model.IsHighlighted(id);
 
     public uint ActionStatus(uint id, ulong targetId, bool checkTiming)
@@ -250,6 +252,25 @@ public sealed unsafe class LocalCombatSession : IDisposable
         return handled;
     }
 
+    public bool TryInputAt(ActionType type, uint id, ulong targetId, Vector3 worldLocation, out bool accepted)
+    {
+        accepted = false;
+        if (!CheckIdentity() || type != ActionType.Action || !Supports(id) || !IsGroundTargeted(id)) return false;
+        id = Adjust(id);
+        var point = world.Coordinates.ToLocal(worldLocation);
+        var range = Plugin.DataManager.GetExcelSheet<SheetAction>().GetRow(id).Range;
+        if (Vector3.Distance(Position(player), point) > range || world.IsOutsideArena(point) || !Validate(id, 0, true))
+        {
+            Log($"RejectedGround id={id} point={point} {WhyNot(id, 0)}");
+            return true;
+        }
+        buffer.Reset();
+        Execute(id, 0, point);
+        accepted = true;
+        Log($"InputGround id={id} point={point}");
+        return true;
+    }
+
     private bool TryInputCore(ActionType type, uint id, ulong targetId, out bool accepted)
     {
         accepted = false;
@@ -273,6 +294,8 @@ public sealed unsafe class LocalCombatSession : IDisposable
             Explain("目前僅模擬此職業已支援的技能循環與派生，不處理此技能／道具效果。");
             return true;
         }
+        // Ground-targeted actions (Shukuchi) let the client open its placement circle; the click arrives in TryInputAt.
+        if (IsGroundTargeted(id)) return false;
         // Resolve default target once at button press; queued input keeps this ID.
         targetId = targetId == 0xE0000000 || targetId == 0 ? CurrentTargetId() : targetId;
         id = Adjust(id);
@@ -351,7 +374,7 @@ public sealed unsafe class LocalCombatSession : IDisposable
         Log($"CastBegin id={id} seconds={seconds:0.00}");
     }
 
-    private void Execute(uint id, ulong targetId)
+    private void Execute(uint id, ulong targetId, Vector3? groundPoint = null)
     {
         id = Adjust(id);
         var target = ResolveTarget(id, targetId);
@@ -372,12 +395,40 @@ public sealed unsafe class LocalCombatSession : IDisposable
             }
             inCombat = true;
         }
+        if (model.TakeMove() is { } move) PerformMove(move, groundPoint);
         var presentationTarget = self ? null : target;
         cast.Start(id, presentationTarget == null ? Position(player) : Position(presentationTarget), 0,
             presentationTarget?.GameObjectId ?? player.GameObjectId, 0, 0, 0, .6f);
         native.Mirror(AutoAttacking);
         Log($"Execute id={id} hit={hit?.ToString() ?? "null"}");
         LogState("AfterExecute");
+    }
+
+    private void PerformMove(JobMove move, Vector3? groundPoint)
+    {
+        var from = Position(player);
+        var rotation = player.BattleCharaPtr->Rotation;
+        var facing = new Vector3(MathF.Sin(rotation), 0, MathF.Cos(rotation));
+        Vector3? end = move.Kind switch
+        {
+            JobMoveKind.Backward => InsideArena(from, -facing * move.Distance),
+            JobMoveKind.Forward => InsideArena(from, facing * move.Distance),
+            JobMoveKind.ReturnPoint => returnPoint,
+            JobMoveKind.GroundPoint => groundPoint,
+            _ => null,
+        };
+        if (move.MarksReturn) returnPoint = from;
+        if (end is { } point)
+            player.Dash(point, MathF.Max(1f, Vector3.Distance(from, point) / DashSeconds));
+        Log($"Move kind={move.Kind} distance={move.Distance} end={end?.ToString() ?? "none"}");
+    }
+
+    // A self displacement stops short of the arena fence instead of carrying the player out of it.
+    private Vector3 InsideArena(Vector3 from, Vector3 offset)
+    {
+        for (var step = 20; step > 0; step--)
+            if (!world.IsOutsideArena(from + offset * (step / 20f))) return from + offset * (step / 20f);
+        return from;
     }
 
     private System.Collections.Generic.IEnumerable<SimEnemy> Enemies()
@@ -388,11 +439,16 @@ public sealed unsafe class LocalCombatSession : IDisposable
         return enemy.IsActive && p != null && p->Health > 0 && p->DrawObject != null && p->DrawObject->IsVisible
             && (p->TargetableStatus & ObjectTargetableFlags.IsTargetable) != 0;
     }
-    // Party-only actions (Aetherial Manipulation) take a party member; everything else a simulated enemy.
+    // Enemy actions take a simulated enemy; party-only actions (Aetherial Manipulation) a party member; actions that take
+    // either (Thunderclap, Slither) prefer the enemy and fall back to a party member.
     private SimCharacter? ResolveTarget(uint actionId, ulong id)
     {
         var row = Plugin.DataManager.GetExcelSheet<SheetAction>().GetRow(actionId);
-        if (!row.CanTargetParty || row.CanTargetHostile) return Enemies().FirstOrDefault(e => e.GameObjectId.ObjectId == id);
+        if (!row.CanTargetParty || row.CanTargetHostile)
+        {
+            var enemy = Enemies().FirstOrDefault(e => e.GameObjectId.ObjectId == id);
+            if (enemy != null || !row.CanTargetParty) return enemy;
+        }
         for (var role = 0; role < 8; role++)
             if (world.Party.Get(role) is { } member && member != player && member.BattleCharaPtr != null && member.IsAlive()
                 && member.GameObjectId.ObjectId == id)

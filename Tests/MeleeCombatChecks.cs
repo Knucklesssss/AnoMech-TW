@@ -5,7 +5,8 @@ internal static class MeleeCombatChecks
     public static void Run()
     {
         RoleActions();
-        Console.WriteLine("PASS: melee role actions.");
+        Movement();
+        Console.WriteLine("PASS: melee role actions and movement requests.");
     }
 
     private static void RoleActions()
@@ -26,6 +27,49 @@ internal static class MeleeCombatChecks
         Check(!melee.CanUse(7549, false, false, true, checkTiming: false) && !melee.CanUse(7863, false, false, true, checkTiming: false),
             "Feint and Leg Sweep must need an enemy.");
         Check(melee.StatusIds.SequenceEqual(new ushort[] { 84, 1250, 1209 }), "Melee role statuses must be Bloodbath, True North and Arm's Length.");
+    }
+
+    private static void Movement()
+    {
+        var mover = new TestMover();
+        Check(mover.TakeMove() == null, "A fresh job must not request a move.");
+        Check(mover.TryUse(2, false, false, true) == null && mover.TakeMove() == new JobMove(JobMoveKind.Backward, 15, true),
+            "A backward jump must request a 15 y backward move that marks the return point.");
+        Check(mover.TakeMove() == null, "A move request must be taken only once.");
+        Check(!mover.CanUse(2, false, false, true, bound: true, checkTiming: false), "Displacements must be refused while bound.");
+        mover.Advance(0.6);
+        Check(mover.TryUse(3, false, false, true) == null && Math.Abs(mover.Timing.Remaining(58) - 0.5) < 1e-9,
+            "A short-lock action must hold the GCD group for its own 0.5 s, not a full GCD.");
+        var reset = new TestMover();
+        reset.TryUse(2, false, false, true);
+        reset.Reset();
+        Check(reset.TakeMove() == null, "Reset must drop a pending move.");
+    }
+
+    private sealed class TestMover() : MeleeCombatBase(2.5)
+    {
+        protected override IReadOnlyList<uint> JobActions { get; } = [1, 2, 3];
+        protected override IReadOnlyList<ushort> JobStatusIds { get; } = [];
+        protected override string JobDebugState => "";
+        protected override uint ComboFrom(uint actionId) => 0;
+        protected override bool IsJobSelfAction(uint actionId) => true;
+        protected override bool BlockedWhileBound(uint actionId) => actionId == 2;
+        protected override bool AlsoUsesGcd(uint actionId) => actionId == 3;
+        protected override double AlsoUsesGcdSeconds(uint actionId) => 0.5;
+        protected override (int Group, double Recast, int Charges) JobTimingContract(uint actionId) => actionId switch
+        {
+            2 => (6, 30, 1),
+            3 => (4, 20, 2),
+            _ => Gcd,
+        };
+        protected override JobHit? ApplyJob(uint actionId, bool hasTarget)
+        {
+            if (actionId == 2) Move(JobMoveKind.Backward, 15, marksReturn: true);
+            return null;
+        }
+        protected override void AdvanceJob(double seconds) { }
+        protected override void ResetJob() { }
+        public override bool IsGapCloser(uint actionId) => false;
     }
 
     internal static void Hit(IJobCombat job, uint id, bool aoe = false)

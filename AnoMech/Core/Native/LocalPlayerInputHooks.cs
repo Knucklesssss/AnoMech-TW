@@ -219,6 +219,7 @@ public sealed unsafe class LocalPlayerInputHooks : IDisposable
         var session = Combat;
         try
         {
+            if (session != null && location != null && session.TryInputAt(actionType, actionId, targetId, *location, out var placed)) return placed;
             if (session != null && session.TryInput(actionType, actionId, targetId, out var accepted)) return accepted;
             if (DisableAllActions && !IsStopAutosAction(actionType, actionId)) return false;
             var result = useActionLocationHook!.Original(self, actionType, actionId, targetId, location, extraParam, a7);

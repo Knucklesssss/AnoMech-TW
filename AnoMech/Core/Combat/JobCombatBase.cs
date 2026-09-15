@@ -24,6 +24,7 @@ public abstract class JobCombatBase : IJobCombat
     private double mpTick;
     private uint castingAction;
     private readonly Dictionary<uint, double> recastOverrides = [];
+    private JobMove? pendingMove;
 
     protected JobCombatBase(double gcdSeconds)
     {
@@ -59,6 +60,9 @@ public abstract class JobCombatBase : IJobCombat
     protected abstract (int Group, double Recast, int Charges) TimingContract(uint actionId);
     // Weaponskills with their own recast that also start the GCD (sheet AdditionalCooldownGroup 58).
     protected virtual bool AlsoUsesGcd(uint actionId) => false;
+    // Mudras start the GCD group for only half a second.
+    protected virtual double AlsoUsesGcdSeconds(uint actionId) => GcdSeconds;
+    protected virtual bool BlockedWhileBound(uint actionId) => IsGapCloser(actionId);
     protected virtual bool JobCanUse(uint actionId, bool inCombat) => true;
     protected virtual bool JobHighlighted(uint actionId) => false;
     // Runs after recast and MP were paid. Null = successful buff or empty AoE.
@@ -114,14 +118,14 @@ public abstract class JobCombatBase : IJobCombat
     {
         actionId = Adjust(actionId);
         if (!Actions.Contains(actionId) || !alive) return false;
-        if (IsGapCloser(actionId) && bound) return false;
+        if (BlockedWhileBound(actionId) && bound) return false;
         if (!IsSelfAction(actionId) && (!hasTarget || !inRange)) return false;
         if (mp < MpCost(actionId) || !JobCanUse(actionId, inCombat)) return false;
         if (!checkTiming) return true;
         if (castingAction != 0) return false;
         var (group, recast, charges) = Contract(actionId);
         return Timing.IsAvailable(group, recast, charges)
-            && (!AlsoUsesGcd(actionId) || Timing.IsAvailable(GlobalCooldownGroup, GcdSeconds, 1));
+            && (!AlsoUsesGcd(actionId) || Timing.IsAvailable(GlobalCooldownGroup, AlsoUsesGcdSeconds(actionId), 1));
     }
 
     public JobHit? TryUse(uint actionId, bool hasTarget, bool inRange, bool inCombat, bool alive = true, bool bound = false)
@@ -185,16 +189,26 @@ public abstract class JobCombatBase : IJobCombat
         mp = MaxMp;
         mpTick = 0;
         castingAction = 0;
+        pendingMove = null;
         // Permanent statuses are stances: they survive entering and leaving a duty.
         foreach (var id in buffs.Where(b => !double.IsPositiveInfinity(b.Value.Remaining)).Select(b => b.Key).ToList())
             buffs.Remove(id);
         ResetJob();
     }
 
+    public JobMove? TakeMove()
+    {
+        var move = pendingMove;
+        pendingMove = null;
+        return move;
+    }
+
+    protected void Move(JobMoveKind kind, float distance = 0, bool marksReturn = false) => pendingMove = new JobMove(kind, distance, marksReturn);
+
     private bool PayRecast(uint actionId, double lockSeconds)
     {
         var (group, recast, charges) = Contract(actionId);
-        if (AlsoUsesGcd(actionId) && !Timing.TryUse(GlobalCooldownGroup, GcdSeconds, 1, 0)) return false;
+        if (AlsoUsesGcd(actionId) && !Timing.TryUse(GlobalCooldownGroup, AlsoUsesGcdSeconds(actionId), 1, 0)) return false;
         return Timing.TryUse(group, recast, charges, lockSeconds);
     }
 

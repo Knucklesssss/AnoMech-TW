@@ -28,6 +28,8 @@ public interface IJobCombat
     // No target needed: self-centred AoEs and self buffs.
     bool IsSelfAction(uint actionId);
     bool IsGapCloser(uint actionId);
+    // The self displacement the last resolved action requested (backward jump, Regress, Shukuchi); null afterwards.
+    JobMove? TakeMove();
     (int Group, double Recast, int Charges) GetCooldown(uint actionId);
     bool CanUse(uint actionId, bool hasTarget, bool inRange, bool inCombat, bool alive = true, bool bound = false, bool checkTiming = true);
     // Instant actions only; cast-time actions go through BeginCast.
@@ -48,6 +50,11 @@ public interface IJobCombat
 }
 
 public readonly record struct JobHit(uint ActionId, bool IsAoe, bool GapCloser);
+
+public enum JobMoveKind { Backward, Forward, ReturnPoint, GroundPoint }
+
+// Distance is along the player's facing for Backward/Forward. MarksReturn remembers the start for a later ReturnPoint.
+public readonly record struct JobMove(JobMoveKind Kind, float Distance = 0, bool MarksReturn = false);
 
 public readonly record struct JobStatus(ushort Id, double Remaining, ushort Param);
 
