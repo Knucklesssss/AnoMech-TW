@@ -16,4 +16,5 @@ public sealed class TopP5SigmaStateOverrides
     public HelloWorldOption HelloWorld { get; set; }
     public bool? Dynamis { get; set; }
     public MarkerMode Markers { get; set; } = MarkerMode.System;
+    public AnoMech.Core.Sign? PlayerSign { get; set; }
 }

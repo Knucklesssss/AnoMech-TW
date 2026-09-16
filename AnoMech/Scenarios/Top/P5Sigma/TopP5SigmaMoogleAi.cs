@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using AnoMech.Core;
+using AnoMech.Core.Game;
 using AnoMech.Core.Game.Ai;
 using AnoMech.Core.Game.Party;
 using AnoMech.Core.SimObjects;
@@ -35,11 +36,24 @@ public sealed class TopP5SigmaMoogleAi : TopP5SigmaTuuuflessAi
     protected override RoleList BuildMarkingsOrder(SimWorld world)
     {
         var candidates = TopP3MonitorRules.Priority.Where(r => !state.HelloWorldTargets.List.Contains(r)).ToArray();
-        var attacks = candidates.Where(state.DynamisTargets.List.Contains).ToArray();
-        var idle = candidates.Where(r => !attacks.Take(4).Contains(r))
-            .OrderBy(r => state.DynamisTargets.List.Contains(r) ? 0 : 1).ToArray();
+        var attacks = Shuffle(candidates.Where(state.DynamisTargets.List.Contains));
+        if (state.PlayerSign is { } sign && sign != Sign.Ignore1)
+            MoveTo(attacks, world.Party.PlayerRole, sign == Sign.Attack5 ? attacks.Count - 1 : (int)sign);
+        var idle = Shuffle(candidates.Where(r => !attacks.Take(4).Contains(r)));
+        if (state.PlayerSign is Sign.Attack5 or Sign.Ignore1)
+            MoveTo(idle, world.Party.PlayerRole, 0);
+        idle = idle.OrderBy(r => state.DynamisTargets.List.Contains(r) ? 0 : 1).ToList();
         return new(world.Party, [attacks[1], attacks[0], attacks[2], idle[1], idle[0], attacks[3],
             state.HelloWorldTargets[0], state.HelloWorldTargets[1]]);
+    }
+
+    private static List<PartyRole> Shuffle(IEnumerable<PartyRole> roles) =>
+        roles.OrderBy(_ => SimRandom.Current.Next()).ToList();
+
+    private static void MoveTo(List<PartyRole> roles, PartyRole role, int index)
+    {
+        roles.Remove(role);
+        roles.Insert(index, role);
     }
 
     protected override Dictionary<PartyRole, Sign> MarkerMapping()
@@ -51,7 +65,7 @@ public sealed class TopP5SigmaMoogleAi : TopP5SigmaTuuuflessAi
         };
         var attack = 0;
         var ignore = 0;
-        foreach (var role in markingsOrder.List.Skip(3).Take(2).OrderBy(TopP3MonitorRules.PriorityIndex))
+        foreach (var role in markingsOrder.List.Skip(3).Take(2).Reverse())
             signs[role] = state.DynamisTargets.List.Contains(role)
                 ? (attack++ == 0 ? Sign.Attack5 : Sign.Attack6)
                 : (ignore++ == 0 ? Sign.Ignore1 : Sign.Ignore2);

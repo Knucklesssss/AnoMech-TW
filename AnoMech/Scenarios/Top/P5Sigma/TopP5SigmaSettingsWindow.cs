@@ -1,3 +1,4 @@
+using AnoMech.Core;
 using Dalamud.Bindings.ImGui;
 
 namespace AnoMech.Scenarios.Top.P5Sigma;
@@ -24,6 +25,7 @@ public sealed class TopP5SigmaSettingsWindow
             DrawHelloWorld();
             DrawDynamis();
             DrawMarkers();
+            DrawPlayerSign();
             SettingsGrid.End();
         }
     }
@@ -41,6 +43,7 @@ public sealed class TopP5SigmaSettingsWindow
         Overrides.HelloWorld = HelloWorldOption.Auto;
         Overrides.Dynamis = null;
         Overrides.Markers = MarkerMode.System;
+        Overrides.PlayerSign = null;
     }
 
     private void DrawMarkers()
@@ -50,6 +53,23 @@ public sealed class TopP5SigmaSettingsWindow
         if (ImGui.RadioButton("系統標##marks", v == MarkerMode.System)) Overrides.Markers = MarkerMode.System;
         ImGui.SameLine();
         if (ImGui.RadioButton("玩家手標##marks", v == MarkerMode.Manual)) Overrides.Markers = MarkerMode.Manual;
+    }
+
+    private static readonly (string Label, Sign? Sign)[] PlayerSigns =
+    [
+        ("自動", null), ("攻擊1", Sign.Attack1), ("攻擊2", Sign.Attack2), ("攻擊3", Sign.Attack3),
+        ("攻擊4", Sign.Attack4), ("攻擊5", Sign.Attack5), ("禁止", Sign.Ignore1),
+    ];
+
+    private void DrawPlayerSign()
+    {
+        SettingsGrid.Row("我的標記 (僅莫古力)：");
+        for (var i = 0; i < PlayerSigns.Length; i++)
+        {
+            if (i > 0) ImGui.SameLine();
+            if (ImGui.RadioButton($"{PlayerSigns[i].Label}##psign", Overrides.PlayerSign == PlayerSigns[i].Sign))
+                Overrides.PlayerSign = PlayerSigns[i].Sign;
+        }
     }
 
 #if DEBUG

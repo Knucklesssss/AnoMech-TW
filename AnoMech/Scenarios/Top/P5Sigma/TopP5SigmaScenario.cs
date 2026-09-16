@@ -30,7 +30,8 @@ public sealed class TopP5SigmaScenario : IScenario
     {
         world = worldParam;
         party = worldParam.Party;
-        state = new TopP5SigmaState(party, MultiplayerOverrides.Resolve(settingsWindow.Overrides));
+        state = new TopP5SigmaState(party, MultiplayerOverrides.Resolve(settingsWindow.Overrides),
+            selectedAi is { } i && i < AiStrats.Count && AiStrats[i] is TopP5SigmaMoogleAi);
         ScenarioAiRunner.Run(AiStrats, selectedAi, state, world);
         topUtils = new TopUtils(world);
 

@@ -191,7 +191,14 @@ internal static class MoogleChecks
             Check(sigma.HelloWorldTargets.List.All(r => !mapping.ContainsKey(r)), "Sigma HW holders must not receive role markers.");
             var hw = Move(sai, "HelloWorldPositions");
             var free = TopP3MonitorRules.Priority.Where(r => !sigma.HelloWorldTargets.List.Contains(r) && sigma.DynamisTargets.List.Contains(r)).ToArray();
-            Check(mapping[free[0]] == Sign.Attack1 && mapping[free[1]] == Sign.Attack2 && mapping[free[2]] == Sign.Attack3 && mapping[free[3]] == Sign.Attack4, "Sigma attack numbering must follow Moogle priority.");
+            Check(new[] { Sign.Attack1, Sign.Attack2, Sign.Attack3, Sign.Attack4 }.All(sign => free.Count(r => mapping.GetValueOrDefault(r, Sign.Ignore1) == sign) == 1), "Sigma attacks 1-4 must go to one-stack holders.");
+            var wanted = new[] { Sign.Attack1, Sign.Attack2, Sign.Attack3, Sign.Attack4, Sign.Attack5, Sign.Ignore1 }[run % 6];
+            var forcedWorld = new SimWorld();
+            var forced = new TopP5SigmaState(forcedWorld.Party, new() { PlayerSign = wanted }, moogle: true);
+            var fai = (TopP5SigmaAi)Activator.CreateInstance(sigmaType!)!;
+            fai.Run(forced, forcedWorld);
+            var forcedMap = (Dictionary<PartyRole, Sign>)sigmaType!.GetMethod("MarkerMapping", BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(fai,null)!;
+            Check(forcedMap[forcedWorld.Party.PlayerRole] == wanted, $"Moogle Sigma player must receive the chosen {wanted}.");
             CheckHelloChain(hw, sigma.HelloWorldTargets[0], sigma.HelloWorldTargets[1], mapping, Sign.Attack1, Sign.Attack4);
             var omegaWorld = new SimWorld();
             var omega = new TopP5OmegaState(omegaWorld.Party, new());

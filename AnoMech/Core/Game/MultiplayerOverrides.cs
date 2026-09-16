@@ -18,7 +18,7 @@ public static class MultiplayerOverrides
         "PlayerSlot", "TransitionPlayerSlot", "PlayerMonitor",
         "HelloWorld", "HelloWorldOrder", "HelloWorldType",
         "Dynamis", "ExtraDynamis",
-        "TetherAssignment", "Monitor", "BeyondDefence",
+        "TetherAssignment", "Monitor", "BeyondDefence", "PlayerSign",
     ];
 
     private const byte KindNull = 0;

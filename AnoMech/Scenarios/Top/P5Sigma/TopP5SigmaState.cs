@@ -1,5 +1,6 @@
 using System.Linq;
 using System.Numerics;
+using AnoMech.Core;
 using AnoMech.Core.Game.Party;
 using AnoMech.Core.SimObjects;
 
@@ -36,19 +37,22 @@ namespace AnoMech.Scenarios.Top.P5Sigma
 
         public MarkerMode Markers { get; }
 
+        public Sign? PlayerSign { get; }
+
         public readonly Tower?[] Towers;
 
         public int FirstMissing;
         public int SecondMissing;
 
-        public TopP5SigmaState(SimParty party, TopP5SigmaStateOverrides overrides)
+        public TopP5SigmaState(SimParty party, TopP5SigmaStateOverrides overrides, bool moogle = false)
         {
             Markers = overrides.Markers;
+            PlayerSign = moogle ? overrides.PlayerSign : null;
             Order = RoleList.Random(party);
             DynamisTargets = new RoleListBuilder
             {
                 Size = 6,
-                IncludePlayer = overrides.Dynamis,
+                IncludePlayer = PlayerSign switch { null => overrides.Dynamis, Sign.Ignore1 => false, _ => true },
             }.Build(party);
             WaveCannonTargets = SelectWaveCannonTargets(Order);
 
@@ -59,20 +63,24 @@ namespace AnoMech.Scenarios.Top.P5Sigma
             SpinnerRotation = overrides.SpinnerRotation ?? rng.NextObj(Rotation.Clockwise, Rotation.CounterClockwise);
             OmegaFAttack = overrides.OmegaFForm ?? rng.NextObj(OmegaAttack.Legs, OmegaAttack.Staff);
 
-            HelloWorldTargets = new RoleListBuilder()
-            {
-                Size = 2,
-                ForcePlayerIndex = overrides.HelloWorld switch
-                {
-                    HelloWorldOption.Near => [0], HelloWorldOption.Far => [1], _ => []
-                },
-                IncludePlayer = overrides.HelloWorld switch { HelloWorldOption.No => false, _ => null }
-            }.Build(party);
+            do HelloWorldTargets = BuildHelloWorldTargets(party, PlayerSign == null ? overrides.HelloWorld : HelloWorldOption.No);
+            while (PlayerSign == Sign.Attack5 && HelloWorldTargets.List.All(DynamisTargets.List.Contains));
 
             Towers = (GlitchType == GlitchType.Mid ? MidGlitchTowers : FarGlitchTowers)
                      .Select(t => t == null ? t : t with { Position = AdjustedNorthA.Apply(t.Position) })
                      .ToArray();
         }
+
+        private static RoleList BuildHelloWorldTargets(SimParty party, HelloWorldOption option) =>
+            new RoleListBuilder()
+            {
+                Size = 2,
+                ForcePlayerIndex = option switch
+                {
+                    HelloWorldOption.Near => [0], HelloWorldOption.Far => [1], _ => []
+                },
+                IncludePlayer = option switch { HelloWorldOption.No => false, _ => null }
+            }.Build(party);
 
 
         // MidGlitch: 6 towers on the 22.5°-offset inner ring at radius 17.
