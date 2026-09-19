@@ -38,6 +38,7 @@ public enum MessageType : byte
     RunFailed = 17,
     Markers = 18,
     Appearance = 19,
+    RestartRequest = 20,
 }
 
 public enum RejectReason : byte

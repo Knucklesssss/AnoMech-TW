@@ -35,10 +35,10 @@ internal sealed class ChainRunner(Game game, Configuration config)
         Status = status;
     }
 
-    public void Tick(float deltaSeconds, bool multiplayerActive)
+    public void Tick(float deltaSeconds)
     {
         if (!Running) return;
-        if (multiplayerActive) { Stop("多人連線中，連戰已停止"); return; }
+        if (Plugin.Multiplayer.IsClientConnected) { Stop("已加入他人的房間，連戰已停止"); return; }
         if (game.RunCount < awaitedRun)
         {
             if ((waited += deltaSeconds) > StartTimeoutSeconds) Stop("場景無法開始，連戰已停止");
@@ -69,6 +69,14 @@ internal sealed class ChainRunner(Game game, Configuration config)
         waited = 0f;
         awaitedRun = game.RunCount + 1;
         Status = $"第 {next + 1}/{config.Chain.Count} 場{(retry ? "（有人死亡，重來）" : "")}：{Game.DisplayName(scenario)}";
-        game.RunScenario(scenario, null, Math.Clamp(entry.Strat, 0, Math.Max(0, scenario.AiStrats.Count - 1)), entry.Waymark);
+        var strat = Math.Clamp(entry.Strat, 0, Math.Max(0, scenario.AiStrats.Count - 1));
+        var multiplayer = Plugin.Multiplayer;
+        if (!multiplayer.HostControlsRun)
+        {
+            game.RunScenario(scenario, null, strat, entry.Waymark);
+            return;
+        }
+        if (multiplayer.CanHostStart(scenario, out var reason)) multiplayer.HostStartRun(scenario, strat, entry.Waymark);
+        else Status += $"（等待：{reason}）";
     }
 }

@@ -357,6 +357,7 @@ public unsafe class MainWindow : Window, IDisposable
         ImGui.TextWrapped(multiplayer.ClientRunActive
             ? "多人場景進行中，由房主控制開始與重置。"
             : "已加入多人房間：由房主選擇場景並開始。");
+        if (multiplayer.ClientRunActive && ImGui.Button("請房主重來##mprestart")) multiplayer.ClientRequestRestart();
         if (!multiplayer.ClientRunActive && game.World.Map.IsInInstance && ImGui.Button("離開##leave"))
             game.Leave();
     }

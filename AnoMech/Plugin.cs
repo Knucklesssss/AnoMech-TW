@@ -196,7 +196,7 @@ public sealed class Plugin : IDalamudPlugin
         if (fw == null) return;
         if (!Multiplayer.Update(fw->FrameDeltaTime))
             Game.Tick(fw->FrameDeltaTime);
-        Chain.Tick(fw->FrameDeltaTime, Multiplayer.RunActive);
+        Chain.Tick(fw->FrameDeltaTime);
     }
 
     private void OnTerritoryChanged(ushort territory)

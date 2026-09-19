@@ -53,8 +53,11 @@ internal sealed unsafe class MultiplayerSession : IDisposable
         public ushort Timeline { get; set; } = Wire.InferTimeline;
     }
 
-    private sealed class HostRun(uint runId, ulong seed, byte hostRole)
+    private sealed class HostRun(uint runId, ulong seed, byte hostRole, IScenario scenario, int strat, int waymark)
     {
+        public IScenario Scenario { get; } = scenario;
+        public int Strat { get; } = strat;
+        public int Waymark { get; } = waymark;
         public uint RunId { get; } = runId;
         public ulong Seed { get; } = seed;
         public byte HostRole { get; } = hostRole;
@@ -215,7 +218,7 @@ internal sealed unsafe class MultiplayerSession : IDisposable
             return;
         }
 
-        var run = new HostRun(++runCounter, seed, self.Role);
+        var run = new HostRun(++runCounter, seed, self.Role, scenario, strat, waymark);
         MultiplayerContext.InvulnGranted = (role, seconds) => run.PendingInvulns.Add(((byte)role, seconds));
         var party = game.World.Party;
         var owners = Enumerable.Repeat(Wire.NoPlayer, Wire.Slots).ToArray();
@@ -285,10 +288,7 @@ internal sealed unsafe class MultiplayerSession : IDisposable
         hostLobby.Remove(player.Id);
         if (hostRun?.Remote.TryGetValue(player.Id, out var remote) == true)
         {
-            remote.Connected = false;
-            remote.Puppet.Member.NetworkDriven = false;
-            remote.Puppet.Member.ResetActionTimeline();
-            MultiplayerContext.ReleaseHuman(remote.Role);
+            HandOverToAi(remote);
             Chat($"{player.Name} 已斷線，該角色改由 AI 接手。");
         }
         else
@@ -331,12 +331,32 @@ internal sealed unsafe class MultiplayerSession : IDisposable
                 entry.Appearance = PlayerAppearance.IsValid(look) ? look : null;
                 break;
             case MessageType.RunFailed when RunFailedDto.TryRead(reader, out var failed):
-                Chat($"{entry.Name} 無法開始場景：{failed.Reason}");
+                if (hostRun is { } failedRun && failed.RunId == failedRun.RunId && failedRun.Remote.TryGetValue(player.Id, out var stuck) && stuck.Connected)
+                {
+                    HandOverToAi(stuck);
+                    Chat($"{entry.Name} 無法開始場景：{failed.Reason}。該角色改由 AI 接手。");
+                }
+                else
+                {
+                    Chat($"{entry.Name} 無法開始場景：{failed.Reason}");
+                }
+                break;
+            case MessageType.RestartRequest when hostRun is { } current && current.Remote.ContainsKey(player.Id):
+                Chat($"{entry.Name} 請求重來，重新開始場景。");
+                HostStartRun(current.Scenario, current.Strat, current.Waymark);
                 break;
             default:
                 Plugin.Log.Warning($"[Multiplayer] Dropped {header.Type} from player #{player.Id}");
                 break;
         }
+    }
+
+    private static void HandOverToAi(RemoteHuman remote)
+    {
+        remote.Connected = false;
+        remote.Puppet.Member.NetworkDriven = false;
+        remote.Puppet.Member.ResetActionTimeline();
+        MultiplayerContext.ReleaseHuman(remote.Role);
     }
 
     private void AssignRole(LobbyEntry entry, byte requested)
@@ -481,6 +501,9 @@ internal sealed unsafe class MultiplayerSession : IDisposable
         ClientRequestedRole = role;
         Net.Client.Send(MessageType.RequestRole, new RoleRequestDto(role).Write, DeliveryMethod.ReliableOrdered);
     }
+
+    public void ClientRequestRestart()
+        => Net.Client.Send(MessageType.RestartRequest, _ => { }, DeliveryMethod.ReliableOrdered);
 
     private void SyncClientConnection()
     {
