@@ -15,11 +15,8 @@ namespace AnoMech.Windows;
 public sealed class HitRangeOverlay : Window
 {
     private const int Segments = 48;
-    // Backing strokes remain visible over bright game effects.
-    // Every edge is drawn three times: a dark backing stroke so it reads over bright VFX, the
-    // bright colour on top, and a translucent fill so the area is visible even when the
-    // outline is behind a particle. Alpha rides the remaining display time so the newest
-    // judgement is the brightest one on screen.
+    // A dark backing stroke keeps the bright outline visible over game effects.
+    // Alpha follows the remaining display time.
     private const float OutlineWidth = 5f;
     private const float BackingWidth = 9f;
     private readonly Plugin plugin;
@@ -70,7 +67,7 @@ public sealed class HitRangeOverlay : Window
                     Ring(draw, coordinates, range.Origin, range.A, colour, backing);
                     break;
                 case HitRangeShape.Ring:
-                    // Only the outer edge is filled; the inner circle marks the safe hole.
+                    // The inner circle marks the safe hole.
                     Ring(draw, coordinates, range.Origin, range.B, colour, backing);
                     Ring(draw, coordinates, range.Origin, range.A, colour, backing);
                     break;

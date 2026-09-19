@@ -34,7 +34,7 @@ public sealed class TopP6AlphaOmegaScenario(bool unlimitedOnly = false) : IScena
     // Actual effects, not cast-end estimates: packets include ~0.3s cast slide.
     private static readonly (float Swing, float Hit)[] AutoAttacks =
         [(10.143f, 10.951f), (13.281f, 14.089f), (44.327f, 45.128f), (47.451f, 48.253f)];
-    // Owner-approved cactbot TOP timeline (not the incomplete local capture):
+    // TC source uses the cactbot TOP timeline beyond its incomplete local capture:
     // Wild Charge 1244.3; swings 1248.4/1251.6; hits 1249.3/1252.5;
     // Cosmo Arrow effect 1258.7. Recheck against the complete gameplay video.
     // https://github.com/OverlayPlugin/cactbot/blob/main/ui/raidboss/data/06-ew/ultimate/the_omega_protocol.txt
