@@ -202,8 +202,8 @@ public class TopP5OmegaAi : IScenarioAi<TopP5OmegaState>
         tethers = tethers.Shuffle().ToList();
         return new RoleList(party,
             [
-                state.HelloWorldTargets[2], state.HelloWorldTargets[3], tethers[0], tethers[1],
-                freeAgents[0], freeAgents[1], freeAgents[2], freeAgents[3]
+                // Keep eight unique roles even when a missed pickup leaves fewer than two tethers.
+                state.HelloWorldTargets[2], state.HelloWorldTargets[3], .. tethers, .. freeAgents
             ]);
     }
 

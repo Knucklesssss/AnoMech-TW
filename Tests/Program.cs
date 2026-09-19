@@ -1,3 +1,4 @@
+OmegaAssignmentChecks.Run();
 PartyListOrderChecks.Run();
 CrossMonitorChecks.Run();
 if (args.Contains("--combat-recast-only")) { CombatRecastChecks.Run(); return; }
