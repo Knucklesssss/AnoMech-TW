@@ -47,8 +47,14 @@ internal sealed class MultiplayerWindow : Window, IDisposable
     {
         var config = Plugin.Config;
         var name = config.MultiplayerName;
+        if (name.Length == 0 && Plugin.ObjectTable.LocalPlayer is { } local)
+        {
+            name = local.Name.TextValue;
+            config.MultiplayerName = name;
+            config.Save();
+        }
         ImGui.SetNextItemWidth(200);
-        if (ImGui.InputTextWithHint("顯示名稱##mpname", "留空＝角色名", ref name, 32))
+        if (ImGui.InputText("顯示名稱##mpname", ref name, 32))
         {
             config.MultiplayerName = name;
             config.Save();

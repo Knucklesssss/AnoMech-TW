@@ -31,7 +31,7 @@ public class Configuration : IPluginConfiguration
 
     public System.Collections.Generic.List<AnoMech.Core.Game.ChainEntry> Chain { get; set; } = [];
 
-    // Empty means the character's own name.
+    // Filled with the character name by the multiplayer window; empty falls back to it.
     public string MultiplayerName { get; set; } = "";
     public bool MultiplayerShareAppearance { get; set; } = true;
 
