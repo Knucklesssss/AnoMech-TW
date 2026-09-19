@@ -41,6 +41,7 @@ internal sealed unsafe class MultiplayerSession : IDisposable
         public bool Ready { get; set; }
         public string Blocker { get; set; } = "";
         public bool CanStart => Blocker.Length == 0;
+        public byte[]? Appearance { get; set; }
     }
 
     private sealed class RemoteHuman(byte role, NetworkPuppet puppet)
@@ -198,9 +199,16 @@ internal sealed unsafe class MultiplayerSession : IDisposable
         var seed = (ulong)Random.Shared.NextInt64();
         var humanMask = hostLobby.Values.Where(e => e.Id != NetProtocol.HostPlayerId).Aggregate(0, (mask, e) => mask | (1 << e.Role));
 
+        var appearances = new byte[]?[Wire.Slots];
+        foreach (var entry in hostLobby.Values)
+            appearances[entry.Role] = entry.Id == NetProtocol.HostPlayerId ? OwnAppearance() : entry.Appearance;
+
         MultiplayerContext.Begin(MultiplayerRole.Host, humanMask, null);
         SimRandom.Reseed(seed, -1);
-        if (!game.StartScenarioNow(scenario, (PartyRole)self.Role, strat, waymark))
+        PlayerAppearance.ForSlots = appearances;
+        var started = game.StartScenarioNow(scenario, (PartyRole)self.Role, strat, waymark);
+        PlayerAppearance.ForSlots = new byte[]?[Wire.Slots];
+        if (!started)
         {
             MultiplayerContext.End();
             Chat("房主這邊無法開始場景（請確認在旅館或住宅室內，且沒有切換到其他副本）。");
@@ -227,7 +235,7 @@ internal sealed unsafe class MultiplayerSession : IDisposable
         Array.Copy(poses, run.LastSent, Wire.Slots);
 
         var start = new StartRunDto(run.RunId, (ushort)scenarioIndex, (byte)strat, (byte)waymark, seed,
-            game.EventTimeScale, game.GodMode, owners, MultiplayerContext.OverridePayload ?? [], poses);
+            game.EventTimeScale, game.GodMode, owners, MultiplayerContext.OverridePayload ?? [], poses, appearances);
         Net.Host!.Broadcast(MessageType.StartRun, start.Write, DeliveryMethod.ReliableOrdered);
         hostRun = run;
         BroadcastLobby();
@@ -318,6 +326,9 @@ internal sealed unsafe class MultiplayerSession : IDisposable
                     markRun.MarkerAcks[marker.Role] = marks.RequestId;
                     markRun.MarkersDirty = true;
                 }
+                break;
+            case MessageType.Appearance when AppearanceDto.TryRead(reader, out var look):
+                entry.Appearance = PlayerAppearance.IsValid(look) ? look : null;
                 break;
             case MessageType.RunFailed when RunFailedDto.TryRead(reader, out var failed):
                 Chat($"{entry.Name} 無法開始場景：{failed.Reason}");
@@ -477,6 +488,7 @@ internal sealed unsafe class MultiplayerSession : IDisposable
         if (state == ClientState.Connected && lastClientState != ClientState.Connected)
         {
             lastSentReady = null;
+            SendAppearance();
             ClientRequestRole(ClientRequestedRole == Wire.NoRole ? (byte)PartyPresets.SkipRoleForJob(LocalJob()) : ClientRequestedRole);
         }
         if (state != ClientState.Connected)
@@ -489,6 +501,7 @@ internal sealed unsafe class MultiplayerSession : IDisposable
 
         var ready = new ReadyDto(ClientReady, StartBlocker());
         if (lastSentReady == ready) return;
+        if (ready.Ready && lastSentReady?.Ready != true) SendAppearance();
         lastSentReady = ready;
         Net.Client.Send(MessageType.SetReady, ready.Write, DeliveryMethod.ReliableOrdered);
     }
@@ -542,7 +555,10 @@ internal sealed unsafe class MultiplayerSession : IDisposable
             SimRandom.Reseed(start.Seed, -1);
             game.EventTimeScale = start.EventTimeScale;
             game.GodMode = start.GodMode;
-            if (!game.StartScenarioNow(game.Scenarios[start.ScenarioIndex], (PartyRole)role, start.Strat, start.Waymark))
+            PlayerAppearance.ForSlots = start.Appearances;
+            var started = game.StartScenarioNow(game.Scenarios[start.ScenarioIndex], (PartyRole)role, start.Strat, start.Waymark);
+            PlayerAppearance.ForSlots = new byte[]?[Wire.Slots];
+            if (!started)
             {
                 MultiplayerContext.End();
                 game.EventTimeScale = previousTimeScale;
@@ -739,7 +755,15 @@ internal sealed unsafe class MultiplayerSession : IDisposable
     private static string Format((ushort Id, ushort Stacks)[] statuses)
         => string.Join(",", statuses.Select(s => s.Stacks > 1 ? $"{s.Id}x{s.Stacks}" : s.Id.ToString()));
 
-    private static string LocalName() => Plugin.ObjectTable.LocalPlayer?.Name.TextValue ?? "玩家";
+    private static string LocalName()
+        => Plugin.Config.MultiplayerName.Trim() is { Length: > 0 } custom
+            ? custom
+            : Plugin.ObjectTable.LocalPlayer?.Name.TextValue ?? "玩家";
+
+    private static byte[]? OwnAppearance() => Plugin.Config.MultiplayerShareAppearance ? PlayerAppearance.Capture() : null;
+
+    private void SendAppearance()
+        => Net.Client.Send(MessageType.Appearance, w => AppearanceDto.Write(w, OwnAppearance()), DeliveryMethod.ReliableOrdered);
 
     private static string StartBlocker()
         => !ZoneSession.CanStartHere() ? "不在旅館或住宅室內"

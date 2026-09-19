@@ -38,8 +38,31 @@ internal sealed class MultiplayerWindow : Window, IDisposable
     public override void Draw()
     {
         if (session.RunStatus.Length > 0) ImGui.TextColored(Good, session.RunStatus);
+        DrawIdentity();
         if (ImGui.CollapsingHeader("建立房間##nethost", ImGuiTreeNodeFlags.DefaultOpen)) DrawHost();
         if (ImGui.CollapsingHeader("加入房間##netjoin", ImGuiTreeNodeFlags.DefaultOpen)) DrawJoin();
+    }
+
+    private void DrawIdentity()
+    {
+        var config = Plugin.Config;
+        var name = config.MultiplayerName;
+        ImGui.SetNextItemWidth(200);
+        if (ImGui.InputTextWithHint("顯示名稱##mpname", "留空＝角色名", ref name, 32))
+        {
+            config.MultiplayerName = name;
+            config.Save();
+        }
+        var share = config.MultiplayerShareAppearance;
+        if (ImGui.Checkbox("同步真人外觀##mpappearance", ref share))
+        {
+            config.MultiplayerShareAppearance = share;
+            config.Save();
+        }
+        ImGui.SameLine();
+        ImGui.TextDisabled("(?)");
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip("開啟後，房內其他人的畫面上你的角色會穿你本人的臉、裝備與武器。\n只送原版外觀（Penumbra／Glamourer 的改造不包含），下次連線或開始場景時生效。\n關閉則顯示預設隊友外觀。");
     }
 
     private static string RoleLabel(byte role) => role < 8 ? RoleLabels[role] : RoleLabels[UnassignedIndex];

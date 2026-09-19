@@ -11,7 +11,7 @@ public static class NetProtocol
     public const uint Magic = 0x414D5031; // "AMP1"
     public const int MaxPlayers = 8;
     public const byte HostPlayerId = 0;
-    public const int MaxPacketBytes = 1200;
+    public const int MaxPacketBytes = 2400;
     public const int MaxNameLength = 32;
     public const int DisconnectTimeoutMs = 5000;
     // LiteNetLib flushes queued sends on its logic thread every UpdateTime; the default 15 ms added that much lag.
@@ -37,6 +37,7 @@ public enum MessageType : byte
     Transform = 16,
     RunFailed = 17,
     Markers = 18,
+    Appearance = 19,
 }
 
 public enum RejectReason : byte

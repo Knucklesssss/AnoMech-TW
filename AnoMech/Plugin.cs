@@ -66,6 +66,8 @@ public sealed class Plugin : IDalamudPlugin
     private PartyListOrderWindow PartyListOrderWindow { get; init; }
     private JobSupportWindow JobSupportWindow { get; init; }
     internal static MultiplayerSession Multiplayer { get; private set; } = null!;
+    internal static ChainRunner Chain { get; private set; } = null!;
+    private ChainWindow ChainWindow { get; init; }
 #if DEBUG
     private DamageDebugWindow DamageDebugWindow { get; init; }
 #endif
@@ -93,6 +95,9 @@ public sealed class Plugin : IDalamudPlugin
         WindowSystem.AddWindow(PartyListOrderWindow);
         JobSupportWindow = new JobSupportWindow();
         WindowSystem.AddWindow(JobSupportWindow);
+        Chain = new ChainRunner(Game, Configuration);
+        ChainWindow = new ChainWindow(this, MainWindow);
+        WindowSystem.AddWindow(ChainWindow);
 #if DEBUG
         DamageDebugWindow = new DamageDebugWindow(this);
         WindowSystem.AddWindow(DamageDebugWindow);
@@ -172,6 +177,7 @@ public sealed class Plugin : IDalamudPlugin
         MultiplayerWindow.Dispose();
         PartyListOrderWindow.Dispose();
         JobSupportWindow.Dispose();
+        ChainWindow.Dispose();
 #if DEBUG
         DamageDebugWindow.Dispose();
 #endif
@@ -190,6 +196,7 @@ public sealed class Plugin : IDalamudPlugin
         if (fw == null) return;
         if (!Multiplayer.Update(fw->FrameDeltaTime))
             Game.Tick(fw->FrameDeltaTime);
+        Chain.Tick(fw->FrameDeltaTime, Multiplayer.RunActive);
     }
 
     private void OnTerritoryChanged(ushort territory)
@@ -382,6 +389,7 @@ public sealed class Plugin : IDalamudPlugin
 
     public void ToggleConfigUi() => ConfigWindow.Toggle();
     public void ToggleMultiplayerUi() => MultiplayerWindow.Toggle();
+    public void ToggleChainUi() => ChainWindow.Toggle();
     public void TogglePartyListOrderUi() => PartyListOrderWindow.Toggle();
     public void ToggleJobSupportUi() => JobSupportWindow.Toggle();
     public void ToggleMainUi() => MainWindow.Toggle();

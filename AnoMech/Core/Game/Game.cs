@@ -62,6 +62,8 @@ public sealed class Game : IDisposable
 
     public IScenario? ActiveScenario => activeScenario;
     private float scenarioElapsed;
+    internal int RunCount { get; private set; }
+    internal bool HadDeath => firstDeathScheduled;
     internal float ScenarioElapsed => scenarioElapsed;
     private bool firstDeathScheduled;
     private bool firstFreezeScheduled;
@@ -189,6 +191,7 @@ public sealed class Game : IDisposable
             TeleportPlayerToSpawnIfOutsideArena();
         ResetSprintCooldown();
         activeScenario = scenario;
+        RunCount++;
         World.StartCombat(zone.Level);
         scenarioElapsed = 0f;
 

@@ -92,6 +92,8 @@ internal static unsafe class PartyCreator
 
         WriteCustomize(chara);
         WriteEquipment(chara, preset, itemSheet);
+        if (PlayerAppearance.ForSlots[(int)role] is { } look && PlayerAppearance.IsValid(look))
+            PlayerAppearance.Apply(chara, look);
         GameObjectHelper.WriteName(gameObj, preset.Name);
         obj->RenderFlags = 0;
 

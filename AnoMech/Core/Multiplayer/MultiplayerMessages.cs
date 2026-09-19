@@ -132,7 +132,8 @@ public sealed record StartRunDto(
     bool GodMode,
     byte[] SlotOwners,
     byte[] OverridePayload,
-    NetPose[] InitialPoses)
+    NetPose[] InitialPoses,
+    byte[]?[] Appearances)
 {
     public void Write(NetDataWriter writer)
     {
@@ -147,6 +148,7 @@ public sealed record StartRunDto(
         writer.Put((ushort)OverridePayload.Length);
         writer.Put(OverridePayload);
         for (var i = 0; i < Wire.Slots; i++) InitialPoses[i].Write(writer);
+        for (var i = 0; i < Wire.Slots; i++) AppearanceDto.Write(writer, Appearances[i]);
     }
 
     public static bool TryRead(NetDataReader reader, out StartRunDto start)
@@ -166,7 +168,33 @@ public sealed record StartRunDto(
         var poses = new NetPose[Wire.Slots];
         for (var i = 0; i < Wire.Slots; i++)
             if (!NetPose.TryRead(reader, out poses[i])) return false;
-        start = new StartRunDto(runId, scenario, strat, waymark, seed, scale, god, owners, payload, poses);
+        var appearances = new byte[]?[Wire.Slots];
+        for (var i = 0; i < Wire.Slots; i++)
+            if (!AppearanceDto.TryRead(reader, out appearances[i])) return false;
+        start = new StartRunDto(runId, scenario, strat, waymark, seed, scale, god, owners, payload, poses, appearances);
+        return true;
+    }
+}
+
+// A player's look as raw bytes (PlayerAppearance owns the layout); empty means "keep the preset look".
+public static class AppearanceDto
+{
+    public const int MaxBytes = 128;
+
+    public static void Write(NetDataWriter writer, byte[]? blob)
+    {
+        var length = blob is null ? 0 : blob.Length;
+        writer.Put((byte)length);
+        if (blob is not null) writer.Put(blob);
+    }
+
+    public static bool TryRead(NetDataReader reader, out byte[]? blob)
+    {
+        blob = null;
+        if (!reader.TryGetByte(out var length) || length > MaxBytes || reader.AvailableBytes < length) return false;
+        if (length == 0) return true;
+        blob = new byte[length];
+        reader.GetBytes(blob, length);
         return true;
     }
 }

@@ -168,11 +168,17 @@ internal static class MultiplayerChecks
     {
         var poses = Enumerable.Range(0, 8).Select(i => new NetPose(new Vector3(i, 0.5f, -i), i * 0.1f)).ToArray();
         byte[] owners = [0, 1, 255, 255, 2, 255, 255, 255];
-        var start = new StartRunDto(3, 5, 1, 0, 0xDEADBEEFCAFEUL, 1f, true, owners, [1, 2, 3], poses);
+        var looks = new byte[]?[Wire.Slots];
+        looks[4] = Enumerable.Range(0, 90).Select(i => (byte)i).ToArray();
+        var start = new StartRunDto(3, 5, 1, 0, 0xDEADBEEFCAFEUL, 1f, true, owners, [1, 2, 3], poses, looks);
         var startBack = RoundTrip(start.Write, (NetDataReader r, out StartRunDto v) => StartRunDto.TryRead(r, out v), "StartRun");
         Check(startBack.Seed == start.Seed && startBack.SlotOwners.SequenceEqual(owners) && startBack.OverridePayload.SequenceEqual(new byte[] { 1, 2, 3 })
               && startBack.InitialPoses.SequenceEqual(poses) && startBack.GodMode, "StartRun fields survive");
-        Check(Rejects(new StartRunDto(3, 5, 1, 0, 1, 1f, false, [0, 9, 255, 255, 255, 255, 255, 255], [], poses).Write,
+        Check(startBack.Appearances[4]!.SequenceEqual(looks[4]!) && startBack.Appearances[0] is null && startBack.Appearances[7] is null,
+            "each slot's appearance survives and slots without one stay empty");
+        Check(Rejects(w => { w.Put((byte)(AppearanceDto.MaxBytes + 1)); }, (NetDataReader r, out int v) => { v = 0; return AppearanceDto.TryRead(r, out _); }),
+            "an oversized appearance is rejected");
+        Check(Rejects(new StartRunDto(3, 5, 1, 0, 1, 1f, false, [0, 9, 255, 255, 255, 255, 255, 255], [], poses, new byte[]?[Wire.Slots]).Write,
             (NetDataReader r, out StartRunDto v) => StartRunDto.TryRead(r, out v)), "StartRun with an out-of-range player id is rejected");
 
         var frame = new TickFrame { Tick = 120, PoseMask = 0b10000001, Markers = Enumerable.Repeat(Wire.NoRole, Wire.MarkerSlots).ToArray() };

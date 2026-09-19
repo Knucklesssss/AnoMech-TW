@@ -13,6 +13,8 @@ public sealed class EventScheduler
     private readonly List<Entry> entries = new();
     private float elapsed;
 
+    public int Count => entries.Count;
+
     public void Add(float offset, Action action)
     {
         var time = elapsed + MathF.Max(0f, offset);

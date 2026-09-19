@@ -29,6 +29,12 @@ public class Configuration : IPluginConfiguration
     // the sim zone leaks back to the server.
     public bool SafeMode { get; set; } = true;
 
+    public System.Collections.Generic.List<AnoMech.Core.Game.ChainEntry> Chain { get; set; } = [];
+
+    // Empty means the character's own name.
+    public string MultiplayerName { get; set; } = "";
+    public bool MultiplayerShareAppearance { get; set; } = true;
+
     // Seconds a multiplayer client plays behind the host (NetworkPlaybackDelay).
     public float MultiplayerPlaybackDelay { get; set; } = 0.05f;
 
