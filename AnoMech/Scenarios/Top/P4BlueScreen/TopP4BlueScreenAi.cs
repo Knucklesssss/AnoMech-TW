@@ -19,13 +19,13 @@ public sealed class TopP4BlueScreenAi(bool moogle = false) : IScenarioAi<TopP4Bl
         ai.Move(0.1f, Spread, jitter: 0.05f);
         ai.Move(15.0f, () => Stack(0, 14.5f), jitter: 0.05f);
         ai.Move(20.0f, ReturnAroundFirstRing, jitter: 0.05f);
-        ai.Move(22.35f, Spread, jitter: 0.05f);
-        ai.Move(25.05f, () => Stack(1, 9f), jitter: 0.05f);
-        ai.Move(26.45f, () => Stack(1, 14.5f), jitter: 0.05f);
-        ai.Move(29.85f, Spread, jitter: 0.05f);
-        ai.Move(35.2f, () => Stack(2, 14.5f), jitter: 0.05f);
-        ai.Move(41.6f, () => Stack(2, 9f), jitter: 0.05f);
-        ai.Move(45.7f, () => AiMove.Create(Enumerable.Repeat<Vector2?>(new(0, 9), 8).ToArray()).NaturalOrder(), jitter: 0.3f);
+        ai.Move(22.4f, Spread, jitter: 0.05f);
+        ai.Move(25.15f, () => Stack(1, 9f), jitter: 0.05f);
+        ai.Move(26.55f, () => Stack(1, 14.5f), jitter: 0.05f);
+        ai.Move(30.1f, Spread, jitter: 0.05f);
+        ai.Move(35.4f, () => Stack(2, 14.5f), jitter: 0.05f);
+        ai.Move(42f, () => Stack(2, 9f), jitter: 0.05f);
+        ai.Move(46.1f, () => AiMove.Create(Enumerable.Repeat<Vector2?>(new(0, 9), 8).ToArray()).NaturalOrder(), jitter: 0.3f);
     }
 
     private IAiMove Spread() => AiMove.Create(Enumerable.Range(0, 8)

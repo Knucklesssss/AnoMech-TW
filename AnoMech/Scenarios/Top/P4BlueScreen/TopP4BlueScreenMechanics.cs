@@ -15,41 +15,44 @@ public sealed class TopP4BlueScreenMechanics(SimWorld world, TopP4BlueScreenStat
     private bool failed;
     public bool? Passed { get; private set; }
 
-    // Relative to P4 becoming targetable (cactbot timeline 607.1).
+    // Relative to P4 becoming targetable; times from the TC 2026-09-16 capture.
     // Visual starts and damage snapshots are distinct; native timings need in-game verification.
     public void Run()
     {
         boss = world.SpawnEnemy(new EnemySpawnConfig(BNpcBaseId.OmegaFinal, BNpcNameId.OmegaFinal,
             Level: Level, Targetable: true, EnemyList: EnemyListMode.Always, ModelCharaId: 3775, Scale: 1.4f,
             HitboxRadius: 12.502f, Placement: new Placement(Vector3.Zero, MathF.PI)));
-        world.Events.Add(9.3f, () => boss?.Cast(ActionId.P4WaveCannonCast, castSeconds: 5f, targetId: boss.GameObjectId));
-        world.Events.Add(11.9f, () => MarkStacks(0));
-        world.Events.Add(14.9f, () => ResolveSpread(0, 4.7f));
-        world.Events.Add(17.3f, () => Visual(ActionId.RapidFireWaveCannon, Vector2.Zero, 5f));
-        world.Events.Add(19.6f, () => ResolveEcho(ActionId.P4WaveCannonVisual2));
-        world.Events.Add(19.9f, () => ResolveStacks(0));
-        world.Events.Add(22.0f, () => MarkStacks(1));
-        world.Events.Add(22.3f, () => ResolveRing(0));
-        world.Events.Add(24.4f, () => ResolveRing(1));
-        world.Events.Add(24.4f, () => boss?.Cast(ActionId.P4WaveCannonVisual2, castSeconds: 0f, targetId: boss.GameObjectId));
-        world.Events.Add(25.0f, () => ResolveSpread(1, 4.5f));
-        world.Events.Add(26.4f, () => ResolveRing(2));
-        world.Events.Add(28.4f, () => ResolveRing(3));
-        world.Events.Add(29.5f, () => ResolveEcho(ActionId.P4WaveCannonVisual1));
-        world.Events.Add(29.7f, () => ResolveStacks(1));
-        world.Events.Add(31.9f, () => MarkStacks(2));
-        world.Events.Add(34.5f, () => boss?.Cast(ActionId.P4WaveCannonVisual3, castSeconds: 0f, targetId: boss.GameObjectId));
-        world.Events.Add(34.5f, () => Visual(ActionId.RapidFireWaveCannon, Vector2.Zero, 5f));
-        world.Events.Add(35.1f, () => ResolveSpread(2, 4.5f));
-        world.Events.Add(39.5f, () => ResolveRing(0));
-        world.Events.Add(39.6f, () => ResolveEcho(ActionId.P4WaveCannonVisual4));
-        world.Events.Add(39.8f, () => ResolveStacks(2));
-        world.Events.Add(41.5f, () => ResolveRing(1));
-        world.Events.Add(43.5f, () => ResolveRing(2));
-        world.Events.Add(45.5f, () => ResolveRing(3));
-        world.Events.Add(46.5f, () => boss?.Cast(ActionId.P4BlueScreen, castSeconds: 8f, targetId: boss.GameObjectId));
-        world.Events.Add(53.5f, () => Visual(ActionId.P4BlueScreenSuccess, Vector2.Zero, 1f));
-        world.Events.Add(55.5f, Finish);
+        world.Events.Add(9.3f, () => boss?.Cast(ActionId.P4WaveCannonCast, castSeconds: 4.7f, targetId: boss.GameObjectId));
+        world.Events.Add(11.84f, () => MarkStacks(0));
+        world.Events.Add(14.36f, () => StartEcho());
+        world.Events.Add(14.90f, () => ResolveSpread(0));
+        world.Events.Add(17.35f, () => Visual(ActionId.RapidFireWaveCannon, Vector2.Zero, 4.7f));
+        world.Events.Add(19.66f, () => ResolveEcho(ActionId.P4WaveCannonVisual2));
+        world.Events.Add(19.84f, () => ResolveStacks(0));
+        world.Events.Add(21.98f, () => MarkStacks(1));
+        world.Events.Add(22.34f, () => ResolveRing(0));
+        world.Events.Add(24.42f, () => ResolveRing(1));
+        world.Events.Add(24.42f, () => boss?.Cast(ActionId.P4WaveCannonVisual2, castSeconds: 0f, targetId: boss.GameObjectId));
+        world.Events.Add(24.55f, () => StartEcho());
+        world.Events.Add(25.09f, () => ResolveSpread(1));
+        world.Events.Add(26.47f, () => ResolveRing(2));
+        world.Events.Add(28.52f, () => ResolveRing(3));
+        world.Events.Add(29.81f, () => ResolveEcho(ActionId.P4WaveCannonVisual1));
+        world.Events.Add(29.99f, () => ResolveStacks(1));
+        world.Events.Add(32.22f, () => MarkStacks(2));
+        world.Events.Add(34.80f, () => boss?.Cast(ActionId.P4WaveCannonVisual3, castSeconds: 0f, targetId: boss.GameObjectId));
+        world.Events.Add(34.80f, () => Visual(ActionId.RapidFireWaveCannon, Vector2.Zero, 4.7f));
+        world.Events.Add(34.80f, () => StartEcho());
+        world.Events.Add(35.34f, () => ResolveSpread(2));
+        world.Events.Add(39.80f, () => ResolveRing(0));
+        world.Events.Add(40.06f, () => ResolveEcho(ActionId.P4WaveCannonVisual4));
+        world.Events.Add(40.24f, () => ResolveStacks(2));
+        world.Events.Add(41.89f, () => ResolveRing(1));
+        world.Events.Add(43.94f, () => ResolveRing(2));
+        world.Events.Add(45.98f, () => ResolveRing(3));
+        world.Events.Add(47.05f, () => boss?.Cast(ActionId.P4BlueScreen, castSeconds: 7.7f, targetId: boss.GameObjectId));
+        world.Events.Add(55.11f, () => Visual(ActionId.P4BlueScreenSuccess, Vector2.Zero, 0.7f));
+        world.Events.Add(57.1f, Finish);
     }
 
     private void MarkStacks(int round)
@@ -60,20 +63,24 @@ public sealed class TopP4BlueScreenMechanics(SimWorld world, TopP4BlueScreenStat
             if (member == null || !member.IsAlive()) continue;
             var helper = Helper(Vector2.Zero);
             helper?.Cast(ActionId.P4StackTarget, castSeconds: 0f, targetId: member.GameObjectId);
-            if (helper != null) world.Events.Add(3f, helper.Despawn);
+            if (helper != null) world.Events.Add(10.5f, helper.Despawn);
         }
     }
 
-    private void ResolveSpread(int round, float echoDelay)
+    private void StartEcho()
+    {
+        echoDirections = Snapshot().Where(p => p != null).Select(p => p!.Value).ToArray();
+        foreach (var direction in echoDirections)
+            Visual(ActionId.P4SpreadRepeat, direction, 5f);
+    }
+
+    private void ResolveSpread(int round)
     {
         var positions = Snapshot();
-        echoDirections = positions.Where(p => p != null).Select(p => p!.Value).ToArray();
-        Fail(TopP4BlueScreenRules.FailedSpreads(positions, echoDirections), $"P4 第 {round + 1} 輪：分散砲重疊");
-        foreach (var direction in echoDirections)
-        {
+        var directions = positions.Where(p => p != null).Select(p => p!.Value).ToArray();
+        Fail(TopP4BlueScreenRules.FailedSpreads(positions, directions), $"P4 第 {round + 1} 輪：分散砲重疊");
+        foreach (var direction in directions)
             Visual(ActionId.P4Spread, direction);
-            Visual(ActionId.P4SpreadRepeat, direction, echoDelay);
-        }
     }
 
     private void ResolveEcho(uint animation)
