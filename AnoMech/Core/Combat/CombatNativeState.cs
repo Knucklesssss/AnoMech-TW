@@ -326,10 +326,10 @@ public sealed unsafe class CombatNativeState : IDisposable
     {
         if (!PlayerMatches) return;
         if (remaining <= 0) { Statuses.Remove((Character*)player, id); return; }
-        if (player->StatusManager.GetStatusIndex(id) < 0)
-            Statuses.AddStatusInit((Character*)player, id, param);
         // Permanent stances show no timer; the client uses -1 like PinnedStatus.
         var duration = double.IsPositiveInfinity(remaining) ? -1f : (float)remaining;
+        if (player->StatusManager.GetStatusIndex(id) < 0)
+            Statuses.AddStatusInit((Character*)player, id, param, duration);
         if (PlayerMatches) Statuses.Apply((Character*)player, id, duration, param, player->GetGameObjectId());
     }
 

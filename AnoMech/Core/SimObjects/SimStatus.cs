@@ -21,7 +21,7 @@ public sealed unsafe class SimStatus : ISimObject
         StatusId = statusId;
         IsActive = true;
         Stacks = stacks;
-        Statuses.AddStatusInit((Character*)target.BattleCharaPtr, statusId, stacks);
+        Statuses.AddStatusInit((Character*)target.BattleCharaPtr, statusId, stacks, duration);
     }
 
     public void Reapply(float duration, int stacks)
