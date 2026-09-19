@@ -10,6 +10,8 @@ public static class Wire
 {
     public const byte NoRole = 255;
     public const byte NoPlayer = 255;
+    // A slot whose owner's own animation is not relayed: the viewer infers run/stand from motion.
+    public const ushort InferTimeline = ushort.MaxValue;
     public const int Slots = 8;
     public const int MarkerSlots = 17;
     public const int MaxStatusesPerMember = 16;
@@ -45,7 +47,10 @@ public readonly record struct NetPose(Vector3 Position, float Rotation)
     }
 }
 
-public readonly record struct LobbyPlayerDto(byte Id, string Name, byte Role, bool Ready, bool CanStart);
+public readonly record struct LobbyPlayerDto(byte Id, string Name, byte Role, bool Ready, string Blocker)
+{
+    public bool CanStart => Blocker.Length == 0;
+}
 
 public sealed record LobbyStateDto(IReadOnlyList<LobbyPlayerDto> Players, bool RunActive)
 {
@@ -58,7 +63,7 @@ public sealed record LobbyStateDto(IReadOnlyList<LobbyPlayerDto> Players, bool R
             writer.Put(p.Name, NetProtocol.MaxNameLength);
             writer.Put(p.Role);
             writer.Put(p.Ready);
-            writer.Put(p.CanStart);
+            writer.Put(p.Blocker, ReadyDto.MaxBlockerLength);
         }
         writer.Put(RunActive);
     }
@@ -72,9 +77,9 @@ public sealed record LobbyStateDto(IReadOnlyList<LobbyPlayerDto> Players, bool R
         {
             if (!reader.TryGetByte(out var id) || id >= NetProtocol.MaxPlayers || !reader.TryGetString(out var name)
                 || !reader.TryGetByte(out var role) || !Wire.ValidRole(role, true)
-                || !reader.TryGetBool(out var ready) || !reader.TryGetBool(out var canStart))
+                || !reader.TryGetBool(out var ready) || !reader.TryGetString(out var blocker))
                 return false;
-            players.Add(new LobbyPlayerDto(id, name ?? "", role, ready, canStart));
+            players.Add(new LobbyPlayerDto(id, name ?? "", role, ready, ReadyDto.Clip(blocker)));
         }
         if (!reader.TryGetBool(out var runActive)) return false;
         state = new LobbyStateDto(players, runActive);
@@ -82,21 +87,26 @@ public sealed record LobbyStateDto(IReadOnlyList<LobbyPlayerDto> Players, bool R
     }
 }
 
-public readonly record struct ReadyDto(bool Ready, bool CanStart)
+// Blocker says why the member cannot start right now (empty when it can), so the host is not left guessing.
+public readonly record struct ReadyDto(bool Ready, string Blocker)
 {
+    public const int MaxBlockerLength = 48;
+
     public void Write(NetDataWriter writer)
     {
         writer.Put(Ready);
-        writer.Put(CanStart);
+        writer.Put(Blocker, MaxBlockerLength);
     }
 
     public static bool TryRead(NetDataReader reader, out ReadyDto ready)
     {
         ready = default;
-        if (!reader.TryGetBool(out var r) || !reader.TryGetBool(out var c)) return false;
-        ready = new ReadyDto(r, c);
+        if (!reader.TryGetBool(out var r) || !reader.TryGetString(out var blocker)) return false;
+        ready = new ReadyDto(r, Clip(blocker));
         return true;
     }
+
+    public static string Clip(string? text) => text is null ? "" : text.Length > MaxBlockerLength ? text[..MaxBlockerLength] : text;
 }
 
 public readonly record struct RoleRequestDto(byte Role)
@@ -203,40 +213,49 @@ public readonly record struct RunFailedDto(uint RunId, string Reason)
     }
 }
 
-public readonly record struct TransformDto(uint RunId, NetPose Pose)
+// Timeline is the base ActionTimeline the sender's own character is playing, so others see
+// its real walk, jump or emote instead of a run inferred from motion.
+public readonly record struct TransformDto(uint RunId, NetPose Pose, ushort Timeline)
 {
     public void Write(NetDataWriter writer)
     {
         writer.Put(RunId);
         Pose.Write(writer);
+        writer.Put(Timeline);
     }
 
     public static bool TryRead(NetDataReader reader, out TransformDto transform)
     {
         transform = default;
-        if (!reader.TryGetUInt(out var runId) || !NetPose.TryRead(reader, out var pose)) return false;
-        transform = new TransformDto(runId, pose);
+        if (!reader.TryGetUInt(out var runId) || !NetPose.TryRead(reader, out var pose) || !reader.TryGetUShort(out var timeline)) return false;
+        transform = new TransformDto(runId, pose, timeline);
         return true;
     }
 }
 
-// A client's hand-placed party signs; the host applies them and its next frame relays them to everyone.
-public sealed record MarkersDto(uint RunId, byte[] Markers)
+// A client's hand-placed party signs. Only the signs in ChangedMask are applied, so two players
+// marking at once do not erase each other; the host echoes RequestId back in its frames.
+public sealed record MarkersDto(uint RunId, uint RequestId, uint ChangedMask, byte[] Markers)
 {
+    public const uint AllSigns = (1u << Wire.MarkerSlots) - 1;
+
     public void Write(NetDataWriter writer)
     {
         writer.Put(RunId);
+        writer.Put(RequestId);
+        writer.Put(ChangedMask);
         for (var i = 0; i < Wire.MarkerSlots; i++) writer.Put(Markers[i]);
     }
 
     public static bool TryRead(NetDataReader reader, out MarkersDto markers)
     {
         markers = null!;
-        if (!reader.TryGetUInt(out var runId)) return false;
+        if (!reader.TryGetUInt(out var runId) || !reader.TryGetUInt(out var requestId)
+            || !reader.TryGetUInt(out var mask) || (mask & ~AllSigns) != 0) return false;
         var slots = new byte[Wire.MarkerSlots];
         for (var i = 0; i < Wire.MarkerSlots; i++)
             if (!reader.TryGetByte(out slots[i]) || !Wire.ValidRole(slots[i], true)) return false;
-        markers = new MarkersDto(runId, slots);
+        markers = new MarkersDto(runId, requestId, mask, slots);
         return true;
     }
 }
@@ -288,6 +307,10 @@ public sealed class TickFrame
     public byte PoseMask { get; set; }
     public NetPose[] Poses { get; } = new NetPose[Wire.Slots];
     public byte[]? Markers { get; set; }
+    // Sent with Markers: per slot, the last marker RequestId from that slot's player the table includes.
+    public uint[] MarkerAcks { get; } = new uint[Wire.Slots];
+    public byte TimelineMask { get; set; }
+    public ushort[] Timelines { get; } = new ushort[Wire.Slots];
     public List<(byte Role, float Seconds)> Invulns { get; } = [];
     public SyncStateDto? Sync { get; set; }
 }
@@ -297,6 +320,7 @@ public static class FrameCodec
     private const byte HasMarkers = 1;
     private const byte HasInvulns = 2;
     private const byte HasSync = 4;
+    private const byte HasTimelines = 8;
 
     public static void WriteBatch(NetDataWriter writer, uint runId, IReadOnlyList<TickFrame> frames)
     {
@@ -319,14 +343,24 @@ public static class FrameCodec
 
     public static void Write(NetDataWriter writer, TickFrame frame)
     {
-        var flags = (byte)((frame.Markers != null ? HasMarkers : 0) | (frame.Invulns.Count > 0 ? HasInvulns : 0) | (frame.Sync != null ? HasSync : 0));
+        var flags = (byte)((frame.Markers != null ? HasMarkers : 0) | (frame.Invulns.Count > 0 ? HasInvulns : 0)
+                           | (frame.Sync != null ? HasSync : 0) | (frame.TimelineMask != 0 ? HasTimelines : 0));
         writer.Put(frame.Tick);
         writer.Put(flags);
         writer.Put(frame.PoseMask);
         for (var slot = 0; slot < Wire.Slots; slot++)
             if ((frame.PoseMask & (1 << slot)) != 0) frame.Poses[slot].Write(writer);
         if (frame.Markers != null)
+        {
             for (var i = 0; i < Wire.MarkerSlots; i++) writer.Put(frame.Markers[i]);
+            for (var i = 0; i < Wire.Slots; i++) writer.Put(frame.MarkerAcks[i]);
+        }
+        if (frame.TimelineMask != 0)
+        {
+            writer.Put(frame.TimelineMask);
+            for (var slot = 0; slot < Wire.Slots; slot++)
+                if ((frame.TimelineMask & (1 << slot)) != 0) writer.Put(frame.Timelines[slot]);
+        }
         if (frame.Invulns.Count > 0)
         {
             var count = Math.Min(frame.Invulns.Count, Wire.MaxInvulnsPerFrame);
@@ -344,7 +378,7 @@ public static class FrameCodec
     {
         frame = null!;
         if (!reader.TryGetUInt(out var tick) || !reader.TryGetByte(out var flags) || !reader.TryGetByte(out var mask)) return false;
-        if ((flags & ~(HasMarkers | HasInvulns | HasSync)) != 0) return false;
+        if ((flags & ~(HasMarkers | HasInvulns | HasSync | HasTimelines)) != 0) return false;
         var result = new TickFrame { Tick = tick, PoseMask = mask };
         for (var slot = 0; slot < Wire.Slots; slot++)
             if ((mask & (1 << slot)) != 0 && !NetPose.TryRead(reader, out result.Poses[slot])) return false;
@@ -354,6 +388,15 @@ public static class FrameCodec
             for (var i = 0; i < Wire.MarkerSlots; i++)
                 if (!reader.TryGetByte(out markers[i]) || !Wire.ValidRole(markers[i], true)) return false;
             result.Markers = markers;
+            for (var i = 0; i < Wire.Slots; i++)
+                if (!reader.TryGetUInt(out result.MarkerAcks[i])) return false;
+        }
+        if ((flags & HasTimelines) != 0)
+        {
+            if (!reader.TryGetByte(out var timelineMask) || timelineMask == 0) return false;
+            result.TimelineMask = timelineMask;
+            for (var slot = 0; slot < Wire.Slots; slot++)
+                if ((timelineMask & (1 << slot)) != 0 && !reader.TryGetUShort(out result.Timelines[slot])) return false;
         }
         if ((flags & HasInvulns) != 0)
         {

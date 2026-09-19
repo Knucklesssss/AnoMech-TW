@@ -22,12 +22,22 @@ internal static class MultiplayerChecks
             MessagesRoundTripAndRejectGarbage();
             PlaybackClockBuffersAndTracks();
             PoseBufferInterpolates();
+            DisconnectedSlotReturnsToAi();
         }
         finally
         {
             MultiplayerContext.End();
         }
-        Console.WriteLine("Multiplayer: deterministic random, host-only scope, overrides, Delta state, messages, playback clock and pose buffer checks passed.");
+        Console.WriteLine("Multiplayer: deterministic random, host-only scope, overrides, Delta state, messages, playback clock, pose buffer and disconnect takeover checks passed.");
+    }
+
+    private static void DisconnectedSlotReturnsToAi()
+    {
+        MultiplayerContext.Begin(MultiplayerRole.Host, 0b0010_0110, null);
+        MultiplayerContext.ReleaseHuman(2);
+        Check(!MultiplayerContext.IsHumanControlled(2), "a disconnected player's slot goes back to AI");
+        Check(MultiplayerContext.IsHumanControlled(1) && MultiplayerContext.IsHumanControlled(5), "other players keep their slots");
+        MultiplayerContext.End();
     }
 
     private static void Check(bool condition, string message)
@@ -169,6 +179,10 @@ internal static class MultiplayerChecks
         frame.Poses[0] = poses[1];
         frame.Poses[7] = poses[6];
         frame.Markers[0] = 3;
+        frame.MarkerAcks[4] = 7;
+        frame.TimelineMask = 0b00010010;
+        frame.Timelines[1] = 25000;
+        frame.Timelines[4] = Wire.InferTimeline;
         frame.Invulns.Add((2, 10f));
         frame.Sync = new SyncStateDto(12.5f, [false, true, false, false, false, false, false, false],
             Enumerable.Range(0, 8).Select(i => i == 1 ? new (ushort, ushort)[] { (409, 1), (3009, 2) } : []).ToArray());
@@ -178,6 +192,10 @@ internal static class MultiplayerChecks
         Check(runId == 9 && frames.Count == 2 && frames[1].Tick == 121 && frames[1].PoseMask == 0, "batch keeps run id and every frame");
         Check(back.Tick == 120 && back.PoseMask == frame.PoseMask && back.Poses[0] == poses[1] && back.Poses[7] == poses[6], "only masked poses are sent and restored");
         Check(back.Markers![0] == 3 && back.Markers[1] == Wire.NoRole && back.Invulns.Single() == (2, 10f), "markers and invulnerability survive");
+        Check(back.MarkerAcks[4] == 7 && back.MarkerAcks[0] == 0, "marker request acks survive");
+        Check(back.TimelineMask == 0b00010010 && back.Timelines[1] == 25000 && back.Timelines[4] == Wire.InferTimeline && back.Timelines[0] == 0,
+            "owner animations survive without an id cap");
+        Check(frames[1].TimelineMask == 0 && frames[1].Markers == null, "a frame without changes carries no animations or markers");
         Check(back.Sync!.Dead[1] && back.Sync.Statuses[1].SequenceEqual(new (ushort, ushort)[] { (409, 1), (3009, 2) }) && back.Sync.ScenarioElapsed == 12.5f, "sync state survives");
 
         var badPose = new TickFrame { Tick = 1, PoseMask = 1 };
@@ -187,17 +205,22 @@ internal static class MultiplayerChecks
         Check(Rejects(w => FrameCodec.WriteBatch(w, 1, [badMarker]), (NetDataReader r, out int v) => { v = 0; return FrameCodec.TryReadBatch(r, out _, out _); }), "a marker on slot 9 is rejected");
         Check(Rejects(w => { w.Put(1u); w.Put((byte)65); }, (NetDataReader r, out int v) => { v = 0; return FrameCodec.TryReadBatch(r, out _, out _); }), "an oversized batch is rejected");
 
-        var transform = RoundTrip(new TransformDto(4, poses[3]).Write, (NetDataReader r, out TransformDto v) => TransformDto.TryRead(r, out v), "Transform");
-        Check(transform == new TransformDto(4, poses[3]), "Transform survives");
+        var transform = RoundTrip(new TransformDto(4, poses[3], 4321).Write, (NetDataReader r, out TransformDto v) => TransformDto.TryRead(r, out v), "Transform");
+        Check(transform == new TransformDto(4, poses[3], 4321), "Transform and its animation survive");
         var marks = Enumerable.Repeat(Wire.NoRole, Wire.MarkerSlots).ToArray();
         marks[5] = 2;
-        var marksBack = RoundTrip(new MarkersDto(4, marks).Write, (NetDataReader r, out MarkersDto v) => MarkersDto.TryRead(r, out v), "Markers");
-        Check(marksBack.RunId == 4 && marksBack.Markers.SequenceEqual(marks), "a client's markers survive");
-        Check(Rejects(new MarkersDto(4, Enumerable.Repeat((byte)8, Wire.MarkerSlots).ToArray()).Write,
+        var marksBack = RoundTrip(new MarkersDto(4, 11, 1u << 5, marks).Write, (NetDataReader r, out MarkersDto v) => MarkersDto.TryRead(r, out v), "Markers");
+        Check(marksBack.RunId == 4 && marksBack.RequestId == 11 && marksBack.ChangedMask == 1u << 5 && marksBack.Markers.SequenceEqual(marks), "a client's marker change survives");
+        Check(Rejects(new MarkersDto(4, 1, 1, Enumerable.Repeat((byte)8, Wire.MarkerSlots).ToArray()).Write,
             (NetDataReader r, out MarkersDto v) => MarkersDto.TryRead(r, out v)), "a client marker on slot 8 is rejected");
-        var lobby = RoundTrip(new LobbyStateDto([new LobbyPlayerDto(0, "房主", 0, true, true), new LobbyPlayerDto(1, "朋友", Wire.NoRole, false, true)], true).Write,
+        Check(Rejects(new MarkersDto(4, 1, 1u << Wire.MarkerSlots, marks).Write,
+            (NetDataReader r, out MarkersDto v) => MarkersDto.TryRead(r, out v)), "a change mask past the last sign is rejected");
+        var ready = RoundTrip(new ReadyDto(true, "忙碌中（Mounted）").Write, (NetDataReader r, out ReadyDto v) => ReadyDto.TryRead(r, out v), "Ready");
+        Check(ready == new ReadyDto(true, "忙碌中（Mounted）"), "the reason a member cannot start survives");
+        var lobby = RoundTrip(new LobbyStateDto([new LobbyPlayerDto(0, "房主", 0, true, ""), new LobbyPlayerDto(1, "朋友", Wire.NoRole, false, "不在旅館或住宅室內")], true).Write,
             (NetDataReader r, out LobbyStateDto v) => LobbyStateDto.TryRead(r, out v), "LobbyState");
-        Check(lobby.RunActive && lobby.Players.Count == 2 && lobby.Players[1] == new LobbyPlayerDto(1, "朋友", Wire.NoRole, false, true), "LobbyState survives");
+        Check(lobby.RunActive && lobby.Players.Count == 2 && lobby.Players[0].CanStart
+              && lobby.Players[1] == new LobbyPlayerDto(1, "朋友", Wire.NoRole, false, "不在旅館或住宅室內") && !lobby.Players[1].CanStart, "LobbyState survives");
         Check(Rejects(new RoleRequestDto(8).Write, (NetDataReader r, out RoleRequestDto v) => RoleRequestDto.TryRead(r, out v)), "role 8 is rejected");
     }
 

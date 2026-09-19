@@ -110,7 +110,7 @@ internal sealed class MultiplayerWindow : Window, IDisposable
             if (entry.Id == NetProtocol.HostPlayerId) continue;
             ImGui.SameLine();
             var rtt = host.Players.FirstOrDefault(p => p.Id == entry.Id)?.RoundTripMs;
-            var place = entry.CanStart ? "在房間內" : "不在旅館／住宅";
+            var place = entry.CanStart ? "可以開始" : entry.Blocker;
             ImGui.TextColored(entry.Ready && entry.CanStart ? Good : Bad, $"{(entry.Ready ? "已準備" : "未準備")}　{place}　RTT {rtt} ms");
         }
         if (host.Players.Count == 0) ImGui.TextDisabled("尚無玩家連入");
@@ -177,7 +177,7 @@ internal sealed class MultiplayerWindow : Window, IDisposable
         foreach (var player in lobby.Players)
         {
             var status = player.Id == NetProtocol.HostPlayerId ? "房主" : player.Ready ? "已準備" : "未準備";
-            ImGui.TextUnformatted($"#{player.Id} {player.Name}　{RoleLabel(player.Role)}　{status}");
+            ImGui.TextUnformatted($"#{player.Id} {player.Name}　{RoleLabel(player.Role)}　{status}{(player.CanStart ? "" : $"　{player.Blocker}")}");
         }
     }
 }

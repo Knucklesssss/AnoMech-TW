@@ -29,6 +29,12 @@ public static class MultiplayerContext
     // Host only: party slots moved by a remote player, which AI must leave alone.
     public static bool IsHumanControlled(int slot) => slot is >= 0 and < 32 && ((humanSlotMask >> slot) & 1) != 0;
 
+    // Host only: a remote player left mid-run, so AI takes the slot over.
+    public static void ReleaseHuman(int slot)
+    {
+        if (slot is >= 0 and < 32) humanSlotMask &= ~(1 << slot);
+    }
+
     public static void Begin(MultiplayerRole role, int humanSlots, byte[]? overridePayload)
     {
         Role = role;

@@ -39,7 +39,8 @@ internal sealed unsafe class MultiplayerSession : IDisposable
         public string Name { get; set; } = "";
         public byte Role { get; set; } = Wire.NoRole;
         public bool Ready { get; set; }
-        public bool CanStart { get; set; }
+        public string Blocker { get; set; } = "";
+        public bool CanStart => Blocker.Length == 0;
     }
 
     private sealed class RemoteHuman(byte role, NetworkPuppet puppet)
@@ -48,12 +49,17 @@ internal sealed unsafe class MultiplayerSession : IDisposable
         public NetworkPuppet Puppet { get; } = puppet;
         public PoseBuffer Buffer { get; } = new();
         public bool Connected { get; set; } = true;
+        public ushort Timeline { get; set; } = Wire.InferTimeline;
     }
 
-    private sealed class HostRun(uint runId, ulong seed)
+    private sealed class HostRun(uint runId, ulong seed, byte hostRole)
     {
         public uint RunId { get; } = runId;
         public ulong Seed { get; } = seed;
+        public byte HostRole { get; } = hostRole;
+        public ushort[] LastTimelines { get; } = Enumerable.Repeat(Wire.InferTimeline, Wire.Slots).ToArray();
+        public uint[] MarkerAcks { get; } = new uint[Wire.Slots];
+        public bool MarkersDirty { get; set; }
         public long Tick { get; set; }
         public double Accumulator { get; set; }
         public float SendTimer { get; set; }
@@ -77,6 +83,8 @@ internal sealed unsafe class MultiplayerSession : IDisposable
         public NetworkPuppet?[] Puppets { get; } = new NetworkPuppet?[Wire.Slots];
         public float SendTimer { get; set; }
         public byte[] LastMarkers { get; set; } = Enumerable.Repeat(Wire.NoRole, Wire.MarkerSlots).ToArray();
+        public uint MarkerRequest { get; set; }
+        public ushort[] Timelines { get; } = Enumerable.Repeat(Wire.InferTimeline, Wire.Slots).ToArray();
         public float PreviousTimeScale { get; init; }
         public bool PreviousGodMode { get; init; }
     }
@@ -85,7 +93,7 @@ internal sealed unsafe class MultiplayerSession : IDisposable
     private readonly Dictionary<byte, LobbyEntry> hostLobby = new();
     private NetHost? attachedHost;
     private ClientState lastClientState = ClientState.Idle;
-    private (bool Ready, bool CanStart)? lastSentReady;
+    private ReadyDto? lastSentReady;
     private HostRun? hostRun;
     private ClientRun? clientRun;
     private uint runCounter;
@@ -163,7 +171,7 @@ internal sealed unsafe class MultiplayerSession : IDisposable
         reason = "";
         if (Net.Host is null) { reason = "尚未建立房間。"; return false; }
         if (scenario.Phase.Zone is not TopZone) { reason = "多人同步目前只支援絕歐米茄（P2～P6）。"; return false; }
-        if (!ZoneSession.CanStartHere() || ZoneSession.IsPlayerBusy()) { reason = "房主必須在旅館或住宅室內，且沒有忙碌。"; return false; }
+        if (StartBlocker() is { Length: > 0 } blocker) { reason = $"房主{blocker}。"; return false; }
         if (!game.World.Map.CanLoad(scenario.Phase.Zone.TerritoryId)) { reason = "房主目前在其他絕本的場地，請先按「離開」。"; return false; }
         if (hostLobby.Count <= 1) { reason = "尚無玩家加入。"; return false; }
         foreach (var entry in hostLobby.Values)
@@ -171,7 +179,7 @@ internal sealed unsafe class MultiplayerSession : IDisposable
             if (entry.Role == Wire.NoRole) { reason = $"{entry.Name} 尚未分配職能。"; return false; }
             if (entry.Id == NetProtocol.HostPlayerId) continue;
             if (!entry.Ready) { reason = $"{entry.Name} 尚未準備。"; return false; }
-            if (!entry.CanStart) { reason = $"{entry.Name} 不在旅館或住宅室內，或正在忙碌。"; return false; }
+            if (!entry.CanStart) { reason = $"{entry.Name}{entry.Blocker}。"; return false; }
         }
         return true;
     }
@@ -199,7 +207,7 @@ internal sealed unsafe class MultiplayerSession : IDisposable
             return;
         }
 
-        var run = new HostRun(++runCounter, seed);
+        var run = new HostRun(++runCounter, seed, self.Role);
         MultiplayerContext.InvulnGranted = (role, seconds) => run.PendingInvulns.Add(((byte)role, seconds));
         var party = game.World.Party;
         var owners = Enumerable.Repeat(Wire.NoPlayer, Wire.Slots).ToArray();
@@ -270,7 +278,10 @@ internal sealed unsafe class MultiplayerSession : IDisposable
         if (hostRun?.Remote.TryGetValue(player.Id, out var remote) == true)
         {
             remote.Connected = false;
-            Chat($"{player.Name} 已斷線，他的角色會停在原地。");
+            remote.Puppet.Member.NetworkDriven = false;
+            remote.Puppet.Member.ResetActionTimeline();
+            MultiplayerContext.ReleaseHuman(remote.Role);
+            Chat($"{player.Name} 已斷線，該角色改由 AI 接手。");
         }
         else
         {
@@ -286,7 +297,7 @@ internal sealed unsafe class MultiplayerSession : IDisposable
         {
             case MessageType.SetReady when ReadyDto.TryRead(reader, out var ready):
                 entry.Ready = ready.Ready;
-                entry.CanStart = ready.CanStart;
+                entry.Blocker = ready.Blocker;
                 BroadcastLobby();
                 break;
             case MessageType.RequestRole when RoleRequestDto.TryRead(reader, out var request):
@@ -295,10 +306,18 @@ internal sealed unsafe class MultiplayerSession : IDisposable
                 break;
             case MessageType.Transform when TransformDto.TryRead(reader, out var transform):
                 if (hostRun is { } run && transform.RunId == run.RunId && run.Remote.TryGetValue(player.Id, out var remote))
+                {
                     remote.Buffer.Add(NetProtocol.NowMs, transform.Pose);
+                    remote.Timeline = transform.Timeline;
+                }
                 break;
             case MessageType.Markers when MarkersDto.TryRead(reader, out var marks):
-                if (hostRun is { } markRun && marks.RunId == markRun.RunId) ApplyMarkers(game.World.Party, marks.Markers);
+                if (hostRun is { } markRun && marks.RunId == markRun.RunId && markRun.Remote.TryGetValue(player.Id, out var marker))
+                {
+                    ApplyMarkers(game.World.Party, marks.Markers, marks.ChangedMask);
+                    markRun.MarkerAcks[marker.Role] = marks.RequestId;
+                    markRun.MarkersDirty = true;
+                }
                 break;
             case MessageType.RunFailed when RunFailedDto.TryRead(reader, out var failed):
                 Chat($"{entry.Name} 無法開始場景：{failed.Reason}");
@@ -330,9 +349,9 @@ internal sealed unsafe class MultiplayerSession : IDisposable
     {
         if (Net.Host is not { } host) return;
         if (hostLobby.TryGetValue(NetProtocol.HostPlayerId, out var self))
-            self.CanStart = ZoneSession.CanStartHere() && !ZoneSession.IsPlayerBusy();
+            self.Blocker = StartBlocker();
         var state = new LobbyStateDto(
-            HostLobby.Select(e => new LobbyPlayerDto(e.Id, e.Name, e.Role, e.Ready, e.CanStart)).ToList(),
+            HostLobby.Select(e => new LobbyPlayerDto(e.Id, e.Name, e.Role, e.Ready, e.Blocker)).ToList(),
             hostRun is not null);
         host.Broadcast(MessageType.LobbyState, state.Write, DeliveryMethod.ReliableOrdered);
     }
@@ -342,7 +361,7 @@ internal sealed unsafe class MultiplayerSession : IDisposable
         var renderTime = NetProtocol.NowMs - RemoteInterpolationMs;
         foreach (var remote in run.Remote.Values)
             if (remote.Connected && remote.Buffer.TrySample(renderTime, RemoteExtrapolationMs, out var pose))
-                remote.Puppet.Apply(pose, deltaSeconds);
+                remote.Puppet.Apply(pose, deltaSeconds, remote.Timeline);
 
         run.Accumulator += deltaSeconds;
         var ran = 0;
@@ -378,15 +397,33 @@ internal sealed unsafe class MultiplayerSession : IDisposable
             run.LastSent[slot] = pose;
         }
         var markers = ReadMarkers(party);
-        if (!markers.SequenceEqual(run.LastMarkers))
+        if (run.MarkersDirty || !markers.SequenceEqual(run.LastMarkers))
         {
             frame.Markers = markers;
+            Array.Copy(run.MarkerAcks, frame.MarkerAcks, Wire.Slots);
             run.LastMarkers = markers;
+            run.MarkersDirty = false;
+        }
+        for (var slot = 0; slot < Wire.Slots; slot++)
+        {
+            var timeline = OwnerTimeline(run, slot);
+            if (timeline == run.LastTimelines[slot]) continue;
+            frame.TimelineMask |= (byte)(1 << slot);
+            frame.Timelines[slot] = timeline;
+            run.LastTimelines[slot] = timeline;
         }
         frame.Invulns.AddRange(run.PendingInvulns);
         if (run.Tick % SyncIntervalTicks == 0) frame.Sync = CaptureSync();
         run.Pending.Add(frame);
         run.Tick++;
+    }
+
+    private static ushort OwnerTimeline(HostRun run, int slot)
+    {
+        if (slot == run.HostRole) return LocalTimeline();
+        foreach (var remote in run.Remote.Values)
+            if (remote.Role == slot && remote.Connected) return remote.Timeline;
+        return Wire.InferTimeline;
     }
 
     private void FlushFrames(HostRun run)
@@ -450,10 +487,10 @@ internal sealed unsafe class MultiplayerSession : IDisposable
         lastClientState = state;
         if (state != ClientState.Connected) return;
 
-        var ready = (ClientReady, ZoneSession.CanStartHere() && !ZoneSession.IsPlayerBusy());
+        var ready = new ReadyDto(ClientReady, StartBlocker());
         if (lastSentReady == ready) return;
         lastSentReady = ready;
-        Net.Client.Send(MessageType.SetReady, new ReadyDto(ready.Item1, ready.Item2).Write, DeliveryMethod.ReliableOrdered);
+        Net.Client.Send(MessageType.SetReady, ready.Write, DeliveryMethod.ReliableOrdered);
     }
 
     private void OnClientMessage(PacketHeader header, NetPacketReader reader)
@@ -496,8 +533,8 @@ internal sealed unsafe class MultiplayerSession : IDisposable
             failure = "雙方插件的場景清單不同，請更新到同一版。";
         else if (role < 0)
             failure = "房主沒有為你分配職能。";
-        else if (!ZoneSession.CanStartHere() || ZoneSession.IsPlayerBusy())
-            failure = "你不在旅館或住宅室內，或正在忙碌。";
+        else if (StartBlocker() is { Length: > 0 } blocker)
+            failure = $"你{blocker}。";
 
         if (failure is null)
         {
@@ -561,31 +598,39 @@ internal sealed unsafe class MultiplayerSession : IDisposable
 
         var alpha = run.Clock.Alpha;
         for (var slot = 0; slot < Wire.Slots; slot++)
-            run.Puppets[slot]?.Apply(PoseBuffer.Lerp(run.VisualPrevious[slot], run.VisualCurrent[slot], alpha), deltaSeconds);
+            run.Puppets[slot]?.Apply(PoseBuffer.Lerp(run.VisualPrevious[slot], run.VisualCurrent[slot], alpha), deltaSeconds, run.Timelines[slot]);
 
         // Signs the player placed by hand; the host relays them. The one-frame priming stamp is not a sign.
         var marks = ReadMarkers(game.World.Party);
         if (!Markings.Priming && !marks.SequenceEqual(run.LastMarkers))
         {
+            var changed = 0u;
+            for (var sign = 0; sign < Wire.MarkerSlots; sign++)
+                if (marks[sign] != run.LastMarkers[sign]) changed |= 1u << sign;
             run.LastMarkers = marks;
-            Net.Client.Send(MessageType.Markers, new MarkersDto(run.RunId, marks).Write, DeliveryMethod.ReliableOrdered);
+            run.MarkerRequest++;
+            Net.Client.Send(MessageType.Markers, new MarkersDto(run.RunId, run.MarkerRequest, changed, marks).Write, DeliveryMethod.ReliableOrdered);
         }
 
         run.SendTimer += deltaSeconds;
         if (run.SendTimer < SendIntervalSeconds || Plugin.ObjectTable.LocalPlayer is not { } local) return;
         run.SendTimer = 0f;
         var pose = new NetPose(game.World.Coordinates.ToLocal(local.Position), local.Rotation);
-        Net.Client.Send(MessageType.Transform, new TransformDto(run.RunId, pose).Write, DeliveryMethod.Sequenced);
+        Net.Client.Send(MessageType.Transform, new TransformDto(run.RunId, pose, LocalTimeline()).Write, DeliveryMethod.Sequenced);
     }
 
     private void RunClientTick(ClientRun run, TickFrame frame)
     {
         var party = game.World.Party;
-        if (frame.Markers is { } markers)
+        // A table that predates our latest sign request would undo it for a round trip ("跳標"),
+        // so it is skipped; the host resends the full table once it has applied the request.
+        if (frame.Markers is { } markers && frame.MarkerAcks[run.Role] >= run.MarkerRequest)
         {
             ApplyMarkers(party, markers);
             run.LastMarkers = ReadMarkers(party); // the host's signs are not echoed back
         }
+        for (var slot = 0; slot < Wire.Slots; slot++)
+            if ((frame.TimelineMask & (1 << slot)) != 0) run.Timelines[slot] = frame.Timelines[slot];
         foreach (var (role, seconds) in frame.Invulns) party.GiveInvuln((PartyRole)role, seconds);
 
         for (var slot = 0; slot < Wire.Slots; slot++)
@@ -673,10 +718,11 @@ internal sealed unsafe class MultiplayerSession : IDisposable
         return markers;
     }
 
-    private static void ApplyMarkers(SimParty party, byte[] markers)
+    private static void ApplyMarkers(SimParty party, byte[] markers, uint signs = MarkersDto.AllSigns)
     {
         for (var sign = 0; sign < Wire.MarkerSlots; sign++)
         {
+            if ((signs & (1u << sign)) == 0) continue;
             if (markers[sign] != Wire.NoRole && party.Get(markers[sign]) is { } member)
                 Markings.Set((Sign)sign, member.GameObjectId);
             else
@@ -694,6 +740,18 @@ internal sealed unsafe class MultiplayerSession : IDisposable
         => string.Join(",", statuses.Select(s => s.Stacks > 1 ? $"{s.Id}x{s.Stacks}" : s.Id.ToString()));
 
     private static string LocalName() => Plugin.ObjectTable.LocalPlayer?.Name.TextValue ?? "玩家";
+
+    private static string StartBlocker()
+        => !ZoneSession.CanStartHere() ? "不在旅館或住宅室內"
+            : ZoneSession.BusyReason() is { } flag ? $"忙碌中（{flag}）" : "";
+
+    // The base animation (walk, run, jump, emote) the real character is playing, relayed so others see it.
+    private static ushort LocalTimeline()
+    {
+        if (Plugin.ObjectTable.LocalPlayer is not { } local) return Wire.InferTimeline;
+        var chara = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)local.Address;
+        return chara->Timeline.TimelineSequencer.Parent == null ? Wire.InferTimeline : chara->Timeline.TimelineSequencer.GetSlotTimeline(0);
+    }
 
     private static uint LocalJob() => Plugin.ObjectTable.LocalPlayer?.ClassJob.RowId ?? 0;
 
