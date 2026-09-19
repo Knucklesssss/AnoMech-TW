@@ -132,6 +132,25 @@ public sealed unsafe class ZoneSession : IDisposable
         return null;
     }
 
+    public static string BusyDescription() => BusyReason() switch
+    {
+        ConditionFlag.WatchingCutscene or ConditionFlag.WatchingCutscene78 or ConditionFlag.OccupiedInCutSceneEvent
+            => "正在播放過場動畫，請等動畫結束。",
+        ConditionFlag.Crafting or ConditionFlag.ExecutingCraftingAction or ConditionFlag.PreparingToCraft
+            => "正在製作，請先結束製作。",
+        ConditionFlag.Gathering or ConditionFlag.ExecutingGatheringAction or ConditionFlag.Fishing
+            => "正在採集或釣魚，請先結束。",
+        ConditionFlag.TradeOpen => "正在交易，請先關閉交易視窗。",
+        ConditionFlag.OccupiedSummoningBell => "正在使用傳喚鈴，請先結束僱員操作。",
+        ConditionFlag.BetweenAreas => "正在切換區域，請等載入完成。",
+        ConditionFlag.LoggingOut => "正在登出，請先取消登出。",
+        ConditionFlag.WaitingForDutyFinder or ConditionFlag.InDutyQueue => "正在等待任務配對，請先退出配對。",
+        ConditionFlag.InCombat => "正在戰鬥，請等戰鬥結束。",
+        ConditionFlag.Mounted => "正在騎乘，請先下坐騎。",
+        null => "",
+        _ => "正在進行事件或其他操作，請先結束對話或關閉互動視窗。",
+    };
+
     // Load the target territory, teleport player to playerSpawn, enable firewall.
     // Firewall is enabled before the zone load (matching Hyperborea's sequence).
     public void Enter(uint territoryId, Vector3 playerSpawn, byte levelSync, ushort itemLevelSync)

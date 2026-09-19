@@ -290,7 +290,7 @@ public unsafe class MainWindow : Window, IDisposable
             ImGui.SetTooltip(!inInn
                 ? "場景只能在旅館、住宅室內、公會工坊或公寓大廳開始。"
                 : busy
-                    ? $"忙碌中無法開始（過場動畫、NPC 事件、製作、交易、區域切換等；目前：{ZoneSession.BusyReason()}）。"
+                    ? ZoneSession.BusyDescription()
                     : !sameZone
                         ? "目前在其他絕本的場地，請先按「離開」回到房間再開始。"
                         : "這個地區目前還沒有可用的戰術。");
@@ -312,7 +312,7 @@ public unsafe class MainWindow : Window, IDisposable
             {
                 ImGui.SetTooltip(!inInn
                     ? "場景只能在旅館、住宅室內、公會工坊或公寓大廳開始。"
-                    : $"忙碌中無法開始（過場動畫、NPC 事件、製作、交易、區域切換等；目前：{ZoneSession.BusyReason()}）。");
+                    : !sameZone ? "目前在其他副本場地，請先離開再開始。" : ZoneSession.BusyDescription());
             }
         }
 

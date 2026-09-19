@@ -790,7 +790,7 @@ internal sealed unsafe class MultiplayerSession : IDisposable
 
     private static string StartBlocker()
         => !ZoneSession.CanStartHere() ? "不在旅館或住宅室內"
-            : ZoneSession.BusyReason() is { } flag ? $"忙碌中（{flag}）" : "";
+            : ZoneSession.BusyDescription();
 
     // The base animation (walk, run, jump, emote) the real character is playing, relayed so others see it.
     private static ushort LocalTimeline()
