@@ -1,3 +1,4 @@
+P2StandardChecks.Run();
 P6OpeningChecks.Run();
 OmegaAssignmentChecks.Run();
 PartyListOrderChecks.Run();
