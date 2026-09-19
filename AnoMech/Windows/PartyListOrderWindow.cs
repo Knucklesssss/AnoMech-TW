@@ -32,7 +32,7 @@ public sealed class PartyListOrderWindow : Window, IDisposable
             configuration.Save();
         }
         if (!enabled) return;
-        ImGui.TextWrapped("調整顯示位置，不改角色分工。模擬期間巨集 <1>～<8> 對應畫面由上到下的隊員；<me>、<mo> 維持原意。原生隊員編號與隊伍快捷鍵不重新編號。");
+        ImGui.TextWrapped("隊員位置、顯示編號與巨集 <1>～<8> 依下方順序排列。例如 D4 排第八位，就顯示為 8 號。<me>、<mo> 維持原意；遊戲內建隊伍選取快捷鍵仍使用原生順序。");
         var order = PartyListOrderRules.Normalize(configuration.PartyListOrder);
         for (var i = 0; i < order.Length; i++)
         {

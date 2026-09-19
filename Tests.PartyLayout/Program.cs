@@ -9,6 +9,7 @@ using FFXIVClientStructs.FFXIV.Component.GUI;
 unsafe
 {
     var nodes = stackalloc AtkResNode[8];
+    var numbers = stackalloc AtkTextNode[8];
     var components = stackalloc Component[8];
     var members = stackalloc Member[8];
     var identities = stackalloc HudMember[8];
@@ -23,6 +24,8 @@ unsafe
         nodes[i] = new AtkResNode { Y = i * 40 };
         components[i].OwnerNode = &nodes[i];
         members[i].PartyMemberComponent = &components[i];
+        numbers[i].SetText((i + 1).ToString());
+        members[i].GroupSlotIndicator = &numbers[i];
         identities[i] = new HudMember { Index = (uint)i, EntityId = (uint)i + 1 };
         characters[i].EntityId = (uint)i + 1;
         party.Members[i] = new SimCharacter { BattleCharaPtr = &characters[i] };
@@ -30,8 +33,13 @@ unsafe
     void Check(bool custom, string stage)
     {
         for (var i = 0; i < 8; i++)
+        {
             if (nodes[i].Y != (custom ? 7 - i : i) * 40)
                 throw new Exception($"{stage}: row {i} jumped to {nodes[i].Y}");
+            var number = System.Text.Encoding.UTF8.GetString(numbers[i].GetText().AsSpan());
+            if (number != (custom ? 8 - i : i + 1).ToString())
+                throw new Exception($"{stage}: displayed number {number} does not match the row.");
+        }
     }
     void Fire(AddonEvent evt) => Plugin.AddonLifecycle.Fire(evt);
     using (var layout = new PartyListLayout())
@@ -81,6 +89,14 @@ unsafe
         Plugin.Config.CustomPartyListOrder = true;
         Fire(AddonEvent.PostUpdate);
         Check(true, "Re-enable");
+        // Native slot zero is the local player; give that actor the D4 role.
+        (party.Members[0], party.Members[7]) = (party.Members[7], party.Members[0]);
+        Plugin.Config.PartyListOrder = Enum.GetValues<PartyRole>();
+        Fire(AddonEvent.PreDraw);
+        if (nodes[0].Y != 7 * 40 ||
+            System.Text.Encoding.UTF8.GetString(numbers[0].GetText().AsSpan()) != "8" ||
+            layout.ResolveNumberedTarget("<8>"u8) != (nint)(&characters[0]))
+            throw new Exception("Local D4 must occupy row 8, display 8 and resolve as <8>.");
         layout.Clear();
         Check(false, "Leaving simulation restores native order");
         if (layout.ResolveNumberedTarget("<1>"u8) != 0) throw new Exception("Leaving must restore native targeting.");
@@ -142,6 +158,26 @@ namespace AnoMech.Core.SimObjects
 }
 namespace FFXIVClientStructs.FFXIV.Component.GUI
 {
+    public unsafe struct TextPointer
+    {
+        public byte* Value;
+        public ReadOnlySpan<byte> AsSpan()
+        {
+            var length = 0;
+            while (Value[length] != 0) length++;
+            return new(Value, length);
+        }
+    }
+    public unsafe struct AtkTextNode
+    {
+        private fixed byte text[16];
+        public TextPointer GetText() { fixed (byte* p = text) return new() { Value = p }; }
+        public void SetText(string value) => SetText(System.Text.Encoding.UTF8.GetBytes(value));
+        public void SetText(ReadOnlySpan<byte> value)
+        {
+            fixed (byte* p = text) { value.CopyTo(new Span<byte>(p, 15)); p[value.Length] = 0; }
+        }
+    }
     public unsafe struct AtkResNode
     {
         public float X, Y;
@@ -152,7 +188,7 @@ namespace FFXIVClientStructs.FFXIV.Component.GUI
 namespace FFXIVClientStructs.FFXIV.Client.UI
 {
     public unsafe struct Component { public AtkResNode* OwnerNode; }
-    public unsafe struct Member { public Component* PartyMemberComponent; }
+    public unsafe struct Member { public Component* PartyMemberComponent; public AtkTextNode* GroupSlotIndicator; }
     public unsafe struct AddonPartyList
     {
         public int MemberCount;

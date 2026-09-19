@@ -21,6 +21,8 @@ internal sealed unsafe class PartyListLayout : IDisposable
     private readonly Vector2[] positions = new Vector2[11];
     private bool applied;
     private readonly uint[] displayedIds = new uint[8];
+    private readonly nint[] numberNodes = new nint[8];
+    private readonly byte[][] originalNumbers = new byte[8][];
 
     public PartyListLayout()
     {
@@ -112,6 +114,13 @@ internal sealed unsafe class PartyListLayout : IDisposable
         {
             ((AtkResNode*)nodes[i])->SetPositionFloat(destinations[mapping[i]].X, destinations[mapping[i]].Y);
             displayedIds[mapping[i]] = rowIds[i];
+            var number = addon->PartyMembers[i].GroupSlotIndicator;
+            numberNodes[i] = (nint)number;
+            if (number != null)
+            {
+                originalNumbers[i] = number->GetText().AsSpan().ToArray();
+                number->SetText((mapping[i] + 1).ToString());
+            }
         }
 
         var selfRow = hud->PartyMembers[0].Index;
@@ -137,7 +146,15 @@ internal sealed unsafe class PartyListLayout : IDisposable
             {
                 var node = NodeAt(addon, i);
                 if (node != null && (nint)node == nodes[i])
+                {
                     node->SetPositionFloat(positions[i].X, positions[i].Y);
+                    if (i < 8)
+                    {
+                        var number = addon->PartyMembers[i].GroupSlotIndicator;
+                        if (number != null && (nint)number == numberNodes[i])
+                            number->SetText(originalNumbers[i]);
+                    }
+                }
             }
         applied = false;
     }
