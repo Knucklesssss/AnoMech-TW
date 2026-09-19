@@ -113,7 +113,7 @@ public unsafe class MainWindow : Window, IDisposable
         if (inInstance != _wasInInstance)
         {
             IsOpen = true;
-            Collapsed = inInstance;
+            Collapsed = inInstance && !plugin.Configuration.CompactSimulationControls;
             CollapsedCondition = ImGuiCond.Always;
         }
         else
@@ -126,6 +126,23 @@ public unsafe class MainWindow : Window, IDisposable
 
     public override void Draw()
     {
+        if (plugin.Game.World.Map.IsInInstance && plugin.Configuration.CompactSimulationControls)
+        {
+            if (ImGui.BeginCombo("##compactscene", _selectedScenario is { } selected ? DisplayName(selected) : "選擇場景"))
+            {
+                foreach (var scenario in plugin.Game.Scenarios)
+                    if (ImGui.Selectable(FullName(scenario), scenario == _selectedScenario)) SelectScenario(scenario);
+                ImGui.EndCombo();
+            }
+            ImGui.SameLine();
+            if (ImGui.SmallButton("完整面板"))
+            {
+                plugin.Configuration.CompactSimulationControls = false;
+                plugin.Configuration.Save();
+            }
+            DrawMainContent(compact: true);
+            return;
+        }
         var leftWidth = _leftPanelOpen ? ScenarioPanelWidth() : 30f;
 
         if (ImGui.BeginTable("##layout", 2, ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.SizingFixedFit))
@@ -241,7 +258,7 @@ public unsafe class MainWindow : Window, IDisposable
         return groups;
     }
 
-    private void DrawMainContent()
+    private void DrawMainContent(bool compact = false)
     {
         if (_selectedScenario == null)
         {
@@ -269,7 +286,7 @@ public unsafe class MainWindow : Window, IDisposable
             DrawMultiplayerHostControls(game, multiplayer);
         else
             DrawLocalControls(game);
-        DrawAfterControls(game);
+        if (!compact) DrawAfterControls(game);
     }
 
     private void DrawLocalControls(AnoMech.Core.Game.Game game)

@@ -40,6 +40,13 @@ public class ConfigWindow : Window, IDisposable
 
         ImGui.Separator();
 
+        var compact = configuration.CompactSimulationControls;
+        if (ImGui.Checkbox("模擬中使用精簡面板##compactcontrols", ref compact))
+        {
+            configuration.CompactSimulationControls = compact;
+            configuration.Save();
+        }
+
         var logging = configuration.EnableEventLogging;
         if (ImGui.Checkbox("啟用事件記錄##eventlog", ref logging))
         {
