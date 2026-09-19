@@ -25,13 +25,14 @@ public sealed class TopP5OmegaScenario : IScenario
     public void DrawSettings() => settingsWindow.Draw();
     private readonly TopP5OmegaSettingsWindow settingsWindow = new();
 
-    public IReadOnlyList<IScenarioAi> AiStrats => [new TopP5OmegaAi(), new TopP5OmegaMoogleAi()];
+    public IReadOnlyList<IScenarioAi> AiStrats => [new TopP5OmegaAi(), new TopP5OmegaMoogleAi(), new TopP5OmegaSecondTargetAi()];
 
     public void Run(SimWorld worldParam, int? selectedAi)
     {
         world = worldParam;
         party = worldParam.Party;
-        state = new TopP5OmegaState(world.Party, MultiplayerOverrides.Resolve(settingsWindow.Overrides));
+        state = new TopP5OmegaState(world.Party, MultiplayerOverrides.Resolve(settingsWindow.Overrides),
+            selectedAi == 2);
         var solo = selectedAi is null;
         ScenarioAiRunner.Run(AiStrats, selectedAi, state, world);
 

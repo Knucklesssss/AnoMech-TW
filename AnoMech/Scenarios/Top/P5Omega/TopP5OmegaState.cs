@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using AnoMech.Core.SimObjects;
 
 namespace AnoMech.Scenarios.Top.P5Omega;
@@ -25,7 +26,7 @@ public sealed class TopP5OmegaState
 
     public MarkerMode Markers { get; }
 
-    public TopP5OmegaState(SimParty party, TopP5OmegaStateOverrides overrides)
+    public TopP5OmegaState(SimParty party, TopP5OmegaStateOverrides overrides, bool secondTargetDouble = false)
     {
         Markers = overrides.Markers;
         var firstAttackDirection = rng.NextIntercardinal();
@@ -72,6 +73,17 @@ public sealed class TopP5OmegaState
             if (overrides is { SecondFAttack: not null, SecondMAttack: not null }) break;
         }
         OmegaAttacks = [firstFAttack, firstMAttack, secondFAttack, secondMAttack];
+        // Prepare shared state before host-only AI so multiplayer peers use the same board.
+        if (secondTargetDouble && !HelloWorldTargets.List.Skip(2).Any(DoubleDynamicTargets.Contains))
+        {
+            var targets = HelloWorldTargets.List.Skip(2)
+                .Where(r => overrides.ExtraDynamis != false || r != party.PlayerRole).ToArray();
+            var doubles = DoubleDynamicTargets.List;
+            var replaceable = doubles.Select((role, index) => (role, index))
+                .Where(x => overrides.ExtraDynamis != true || x.role != party.PlayerRole).ToArray();
+            doubles[replaceable[rng.NextInt(replaceable.Length)].index] = targets[rng.NextInt(targets.Length)];
+            DoubleDynamicTargets = new RoleList(party, doubles);
+        }
     }
 
     private OmegaAttack RandomFAttack() => rng.NextObj(OmegaAttack.Legs, OmegaAttack.Staff);

@@ -13,6 +13,18 @@ internal static class OmegaAssignmentChecks
 
     public static void Run()
     {
+        for (var seed = 0; seed < 100; seed++)
+        foreach (var extra in new bool?[] { null, false, true })
+        {
+            var world = new SimWorld();
+            AnoMech.Core.Game.SimRandom.Reseed((ulong)seed, 0);
+            var state = new TopP5OmegaState(world.Party, new() { ExtraDynamis = extra }, true);
+            if (!state.HelloWorldTargets.List.Skip(2).Any(state.DoubleDynamicTargets.Contains) ||
+                state.DoubleDynamicTargets.List.Distinct().Count() != 4 ||
+                (extra is { } expected && state.DoubleDynamicTargets.Contains(world.Party.PlayerRole) != expected))
+                throw new Exception("Second-target variant broke its overlap or player override.");
+        }
+        AnoMech.Core.Game.SimRandom.Disable();
         for (var mask = 0; mask < 256; mask++)
         {
             var world = new SimWorld();
