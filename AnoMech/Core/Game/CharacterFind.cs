@@ -252,6 +252,22 @@ public sealed class CharacterFind<T> where T : IPositioned
             _ =>
                 LogUnknownCastType(actionId, action.CastType),
         };
+        if (HitRangeDebug.Enabled && HitRangeDebug.NextLabel.Length > 0 && typeof(T) == typeof(SimCharacter))
+        {
+            var shape = action.CastType switch
+            {
+                2 or 5 or 6 => (HitRangeShape.Circle, range, 0f),
+                3 or 13 => (HitRangeShape.Cone, size ?? MathF.PI / 6f, range),
+                8 => (HitRangeShape.Rect, halfWidth, size ?? 100f),
+                4 or 12 => (HitRangeShape.Rect, halfWidth, range),
+                10 => (HitRangeShape.Ring, size ?? 0f, range),
+                11 => (HitRangeShape.Cross, halfWidth, range),
+                _ => ((HitRangeShape)(-1), 0f, 0f),
+            };
+            if ((int)shape.Item1 >= 0)
+                HitRangeDebug.Record(shape.Item1, forward.Position, forward.Rotation,
+                    shape.Item2, shape.Item3, hits.Any(member => member is SimPlayer));
+        }
         return SortByDistanceTo(hits, target.Position);
     }
 

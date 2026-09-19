@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../AnoMech/Core/Game/HitRangeDebug.cs" />
     <Compile Include="../AnoMech/Scenarios/Top/TopP6CosmoArrow.cs" />
     <Compile Include="../AnoMech/Scenarios/Top/P6AlphaOmega/TopP6AutoAttackTargets.cs" />
     <Compile Include="../AnoMech/Core/Combat/CombatTiming.cs" />

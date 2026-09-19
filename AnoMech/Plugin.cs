@@ -90,6 +90,7 @@ public sealed class Plugin : IDalamudPlugin
 
         WindowSystem.AddWindow(ConfigWindow);
         WindowSystem.AddWindow(MainWindow);
+        WindowSystem.AddWindow(new HitRangeOverlay(this));
         WindowSystem.AddWindow(MultiplayerWindow);
         PartyListOrderWindow = new PartyListOrderWindow(this);
         WindowSystem.AddWindow(PartyListOrderWindow);

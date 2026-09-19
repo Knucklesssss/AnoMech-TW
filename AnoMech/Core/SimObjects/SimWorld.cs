@@ -179,6 +179,7 @@ public sealed class SimWorld : ISimObject, IDisposable
 
     public void Despawn()
     {
+        HitRangeDebug.Clear();
         Combat?.Dispose();
         children.Despawn();
         Party = SimParty.Empty;

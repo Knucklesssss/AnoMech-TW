@@ -47,6 +47,14 @@ public class ConfigWindow : Window, IDisposable
             configuration.Save();
         }
 
+        var ranges = configuration.ShowHitRanges;
+        if (ImGui.Checkbox("顯示通用傷害判定範圍（命中後）##hitranges", ref ranges))
+        {
+            configuration.ShowHitRanges = ranges;
+            configuration.Save();
+        }
+        ImGui.TextDisabled("顯示兩秒；不含各場景自行計算的塔、連線等判定。");
+
         var logging = configuration.EnableEventLogging;
         if (ImGui.Checkbox("啟用事件記錄##eventlog", ref logging))
         {

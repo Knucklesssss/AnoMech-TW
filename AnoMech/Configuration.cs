@@ -12,6 +12,7 @@ public class Configuration : IPluginConfiguration
     public bool OpenSimMenuOnInn { get; set; } = true;
     public bool OpenSimMenuOnSupportedInstanceSolo { get; set; } = false;
     public bool EnableEventLogging { get; set; } = false;
+    public bool ShowHitRanges { get; set; } = false;
     public bool CompactSimulationControls { get; set; } = false;
     public bool SuppressBgm { get; set; } = true;
     public bool CustomPartyListOrder { get; set; }

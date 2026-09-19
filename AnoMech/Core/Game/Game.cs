@@ -230,6 +230,7 @@ public sealed class Game : IDisposable
 
     public void Tick(float deltaSeconds)
     {
+        HitRangeDebug.Tick(deltaSeconds);
         if (Paused) return;
         Events.Tick(deltaSeconds * EventTimeScale);
         World.Tick(deltaSeconds);

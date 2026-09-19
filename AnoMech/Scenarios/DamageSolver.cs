@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using AnoMech.Core;
@@ -38,7 +38,10 @@ public class DamageSolver
 #if DEBUG
         AnoMech.Windows.DamageDebugWindow.Instance?.Record(query);
 #endif
-        var targets = query.Run(party.Find);
+        IReadOnlyList<SimCharacter> targets;
+        if (HitRangeDebug.Enabled) HitRangeDebug.NextLabel = ActionLookup.Name(actionId);
+        try { targets = query.Run(party.Find); }
+        finally { HitRangeDebug.NextLabel = ""; }
         List<SimCharacter> deadTargets = [];
         if (excludeTargets is { Length: > 0 })
             targets = targets.Where(t => !excludeTargets.Contains(t)).ToList();
