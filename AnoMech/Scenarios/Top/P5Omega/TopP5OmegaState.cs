@@ -26,7 +26,7 @@ public sealed class TopP5OmegaState
 
     public MarkerMode Markers { get; }
 
-    public TopP5OmegaState(SimParty party, TopP5OmegaStateOverrides overrides, bool secondTargetDouble = false)
+    public TopP5OmegaState(SimParty party, TopP5OmegaStateOverrides overrides, int? strategyIndex = null)
     {
         Markers = overrides.Markers;
         var firstAttackDirection = rng.NextIntercardinal();
@@ -74,7 +74,8 @@ public sealed class TopP5OmegaState
         }
         OmegaAttacks = [firstFAttack, firstMAttack, secondFAttack, secondMAttack];
         // Prepare shared state before host-only AI so multiplayer peers use the same board.
-        if (secondTargetDouble && !HelloWorldTargets.List.Skip(2).Any(DoubleDynamicTargets.Contains))
+        // Strategy order: Standard, Moogle, Standard second-target variant.
+        if (strategyIndex is 1 or 2 && !HelloWorldTargets.List.Skip(2).Any(DoubleDynamicTargets.Contains))
         {
             var targets = HelloWorldTargets.List.Skip(2)
                 .Where(r => overrides.ExtraDynamis != false || r != party.PlayerRole).ToArray();

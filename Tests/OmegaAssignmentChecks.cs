@@ -13,17 +13,21 @@ internal static class OmegaAssignmentChecks
 
     public static void Run()
     {
+        foreach (var strategyIndex in new[] { 1, 2 })
         for (var seed = 0; seed < 100; seed++)
         foreach (var extra in new bool?[] { null, false, true })
+        foreach (var orderOption in Enum.GetValues<HelloWorldOrderOption>())
+        foreach (var typeOption in Enum.GetValues<HelloWorldTypeOption>())
         {
             var world = new SimWorld();
             AnoMech.Core.Game.SimRandom.Reseed((ulong)seed, 0);
-            var state = new TopP5OmegaState(world.Party, new() { ExtraDynamis = extra }, true);
+            var state = new TopP5OmegaState(world.Party, new() { ExtraDynamis = extra, HelloWorldOrder = orderOption, HelloWorldType = typeOption }, strategyIndex);
             if (!state.HelloWorldTargets.List.Skip(2).Any(state.DoubleDynamicTargets.Contains) ||
                 state.DoubleDynamicTargets.List.Distinct().Count() != 4 ||
                 (extra is { } expected && state.DoubleDynamicTargets.Contains(world.Party.PlayerRole) != expected))
-                throw new Exception("Second-target variant broke its overlap or player override.");
+                throw new Exception($"Omega strategy {strategyIndex}, seed {seed}: missing two-stack second target or invalid player override.");
         }
+        Console.WriteLine("PASS: Moogle and second-target Omega require a two-stack second target across 9000 seeds/settings combinations.");
         AnoMech.Core.Game.SimRandom.Disable();
         for (var mask = 0; mask < 256; mask++)
         {
