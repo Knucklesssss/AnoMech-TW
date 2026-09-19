@@ -19,7 +19,13 @@ internal sealed unsafe class PartyHud
 {
     private readonly PartyListLayout layout = new();
 
-    public void Dispose() => layout.Dispose();
+    private readonly AnoMech.Core.Native.PartyPlaceholderHook placeholders;
+    public PartyHud() => placeholders = new(layout);
+    public void Dispose()
+    {
+        placeholders.Dispose();
+        layout.Dispose();
+    }
     private const int MaxSlots = 8;
 
     // Snapshot of real MainGroup taken on the first Refresh of a sim run, restored

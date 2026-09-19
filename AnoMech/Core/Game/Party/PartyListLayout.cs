@@ -20,6 +20,7 @@ internal sealed unsafe class PartyListLayout : IDisposable
     private readonly nint[] nodes = new nint[11];
     private readonly Vector2[] positions = new Vector2[11];
     private bool applied;
+    private readonly uint[] displayedIds = new uint[8];
 
     public PartyListLayout()
     {
@@ -27,6 +28,21 @@ internal sealed unsafe class PartyListLayout : IDisposable
         Plugin.AddonLifecycle.RegisterListener(AddonEvent.PostUpdate, AddonName, ApplyLayout);
         Plugin.AddonLifecycle.RegisterListener(AddonEvent.PreDraw, AddonName, ApplyLayout);
         Plugin.AddonLifecycle.RegisterListener(AddonEvent.PreFinalize, AddonName, RestoreBeforeUpdate);
+    }
+
+    internal nint ResolveNumberedTarget(ReadOnlySpan<byte> placeholder)
+    {
+        if (!applied || party == null || !Plugin.Config.CustomPartyListOrder ||
+            placeholder.Length != 3 || placeholder[0] != '<' || placeholder[2] != '>' ||
+            placeholder[1] < '1' || placeholder[1] > '8') return 0;
+        var id = displayedIds[placeholder[1] - '1'];
+        for (var i = 0; i < 8; i++)
+        {
+            var member = party.Get(i);
+            if (member != null && member.BattleCharaPtr != null && member.BattleCharaPtr->EntityId == id)
+                return (nint)member.BattleCharaPtr;
+        }
+        return 0;
     }
 
     public void Refresh(SimParty current) => party = current;
@@ -93,7 +109,10 @@ internal sealed unsafe class PartyListLayout : IDisposable
         savedAddon = (nint)addon;
         applied = true;
         for (var i = 0; i < 8; i++)
+        {
             ((AtkResNode*)nodes[i])->SetPositionFloat(destinations[mapping[i]].X, destinations[mapping[i]].Y);
+            displayedIds[mapping[i]] = rowIds[i];
+        }
 
         var selfRow = hud->PartyMembers[0].Index;
         var selfDelta = destinations[mapping[selfRow]] - positions[selfRow];

@@ -39,6 +39,23 @@ unsafe
         layout.Refresh(party);
         Fire(AddonEvent.PreDraw);
         Check(true, "Initial custom order");
+        for (var row = 0; row < 8; row++)
+        {
+            var token = System.Text.Encoding.UTF8.GetBytes($"<{row + 1}>");
+            if (layout.ResolveNumberedTarget(token) != (nint)(&characters[7 - row]))
+                throw new Exception($"Macro {row + 1} must follow the displayed row, not the original slot.");
+        }
+        foreach (var token in new[] { "<me>", "<mo>", "<t>", "<0>", "<9>", "<10>", "1", "<1>extra", "" })
+            if (layout.ResolveNumberedTarget(System.Text.Encoding.UTF8.GetBytes(token)) != 0)
+                throw new Exception($"Must leave {token} to the native resolver.");
+        var order = Plugin.Config.PartyListOrder;
+        (order[0], order[1]) = (order[1], order[0]);
+        Fire(AddonEvent.PreDraw);
+        if (layout.ResolveNumberedTarget("<1>"u8) != (nint)(&characters[6]) ||
+            layout.ResolveNumberedTarget("<2>"u8) != (nint)(&characters[7]))
+            throw new Exception("Changing the displayed order must update numeric macro targets.");
+        (order[0], order[1]) = (order[1], order[0]);
+        Fire(AddonEvent.PreDraw);
         for (var frame = 0; frame < 20; frame++)
         {
             Fire(AddonEvent.PreRequestedUpdate);
@@ -60,14 +77,16 @@ unsafe
         Plugin.Config.CustomPartyListOrder = false;
         Fire(AddonEvent.PostUpdate);
         Check(false, "Disable restores native order");
+        if (layout.ResolveNumberedTarget("<1>"u8) != 0) throw new Exception("Disabled layout must use native targeting.");
         Plugin.Config.CustomPartyListOrder = true;
         Fire(AddonEvent.PostUpdate);
         Check(true, "Re-enable");
         layout.Clear();
         Check(false, "Leaving simulation restores native order");
+        if (layout.ResolveNumberedTarget("<1>"u8) != 0) throw new Exception("Leaving must restore native targeting.");
     }
     if (Plugin.AddonLifecycle.ListenerCount != 0) throw new Exception("Leaked addon listeners");
-    Console.WriteLine("PASS: party layout stays custom across debuff/cast updates and restores on exit.");
+    Console.WriteLine("PASS: party layout and numeric macro targets follow displayed order, preserve other tokens and restore on exit.");
 }
 
 // Only the live-game boundary is substituted; the layout and event handlers above
