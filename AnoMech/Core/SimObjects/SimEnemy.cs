@@ -71,14 +71,25 @@ public sealed unsafe class SimEnemy : SimNpc
     // refreshes it on rename. Falls back to the spawn-time name mid-despawn.
     private readonly string displayName;
 
+    // The engine's own resolver returns a broken SeString (a '<' placeholder, shown as "Ps=F")
+    // for some TC rows, so the sheet's text wins when the row has one.
+    private static string? CanonicalName(uint nameId)
+    {
+        if (nameId == 0 || !Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.BNpcName>().TryGetRow(nameId, out var row))
+            return null;
+        var name = row.Singular.ExtractText();
+        return string.IsNullOrWhiteSpace(name) || name.StartsWith("_rsv_", System.StringComparison.Ordinal) ? null : name;
+    }
+
     public string DisplayName
     {
         get
         {
             var chara = BattleCharaPtr;
             if (chara == null) return displayName;
+            if (CanonicalName(chara->NameId) is { } canonical) return canonical;
             var name = ((GameObject*)chara)->GetName().ToString();
-            return string.IsNullOrEmpty(name) ? displayName : name;
+            return string.IsNullOrEmpty(name) || name.Contains('<') ? displayName : name;
         }
     }
 
@@ -176,8 +187,8 @@ public sealed unsafe class SimEnemy : SimNpc
 
         // Engine-resolved name (vfunc 6), same source as the nameplate, so the Name[]
         // buffer we stamp below stays consistent with the rest of the UI.
-        var displayName = gameObj->GetName().ToString();
-        if (string.IsNullOrEmpty(displayName)) displayName = $"BNpc {config.BNpcBaseId:X}";
+        var displayName = CanonicalName(chara->NameId) ?? gameObj->GetName().ToString();
+        if (string.IsNullOrEmpty(displayName) || displayName.Contains('<')) displayName = $"BNpc {config.BNpcBaseId:X}";
         GameObjectHelper.WriteName(gameObj, displayName);
         obj->RenderFlags = 0;
 
