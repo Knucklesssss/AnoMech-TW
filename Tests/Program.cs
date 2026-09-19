@@ -1,3 +1,4 @@
+P6OpeningChecks.Run();
 OmegaAssignmentChecks.Run();
 PartyListOrderChecks.Run();
 CrossMonitorChecks.Run();

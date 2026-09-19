@@ -83,7 +83,9 @@ public sealed class Game : IDisposable
             new TopP5SigmaScenario(),
             new TopP5OmegaScenario(),
             new TopP6WaveCannon2Scenario(),
-            new UltimatePredationScenario()
+            new UltimatePredationScenario(),
+            new AnoMech.Scenarios.Top.P6AlphaOmega.TopP6AlphaOmegaScenario(),
+            new AnoMech.Scenarios.Top.P6AlphaOmega.TopP6AlphaOmegaScenario(unlimitedOnly: true)
         };
 
         // Derive the zone tree from the flat registry (first-appearance order).

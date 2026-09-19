@@ -127,8 +127,16 @@ public sealed class SimWorld : ISimObject, IDisposable
 
     // Per-frame arena fence at `radius` from ScenarioOrigin. Kills any active
     // party member (player included) who leaves the ring, and spawns a VFX border.
-    public void EnforceArenaBoundary(float radius, string cause = "Walked out of arena")
-        => children.Add(new SimArenaBoundary(Party, this, radius, cause, showVfx: !Map.IsInInstance));
+    public void EnforceArenaBoundary(float radius, string cause = "走出場地邊界", bool replace = false)
+    {
+        if (replace)
+            foreach (var boundary in children.OfType<SimArenaBoundary>().ToArray())
+            {
+                boundary.Despawn();
+                children.Remove(boundary);
+            }
+        children.Add(new SimArenaBoundary(Party, this, radius, cause, showVfx: !Map.IsInInstance));
+    }
 
     // True when `local` (scenario-local) is outside the active arena fence; false
     // when the current scenario enforces no boundary.

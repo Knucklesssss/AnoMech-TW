@@ -8,6 +8,7 @@ using AnoMech.Core.Game.Party;
 using AnoMech.Core.Map;
 using AnoMech.Core.SimObjects;
 using static AnoMech.Scenarios.Top.TopConstants;
+using static AnoMech.Scenarios.Top.TopP6CosmoArrow;
 
 namespace AnoMech.Scenarios.Top.P6WaveCannon2;
 
@@ -62,30 +63,6 @@ public sealed class TopP6WaveCannon2Scenario : IScenario
         world.Events.Add(27.40f, () => damage.Resolve(alpha_Omega_4000A771, ActionId.WaveCannonWildCharge, [DamageType.Magic], [], stackMinTargets: 8, wildChargeTargets: 2, wildChargeDamageType: [DamageType.TankBuster]));
     }
     
-    
-    record Wave(float Line, float Dir);
-    
-    private static List<Wave> Init(bool[] early, float[] initial, List<Wave> current)
-    {
-        var isEarly = current.Count == 0;
-        var l = Progress(current);
-        for (int i = 0; i < initial.Length; i++)
-        {
-            if (early[i] != isEarly) continue;
-            l.Add(new (initial[i] + 7.5f, 1));
-            l.Add(new (initial[i] - 7.5f, -1));
-        }
-        l.RemoveAll(v => v.Line is > 20f or < -20f);
-        return l;
-    }
-    
-    private static List<Wave> Progress(List<Wave> current)
-    {
-       return current
-           .Select(wave => wave with {Line = wave.Line + 5 * wave.Dir})
-           .Where(wave => wave.Line is <= 20f and >= -20f)
-           .ToList();
-    }
     
     private void Run_Alpha_Omega_4000A40B()
     {
