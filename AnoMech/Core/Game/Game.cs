@@ -195,6 +195,11 @@ public sealed class Game : IDisposable
         // zone.Run creates the SimArenaBoundary the out-of-arena check below reads.
         zone.Run(World);
         phase.Run(World);
+        var stratName = selectedAi is { } ai && ai >= 0 && ai < scenario.AiStrats.Count
+            ? scenario.AiStrats[ai].Name : "單人";
+        var scenarioType = scenario.GetType().FullName ?? scenario.GetType().Name;
+        var positionKey = System.Text.Json.JsonSerializer.Serialize(new[] { scenarioType, scenario.Name, selectedAi?.ToString(), stratName });
+        World.PracticePositions.Begin(positionKey, FullName(scenario), stratName, scenarioType);
         scenario.Run(World, selectedAi);
         // Entering the zone always starts at spawn; a restart only recenters the player
         // if they're standing outside the arena ring (otherwise they keep their position).

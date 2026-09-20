@@ -68,6 +68,7 @@ public sealed class Plugin : IDalamudPlugin
     private JobSupportWindow JobSupportWindow { get; init; }
     private NpcCollectorWindow NpcCollectorWindow { get; init; }
     private RecorderWindow RecorderWindow { get; init; }
+    private PositionEditorWindow PositionEditorWindow { get; init; }
     internal static CombatRecorder? Recorder { get; private set; }
     internal static MultiplayerSession Multiplayer { get; private set; } = null!;
     internal static ChainRunner Chain { get; private set; } = null!;
@@ -105,6 +106,8 @@ public sealed class Plugin : IDalamudPlugin
         WindowSystem.AddWindow(NpcCollectorWindow);
         RecorderWindow = new RecorderWindow();
         WindowSystem.AddWindow(RecorderWindow);
+        PositionEditorWindow = new PositionEditorWindow();
+        WindowSystem.AddWindow(PositionEditorWindow);
         Chain = new ChainRunner(Game, Configuration);
         ChainWindow = new ChainWindow(this, MainWindow);
         WindowSystem.AddWindow(ChainWindow);
@@ -118,7 +121,7 @@ public sealed class Plugin : IDalamudPlugin
 
         CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
         {
-            HelpMessage = "開啟 AnoMech。子指令：config、start、reset、leave、mark、actions、net、npc（怪物採集器）、record（錄製器）"
+            HelpMessage = "開啟 AnoMech。子指令：config、start、reset、leave、mark、actions、net、npc（怪物採集器）、record（錄製器）、positions（站位編輯器）"
         });
         CommandManager.AddHandler(CommandAlias, new CommandInfo(OnCommand)
         {
@@ -288,6 +291,9 @@ public sealed class Plugin : IDalamudPlugin
             case "record":
                 RecorderWindow.Toggle();
                 break;
+            case "positions":
+                PositionEditorWindow.Toggle();
+                break;
             default:
                 MainWindow.Toggle();
                 break;
@@ -416,4 +422,5 @@ public sealed class Plugin : IDalamudPlugin
     public void TogglePartyListOrderUi() => PartyListOrderWindow.Toggle();
     public void ToggleJobSupportUi() => JobSupportWindow.Toggle();
     public void ToggleMainUi() => MainWindow.Toggle();
+    public void TogglePositionEditorUi() => PositionEditorWindow.Toggle();
 }

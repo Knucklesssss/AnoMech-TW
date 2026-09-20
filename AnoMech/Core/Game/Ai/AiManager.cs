@@ -32,12 +32,23 @@ public sealed class AiManager
     // and arriving late.
     public void Move(float time, Func<IAiMove> positions, float jitter = DefaultJitter, float arrivalTime = 0f)
     {
+        var practiceStep = world.PracticePositions.Register(
+            world.Events.Time + MathF.Max(0f, time),
+            arrivalTime > 0f ? world.Events.Time + arrivalTime : 0f);
         world.Events.Add(time, () =>
         {
             var move = positions();
+            Vector2?[]? resolved = null;
+            if (world.PracticePositions.IsActive)
+            {
+                var original = new Vector2?[8];
+                for (var i = 0; i < original.Length; i++) original[i] = move[i];
+                resolved = world.PracticePositions.Resolve(practiceStep, original);
+            }
             for (int i = 0; i < 8; i++)
             {
-                if (move[i] is not { } local || MultiplayerContext.IsHumanControlled(i)) continue;
+                var destination = resolved is null ? move[i] : resolved[i];
+                if (destination is not { } local || MultiplayerContext.IsHumanControlled(i)) continue;
                 var member = world.Party.Get(i);
                 if (member == null || !member.IsAlive()) continue;
                 var target = Jitter(new Vector3(local.X, 0f, local.Y), jitter);

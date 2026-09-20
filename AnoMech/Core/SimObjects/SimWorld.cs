@@ -1,4 +1,6 @@
 using System;
+using System.IO;
+using AnoMech.Core.Game.Ai;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -47,6 +49,7 @@ public sealed class SimWorld : ISimObject, IDisposable
     // Root container — Game owns its lifetime; no parent reaps it.
     public bool IsActive => true;
     public EventScheduler Events { get; }
+    public PracticePositions PracticePositions { get; }
     public Vector3 ScenarioOrigin { get; set; }
 
     // Converts between scenario-local coordinates (the SimXxx public API) and
@@ -58,6 +61,9 @@ public sealed class SimWorld : ISimObject, IDisposable
     public SimWorld(EventScheduler events)
     {
         Events = events;
+        PracticePositions = new PracticePositions(new FilePracticePositionStore(
+            () => Path.Combine(Plugin.PluginInterface.ConfigDirectory.FullName, "practice-positions.json")),
+            () => Plugin.Multiplayer is not { IsHosting: true } and not { IsClientConnected: true });
         Coordinates = new Coordinates(() => ScenarioOrigin);
         waymarks = new Waymarks(Coordinates);
     }
@@ -181,6 +187,7 @@ public sealed class SimWorld : ISimObject, IDisposable
 
     public void Despawn()
     {
+        PracticePositions.End();
         HitRangeDebug.Clear();
         AnoMech.Core.Combat.TargetMitigation.Clear();
         LimitBreaks?.Dispose();

@@ -9,6 +9,8 @@ namespace AnoMech.Core.SimObjects
 {
     public sealed class SimWorld
     {
+        public AnoMech.Core.Game.Ai.PracticePositions PracticePositions { get; } = new(
+            new AnoMech.Core.Game.Ai.FilePracticePositionStore(() => throw new System.NotSupportedException("No position file in scenario regression tests.")));
         public SimParty Party { get; } = new();
         public EventScheduler Events { get; } = new();
         public float Elapsed { get; private set; }
