@@ -23,6 +23,7 @@ internal static class MultiplayerChecks
             PlaybackClockBuffersAndTracks();
             PoseBufferInterpolates();
             DisconnectedSlotReturnsToAi();
+            LimitBreakArbitration();
         }
         finally
         {
@@ -38,6 +39,28 @@ internal static class MultiplayerChecks
         Check(!MultiplayerContext.IsHumanControlled(2), "a disconnected player's slot goes back to AI");
         Check(MultiplayerContext.IsHumanControlled(1) && MultiplayerContext.IsHumanControlled(5), "other players keep their slots");
         MultiplayerContext.End();
+    }
+
+    private static void LimitBreakArbitration()
+    {
+        var arbiter = new LimitBreakArbiter();
+        Check(arbiter.Holder == 255, "a fresh arbiter holds nothing");
+
+        Check(arbiter.TryClaim(0, 1), "the first claim wins the bar");
+        Check(arbiter.Holder == 0 && arbiter.Acks[0] == 1, "the winner holds the bar and its request is acknowledged");
+
+        Check(!arbiter.TryClaim(3, 7), "a second claim loses while the bar is held");
+        Check(arbiter.Acks[3] == 7, "a losing claim is still acknowledged, or the client waits forever");
+        Check(arbiter.Holder == 0, "losing a claim does not move the bar");
+
+        Check(!arbiter.TryClaim(0, 1), "replaying the same request must not claim twice");
+
+        arbiter.Release();
+        Check(arbiter.Holder == 255, "releasing frees the bar");
+        Check(arbiter.TryClaim(3, 8), "the next request wins once the bar is free");
+
+        arbiter.Reset();
+        Check(arbiter.Holder == 255 && arbiter.Acks[3] == 0, "reset clears the holder and every ack");
     }
 
     private static void Check(bool condition, string message)

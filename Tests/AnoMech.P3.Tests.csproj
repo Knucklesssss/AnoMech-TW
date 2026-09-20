@@ -88,6 +88,7 @@
     <Compile Include="../AnoMech/Core/Game/SimRandom.cs" Link="Production/SimRandom.cs" />
     <Compile Include="../AnoMech/Core/Game/MultiplayerContext.cs" Link="Production/MultiplayerContext.cs" />
     <Compile Include="../AnoMech/Core/Game/MultiplayerOverrides.cs" Link="Production/MultiplayerOverrides.cs" />
+    <Compile Include="../AnoMech/Core/Multiplayer/LimitBreakArbiter.cs" />
     <Compile Include="../AnoMech/Core/Multiplayer/MultiplayerMessages.cs" Link="Production/Net/MultiplayerMessages.cs" />
     <Compile Include="../AnoMech/Core/Multiplayer/PlaybackTiming.cs" Link="Production/Net/PlaybackTiming.cs" />
     <Compile Include="../AnoMech/Core/Net/**/*.cs" Link="Production/Net/%(RecursiveDir)%(Filename)%(Extension)" />
