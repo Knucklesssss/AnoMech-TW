@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using AnoMech.Core.Game;
 using AnoMech.Core.Game.Party;
 using AnoMech.Core.Map;
@@ -71,6 +72,10 @@ internal sealed unsafe class MultiplayerSession : IDisposable
         public NetPose[] LastSent { get; } = new NetPose[Wire.Slots];
         public byte[] LastMarkers { get; set; } = Enumerable.Repeat((byte)254, Wire.MarkerSlots).ToArray();
         public List<(byte Role, float Seconds)> PendingInvulns { get; } = [];
+        public LimitBreakArbiter Bar { get; } = new();
+        public List<(byte Role, uint ActionId, Vector3 CasterPosition, Vector3? Aim)> PendingLimitBreaks { get; } = [];
+        public bool LimitBreakDirty { get; set; }
+        public string? PendingFailReason { get; set; }
         public List<TickFrame> Pending { get; } = [];
     }
 
@@ -221,6 +226,12 @@ internal sealed unsafe class MultiplayerSession : IDisposable
 
         var run = new HostRun(++runCounter, seed, self.Role, scenario, strat, waymark);
         MultiplayerContext.InvulnGranted = (role, seconds) => run.PendingInvulns.Add(((byte)role, seconds));
+        MultiplayerContext.LimitBreakUsed = (role, actionId, caster, aim) =>
+        {
+            if (!run.Bar.TryClaim((byte)role, run.Bar.Acks[role] + 1)) return;
+            run.PendingLimitBreaks.Add(((byte)role, actionId, caster, aim));
+            run.LimitBreakDirty = true;
+        };
         var party = game.World.Party;
         var owners = Enumerable.Repeat(Wire.NoPlayer, Wire.Slots).ToArray();
         foreach (var entry in hostLobby.Values)
@@ -336,6 +347,17 @@ internal sealed unsafe class MultiplayerSession : IDisposable
                     markRun.MarkersDirty = true;
                 }
                 break;
+            case MessageType.LimitBreakUsed when LimitBreakUsedDto.TryRead(reader, out var used):
+                if (hostRun is { } lbRun && used.RunId == lbRun.RunId && lbRun.Remote.TryGetValue(player.Id, out var caster))
+                {
+                    lbRun.LimitBreakDirty = true;
+                    if (lbRun.Bar.TryClaim(caster.Role, used.RequestId)
+                        && game.World.LimitBreaks?.TryStartRemote((PartyRole)caster.Role, used.ActionId, used.CasterPosition, used.Aim) == true)
+                        lbRun.PendingLimitBreaks.Add((caster.Role, used.ActionId, used.CasterPosition, used.Aim));
+                    else
+                        lbRun.Bar.Release();
+                }
+                break;
             case MessageType.Appearance when AppearanceDto.TryRead(reader, out var look):
                 entry.Appearance = PlayerAppearance.IsValid(look) ? look : null;
                 break;
@@ -422,8 +444,16 @@ internal sealed unsafe class MultiplayerSession : IDisposable
     private void RunHostTick(HostRun run)
     {
         run.PendingInvulns.Clear();
+        run.PendingLimitBreaks.Clear();
         SimRandom.Reseed(run.Seed, run.Tick);
         game.Tick(Step);
+
+        // The runtime frees the bar on its own (a cancel, a refill, a finished cast); mirror that decision.
+        if (run.Bar.Holder != LimitBreakArbiter.Nobody && game.World.LimitBreaks?.IsAvailable == true)
+        {
+            run.Bar.Release();
+            run.LimitBreakDirty = true;
+        }
 
         var party = game.World.Party;
         var frame = new TickFrame { Tick = (uint)run.Tick };
@@ -453,6 +483,18 @@ internal sealed unsafe class MultiplayerSession : IDisposable
             run.LastTimelines[slot] = timeline;
         }
         frame.Invulns.AddRange(run.PendingInvulns);
+        if (run.LimitBreakDirty || run.PendingLimitBreaks.Count > 0)
+        {
+            frame.LimitBreakHolder = run.Bar.Holder;
+            Array.Copy(run.Bar.Acks, frame.LimitBreakAcks, Wire.Slots);
+            frame.LimitBreaks.AddRange(run.PendingLimitBreaks);
+            run.LimitBreakDirty = false;
+        }
+        if (run.PendingFailReason is { } reason)
+        {
+            frame.FailReason = reason;
+            run.PendingFailReason = null;
+        }
         if (run.Tick % SyncIntervalTicks == 0) frame.Sync = CaptureSync();
         run.Pending.Add(frame);
         run.Tick++;
@@ -499,6 +541,8 @@ internal sealed unsafe class MultiplayerSession : IDisposable
             Net.Host?.Broadcast(MessageType.StopRun, new StopRunDto(run.RunId, StopReason.HostStopped).Write, DeliveryMethod.ReliableOrdered);
         foreach (var remote in run.Remote.Values) remote.Puppet.Member.NetworkDriven = false;
         hostRun = null;
+        MultiplayerContext.LimitBreakUsed = null;
+        run.Bar.Reset();
         MultiplayerContext.End();
         BroadcastLobby();
     }
