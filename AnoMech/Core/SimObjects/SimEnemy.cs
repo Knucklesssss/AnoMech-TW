@@ -243,6 +243,9 @@ public sealed unsafe class SimEnemy : SimNpc
     /// If <see langword="true"/>, then the Nameplate will be visible, and able to target them using the Enemy List.
     /// If <see langword="false"/>, then the Nameplate will not be visible, and not able to target them using the Enemy List.
     /// </param>
+    public bool Targetable => BattleCharaPtr != null &&
+        (BattleCharaPtr->TargetableStatus & ObjectTargetableFlags.IsTargetable) != 0;
+
     public void SetTargetable(bool targetable)
     {
         var chara = BattleCharaPtr;

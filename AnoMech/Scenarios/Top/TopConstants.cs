@@ -318,6 +318,7 @@ public static class TopConstants
         public const ushort HPPenalty = 3401;
         public const ushort CodeMi = 3447;                          // 0xD77 — P6 Alpha Omega 'Code M/i' form
         public const ushort BrilliantDynamis = 3446;
+        public const ushort RadiantDynamis = 3448;
 
         // P3 (Omega Final), read off a TC-client network log. The trailing comment is
         // the client's own name for the id, so a wrong guess stays easy to spot.

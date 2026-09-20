@@ -14,6 +14,7 @@ public interface IScenario
     IPhase Phase { get; }
 
     bool SupportsSolo => false;
+    bool SupportsMultiplayer => true;
 
     // Selectable strats. Run's selectedAi indexes this (null = solo); region buttons derive
     // from each strat's IScenarioAi.Group.

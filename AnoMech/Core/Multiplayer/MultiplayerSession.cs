@@ -173,6 +173,7 @@ internal sealed unsafe class MultiplayerSession : IDisposable
     public bool CanHostStart(IScenario scenario, out string reason)
     {
         reason = "";
+        if (!scenario.SupportsMultiplayer) { reason = "此練習尚未支援多人極限技同步，請使用單人練習。"; return false; }
         if (Net.Host is null) { reason = "尚未建立房間。"; return false; }
         if (scenario.Phase.Zone is not TopZone) { reason = "多人同步目前只支援絕歐米茄（P2～P6）。"; return false; }
         if (StartBlocker() is { Length: > 0 } blocker) { reason = $"房主{blocker}。"; return false; }

@@ -85,7 +85,11 @@ public sealed class Game : IDisposable
             new TopP6WaveCannon2Scenario(),
             new UltimatePredationScenario(),
             new AnoMech.Scenarios.Top.P6AlphaOmega.TopP6AlphaOmegaScenario(),
-            new AnoMech.Scenarios.Top.P6AlphaOmega.TopP6AlphaOmegaScenario(unlimitedOnly: true)
+            new AnoMech.Scenarios.Top.P6AlphaOmega.TopP6AlphaOmegaScenario(unlimitedOnly: true),
+            new AnoMech.Scenarios.Top.P6AlphaOmega.TopP6AlphaOmegaScenario(extendedStart: "full"),
+            new AnoMech.Scenarios.Top.P6AlphaOmega.TopP6AlphaOmegaScenario(unlimitedOnly: true, extendedStart: "unlimited"),
+            new AnoMech.Scenarios.Top.P6AlphaOmega.TopP6AlphaOmegaScenario(unlimitedOnly: true, extendedStart: "unlimited-second"),
+            new AnoMech.Scenarios.Top.P6AlphaOmega.TopP6AlphaOmegaScenario(extendedStart: "cosmo-meteor")
         };
 
         // Derive the zone tree from the flat registry (first-appearance order).
@@ -126,6 +130,7 @@ public sealed class Game : IDisposable
     // Multiplayer starts run synchronously so the first fixed tick follows immediately.
     internal bool StartScenarioNow(IScenario scenario, PartyRole role, int selectedAi, int selectedWaymark)
     {
+        if (!scenario.SupportsMultiplayer) return false;
         if (!ZoneSession.CanStartHere() || ZoneSession.IsPlayerBusy() || !World.Map.CanLoad(scenario.Phase.Zone.TerritoryId))
             return false;
         RunScenarioInternal(scenario, role, selectedAi, selectedWaymark);
@@ -143,6 +148,11 @@ public sealed class Game : IDisposable
 
     private void RunScenarioInternal(IScenario scenario, PartyRole? roleOverride, int? selectedAi, int selectedWaymark)
     {
+        if (MultiplayerContext.InRun && !scenario.SupportsMultiplayer)
+        {
+            Plugin.ChatGui.PrintError("[AnoMech] 這個新增練習尚未支援多人同步，請離開多人房間後開始。");
+            return;
+        }
         var solo = selectedAi is null;
         var phase = scenario.Phase;
         var zone = phase.Zone;

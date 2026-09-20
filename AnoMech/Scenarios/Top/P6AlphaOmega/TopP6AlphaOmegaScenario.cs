@@ -16,12 +16,19 @@ namespace AnoMech.Scenarios.Top.P6AlphaOmega;
 // Cast packets encode rotation in [-pi, pi], NOT [0, 2pi]. Use the original
 // Exasquares/WC2 placements and propagation rather than treating packet angles as radians.
 // Continue through the first Wave Cannon, two autos and the second Cosmo Arrow.
-public sealed class TopP6AlphaOmegaScenario(bool unlimitedOnly = false) : IScenario
+public sealed partial class TopP6AlphaOmegaScenario(bool unlimitedOnly = false, string? extendedStart = null) : IScenario
 {
-    public string Name => unlimitedOnly ? "波動砲：限制解除（開場段）" : "阿爾法歐米茄開場";
+    public string Name => extendedStart switch
+    {
+        "full" => "阿爾法歐米茄（完整時間軸／LB 練習）",
+        "unlimited" => "限制解除至 P6 結尾（LB 練習）",
+        "unlimited-second" => "第二次限制解除至 P6 結尾（LB 練習）",
+        "cosmo-meteor" => "宇宙流星至 P6 結尾（LB 練習）",
+        _ => unlimitedOnly ? "波動砲：限制解除（開場段）" : "阿爾法歐米茄開場",
+    };
     public IPhase Phase => TopZone.P6;
-    public bool SupportsSolo => true;
-    public IReadOnlyList<IScenarioAi> AiStrats { get; } = [new TopP6AlphaOmegaAi()];
+    public bool SupportsSolo => extendedStart == null;
+    public IReadOnlyList<IScenarioAi> AiStrats { get; } = extendedStart == null ? [new TopP6AlphaOmegaAi()] : [new TopP6FullAi()];
 
     private SimWorld world = null!;
     private SimParty party = null!;
@@ -62,7 +69,18 @@ public sealed class TopP6AlphaOmegaScenario(bool unlimitedOnly = false) : IScena
     private const float ReturnWindow = 7.179f;
     private const float KnockbackLandingZ = 22.45f;
 
-    public void DrawSettings() => Dalamud.Bindings.ImGui.ImGui.TextWrapped("練習範圍至第二次宇宙天箭；後段時距仍待遊戲內校準。減傷效果不計算。");
+    public void DrawSettings()
+    {
+        if (!Extended)
+        {
+            Dalamud.Bindings.ImGui.ImGui.TextWrapped("練習範圍至第二次宇宙天箭；後段時距仍待遊戲內校準。減傷效果不計算。");
+            return;
+        }
+        Dalamud.Bindings.ImGui.ImGui.TextWrapped("單人房間練習；一般職業技能與減傷提示沿用現有功能。需正確完成坦克、治療、遠程與法系極限技；不判定輸出是否足以通關，後段時序待遊戲內驗證。");
+        if (Dalamud.Bindings.ImGui.ImGui.RadioButton("核爆隨機", meteorD3MarkedOverride == null)) meteorD3MarkedOverride = null;
+        if (Dalamud.Bindings.ImGui.ImGui.RadioButton("核爆包含 D3", meteorD3MarkedOverride == true)) meteorD3MarkedOverride = true;
+        if (Dalamud.Bindings.ImGui.ImGui.RadioButton("核爆不含 D3", meteorD3MarkedOverride == false)) meteorD3MarkedOverride = false;
+    }
 
     public void Run(SimWorld worldParam, int? selectedAi)
     {
@@ -73,10 +91,22 @@ public sealed class TopP6AlphaOmegaScenario(bool unlimitedOnly = false) : IScena
         damage.SetStatuses(DamageType.Magic, StatusId.MagicVulnerabilityUp);
         failed = false;
         boss = null;
-        world.Events.Add(0.2f, Start);
+        if (Extended)
+        {
+            limitBreakClock = 0f;
+            meteorD3MarkedAtRun = meteorD3MarkedOverride;
+            meteorFlarePlan = null;
+            Array.Fill(lastLimitBreakAt, float.NegativeInfinity);
+            pendingMagicNumberHealer = null;
+            cosmoMeteors = [];
+            cosmoComets = [];
+            world.LimitBreaks = new AnoMech.Core.Combat.PracticeLimitBreakRuntime(world, OnLimitBreakResolved);
+            world.Events.Add(0.2f, StartExtended);
+        }
+        else world.Events.Add(0.2f, Start);
     }
 
-    public void Tick(float delta, float elapsed) { }
+    public void Tick(float delta, float elapsed) { limitBreakClock += delta; }
 
     private void Start()
     {
@@ -97,7 +127,7 @@ public sealed class TopP6AlphaOmegaScenario(bool unlimitedOnly = false) : IScena
             boss.AddStatusParam(StatusId.CodeMi, 0);
             foreach (var member in party.ActiveMembers())
                 member.SetPosition(new Placement(Vector3.Zero, MathF.PI));
-            world.Events.Add(1f, ScheduleUnlimitedWaveCannon);
+            world.Events.Add(1f, () => ScheduleUnlimitedWaveCannon());
             return;
         }
         // Replace the zone's normal fence: the transition explicitly puts us outside it.
@@ -139,15 +169,23 @@ public sealed class TopP6AlphaOmegaScenario(bool unlimitedOnly = false) : IScena
         if (failed || boss == null) return;
         world.EnforceArenaBoundary(Geometry.ArenaRadius, replace: true);
         ScheduleBossCast(0f, ActionId.CosmoMemory, 5.7f, 5.996f);
-        world.Events.Add(5.996f, () => damage.Resolve(boss, ActionId.CosmoMemory, [DamageType.Magic], []));
+        if (Extended && !solo) TopP6FullAi.StartLimitBreak(world, PartyRole.MainTank, null);
+        world.Events.Add(5.996f, () =>
+        {
+            if (Extended && !TopP6LimitBreakRules.IsTankLbActive(lastLimitBreakAt[(int)PartyRole.MainTank], limitBreakClock) &&
+                !TopP6LimitBreakRules.IsTankLbActive(lastLimitBreakAt[(int)PartyRole.OffTank], limitBreakClock))
+            { Fail("宇宙記憶：傷害結算前未開啟有效坦克極限技。"); return; }
+            damage.Resolve(boss, ActionId.CosmoMemory, [DamageType.Magic], []);
+            if (Extended) InitializeLimitBreakState(postMemory: true);
+        });
         // Recorded status+ at t0+8.324, before the first 31747 swing.
         world.Events.Add(8.324f, () => boss?.AddStatusParam(StatusId.CodeMi, 0));
         var inFirst = rng.NextBool();
         ScheduleCosmoArrow(inFirst);
         if (!solo) ScenarioAiRunner.Run(AiStrats, 0, inFirst, world);
-        ScheduleCosmoDive();
+        if (Extended) ScheduleFullCosmoDive(); else ScheduleCosmoDive();
         ScheduleAutoAttacks(AutoAttacks);
-        world.Events.Add(UnlimitedAt, ScheduleUnlimitedWaveCannon);
+        world.Events.Add(UnlimitedAt, () => ScheduleUnlimitedWaveCannon());
     }
 
     private void ScheduleBossCast(float at, uint action, float cast, float hit)
@@ -168,7 +206,7 @@ public sealed class TopP6AlphaOmegaScenario(bool unlimitedOnly = false) : IScena
         TopP6CosmoArrowSequence.Run(world, damage, inFirst, 12.5f);
     }
 
-    private void ScheduleAutoAttacks((float Swing, float Hit)[] attacks)
+    private void ScheduleAutoAttacks((float Swing, float Hit)[] attacks, float offset = 0f)
     {
         var firstHelper = SpawnHelper(new Placement(Vector3.Zero, 0f));
         var farthestHelper = SpawnHelper(new Placement(Vector3.Zero, 0f));
@@ -176,7 +214,7 @@ public sealed class TopP6AlphaOmegaScenario(bool unlimitedOnly = false) : IScena
         {
             SimCharacter? first = null;
             SimCharacter? farthest = null;
-            world.Events.Add(swing, () =>
+            world.Events.Add(offset + swing, () =>
             {
                 if (failed || boss == null) return;
                 Span<float> distances = stackalloc float[8];
@@ -191,7 +229,7 @@ public sealed class TopP6AlphaOmegaScenario(bool unlimitedOnly = false) : IScena
                 if (first != null) boss.Face(first);
                 Release(boss, ActionId.AlphaOmegaAutoAttack, boss);
             });
-            world.Events.Add(hit, () =>
+            world.Events.Add(offset + hit, () =>
             {
                 // Select both BEFORE damage: MT can bait both and die to the second hit.
                 HitTarget(first, ActionId.Unknown7ddf, false, 0, true, firstHelper);
@@ -220,7 +258,7 @@ public sealed class TopP6AlphaOmegaScenario(bool unlimitedOnly = false) : IScena
     }
 
     private void HitTarget(SimCharacter? target, uint action, bool tankbuster, int stack, bool applyVulnerability,
-        SimEnemy? preparedHelper = null)
+        SimEnemy? preparedHelper = null, bool killTargets = true, float? size = null)
     {
         if (failed || target == null || !target.IsAlive()) return;
         var placement = new Placement(target.Position, boss?.Rotation ?? 0f);
@@ -229,19 +267,20 @@ public sealed class TopP6AlphaOmegaScenario(bool unlimitedOnly = false) : IScena
         helper.SetPosition(placement);
         Release(helper, action, target);
         damage.Resolve(helper, action, tankbuster ? [DamageType.Magic, DamageType.TankBuster] : [DamageType.Magic],
-            applyVulnerability ? [(StatusId.MagicVulnerabilityUp, 2f)] : [], stackMinTargets: stack);
+            applyVulnerability ? [(StatusId.MagicVulnerabilityUp, 2f)] : [], stackMinTargets: stack, killTargets: killTargets, size: size);
         if (preparedHelper == null) world.Events.Add(2f, helper.Despawn);
     }
 
-    private void ScheduleUnlimitedWaveCannon()
+    private void ScheduleUnlimitedWaveCannon(bool second = false)
     {
         ScheduleBossCast(0f, ActionId.UnlimitedWaveCannon, 4.7f, 4.993f);
         var clockwise = rng.NextBool();
-        Plugin.ChatGui.Print($"[AnoMech] 首次波動砲：限制解除：{(clockwise ? "順時針" : "逆時針")}；前兩圈直走、第三圈轉斜向，第六圈放下即回八方。");
+        var startAngle = Extended ? rng.NextInt(8) * MathF.PI / 4f : MathF.PI / 4f;
+        Plugin.ChatGui.Print($"[AnoMech] {(second ? "第二次" : "首次")}波動砲：限制解除：{(clockwise ? "順時針" : "逆時針")}；前兩圈直走、第三圈轉斜向，第六圈放下即回八方。");
         for (var lane = 0; lane < ExaflareOffsets.Length; lane++)
         {
             // Recorded start NE -> N -> NW -> W (CCW). Mirror order around NE for CW.
-            var angle = -MathF.PI / 4 + (clockwise ? -1 : 1) * lane * MathF.PI / 4;
+            var angle = -startAngle + (clockwise ? -1 : 1) * lane * MathF.PI / 4;
             var inward = new Vector3(MathF.Sin(angle), 0f, MathF.Cos(angle));
             var at = ExaflareOffsets[lane];
             var firstHit = at + 12.001f;
@@ -261,10 +300,19 @@ public sealed class TopP6AlphaOmegaScenario(bool unlimitedOnly = false) : IScena
         if (!solo && !MultiplayerContext.IsClient)
         {
             using var scope = SimRandom.HostOnly();
-            TopP6AlphaOmegaAi.RunUnlimited(clockwise, world);
+            if (Extended) TopP6FullAi.RunUnlimited(startAngle, clockwise, world, second);
+            else TopP6AlphaOmegaAi.RunUnlimited(clockwise, world);
         }
-        ScheduleWaveCannon();
-        world.Events.Add(WildChargeAt, ScheduleSecondCosmoArrow);
+        if (second)
+        {
+            ScheduleFullCosmoDive(SecondUnlimitedDiveAt, includeFollowUpAutos: true);
+            world.Events.Add(SecondUnlimitedMeteorAt, ScheduleCosmoMeteorSequence);
+        }
+        else
+        {
+            ScheduleWaveCannon();
+            world.Events.Add(WildChargeAt, ScheduleSecondCosmoArrow);
+        }
     }
 
     private void ScheduleSecondCosmoArrow()
@@ -277,7 +325,14 @@ public sealed class TopP6AlphaOmegaScenario(bool unlimitedOnly = false) : IScena
         if (!solo && !MultiplayerContext.IsClient)
         {
             using var scope = SimRandom.HostOnly();
-            TopP6AlphaOmegaAi.RunSecondArrow(inFirst, world);
+            if (Extended) TopP6FullAi.RunSecondArrow(inFirst, world);
+            else TopP6AlphaOmegaAi.RunSecondArrow(inFirst, world);
+        }
+        if (Extended)
+        {
+            ScheduleWaveCannon(SecondCannonAt);
+            world.Events.Add(SecondCannonAt + 11.37f, ScheduleSecondTail);
+            return;
         }
         var lastArrowAt = SecondArrowDelay + (inFirst ? 23.91f : 21.91f);
         world.Events.Add(lastArrowAt + 2.1f, () =>
@@ -286,10 +341,11 @@ public sealed class TopP6AlphaOmegaScenario(bool unlimitedOnly = false) : IScena
         });
     }
 
-    private void ScheduleWaveCannon()
+    private void ScheduleWaveCannon(float cannonAt = CannonAt)
     {
         var order = RoleList.Random(party);
-        world.Events.Add(CannonAt, () => boss?.Cast(ActionId.WaveCannon_7BA9,
+        if (Extended) ScheduleBossCast(cannonAt, ActionId.WaveCannon_7BA9, 10.6f, cannonAt + 10.882f);
+        else world.Events.Add(cannonAt, () => boss?.Cast(ActionId.WaveCannon_7BA9,
             targetLocation: new Vector3(-0.008f, -0.015f, -0.008f), targetId: boss?.GameObjectId));
         for (var i = 0; i < 4; i++)
         {
@@ -298,7 +354,7 @@ public sealed class TopP6AlphaOmegaScenario(bool unlimitedOnly = false) : IScena
             for (var wave = 0; wave < 2; wave++)
             {
                 var targetIndex = index + wave * 4;
-                var hitAt = CannonAt + 3.04f + wave * 2f;
+                var hitAt = cannonAt + 3.04f + wave * 2f;
                 world.Events.Add(hitAt - 0.07f, () =>
                 {
                     if (party.Get(order[targetIndex]) is { } target) helper?.Face(target);
@@ -312,14 +368,14 @@ public sealed class TopP6AlphaOmegaScenario(bool unlimitedOnly = false) : IScena
                         [(StatusId.MagicVulnerabilityUp, 2.5f)]);
                 });
             }
-            world.Events.Add(SecondProteanAt + 2f, () => helper?.Despawn());
+            world.Events.Add(cannonAt + 5.04f + 2f, () => helper?.Despawn());
         }
         var chargeTarget = solo ? party.PlayerRole : order[0];
-        world.Events.Add(WildChargeAt - 0.1f, () =>
+        world.Events.Add(cannonAt + (Extended ? 10.782f : 11.27f), () =>
         {
             if (party.Get(chargeTarget) is { } target) boss?.Face(target);
         });
-        world.Events.Add(WildChargeAt, () =>
+        world.Events.Add(cannonAt + 11.37f, () =>
         {
             if (failed || boss == null) return;
             boss.Cast(ActionId.WaveCannonWildCharge, castSeconds: 0f,
