@@ -174,7 +174,7 @@ public sealed class TopP6FullAi : IScenarioAi<bool>
     internal static void StartLimitBreak(SimWorld world, PartyRole role, Vector3? groundLocation)
     {
         var runtime = world.LimitBreaks;
-        if (runtime == null || role == world.Party.PlayerRole ||
+        if (runtime == null || role == world.Party.PlayerRole || !TopP6LimitBreakRules.AiMayPress(role) ||
             !runtime.IsAvailable || runtime.IsBusy(role))
             return;
         var actionId = runtime.ActionFor(role);

@@ -6,6 +6,7 @@ using AnoMech.Scenarios;
 using AnoMech.Scenarios.Top;
 using AnoMech.Scenarios.Top.P5Delta;
 using AnoMech.Scenarios.Top.P5Sigma;
+using AnoMech.Scenarios.Top.P6AlphaOmega;
 using LiteNetLib.Utils;
 
 internal static class MultiplayerChecks
@@ -25,6 +26,7 @@ internal static class MultiplayerChecks
             DisconnectedSlotReturnsToAi();
             LimitBreakArbitration();
             ClientKnowsHumanSlots();
+            AiLeavesHumanLimitBreaks();
         }
         finally
         {
@@ -346,5 +348,14 @@ internal static class MultiplayerChecks
         Check(Wire.HumanSlotMask(owners) == 0b0000_0101, "every slot with an owner counts as human");
         Check(Wire.HumanSlotMask([Wire.NoPlayer, Wire.NoPlayer, Wire.NoPlayer, Wire.NoPlayer,
             Wire.NoPlayer, Wire.NoPlayer, Wire.NoPlayer, Wire.NoPlayer]) == 0, "an all-AI party has no human slots");
+    }
+
+    private static void AiLeavesHumanLimitBreaks()
+    {
+        MultiplayerContext.Begin(MultiplayerRole.Host, 0b0000_0011, null);
+        Check(TopP6LimitBreakRules.AiMayPress(PartyRole.RegenHealer), "the AI covers a slot with no player in it");
+        Check(!TopP6LimitBreakRules.AiMayPress(PartyRole.MainTank), "a human slot presses its own limit break");
+        Check(!TopP6LimitBreakRules.AiMayPress(PartyRole.OffTank), "every human slot is left alone, not just the local one");
+        MultiplayerContext.End();
     }
 }
