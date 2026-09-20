@@ -1,6 +1,7 @@
 using System;
 using AnoMech.Core.Native;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
+using FFXIVClientStructs.FFXIV.Client.Game.Object;
 
 namespace AnoMech.Core.SimObjects;
 
@@ -13,15 +14,17 @@ public sealed unsafe class SimStatus : ISimObject
     public ushort StatusId { get; }
     public bool IsActive { get; private set; }
     public ushort Stacks { get; private set; }
+    internal GameObjectId? SourceObject { get; }
 
-    internal SimStatus(SimCharacter target, ushort statusId, float duration, ushort stacks)
+    internal SimStatus(SimCharacter target, ushort statusId, float duration, ushort stacks, GameObjectId? sourceObject = null)
     {
         this.target = target;
         this.duration = duration;
         StatusId = statusId;
         IsActive = true;
         Stacks = stacks;
-        Statuses.AddStatusInit((Character*)target.BattleCharaPtr, statusId, stacks, duration);
+        SourceObject = sourceObject;
+        Statuses.AddStatusInit((Character*)target.BattleCharaPtr, statusId, stacks, duration, sourceObject);
     }
 
     public void Reapply(float duration, int stacks)
@@ -48,14 +51,14 @@ public sealed unsafe class SimStatus : ISimObject
             if (duration > 0f)
                 elapsed += deltaSeconds;
             // Update duration
-            Statuses.Apply((Character*)target.BattleCharaPtr, StatusId, duration - elapsed, Stacks);
+            Statuses.Apply((Character*)target.BattleCharaPtr, StatusId, duration - elapsed, Stacks, SourceObject);
         }
     }
 
     public void Despawn()
     {
         if (!IsActive) return;
-        Statuses.Remove((Character*)target.BattleCharaPtr, StatusId);
+        Statuses.Remove((Character*)target.BattleCharaPtr, StatusId, SourceObject);
         IsActive = false;
     }
 }

@@ -80,6 +80,7 @@ public sealed unsafe class CombatNativeState : IDisposable
             ("ActionManager.StartCooldown", ActionManager.Addresses.StartCooldown.Value),
             ("StatusManager.AddStatus", StatusManager.Addresses.AddStatus.Value),
             ("StatusManager.RemoveStatus", StatusManager.Addresses.RemoveStatus.Value),
+            ("StatusManager.SetStatus", StatusManager.Addresses.SetStatus.Value),
             ("StatusManager.GetStatusIndex", StatusManager.Addresses.GetStatusIndex.Value),
             ("ActionEffectHandler.Receive", ActionEffectHandler.Addresses.Receive.Value),
         }) signaturesReady &= SignatureReport.TrackAddress(name, address) != 0;
@@ -110,13 +111,12 @@ public sealed unsafe class CombatNativeState : IDisposable
             {
                 if (simPlayer.HasStatus(status.StatusId))
                     throw new InvalidOperationException("Scenario already owns a local combat job status.");
-                freeSlots++; // removed by the first Mirror
+                if (status.SourceObject == player->GetGameObjectId()) freeSlots++;
             }
         }
         if (freeSlots < rules.StatusIds.Count)
             throw new InvalidOperationException("Insufficient native status slots for local job buffs.");
-        var statusManager = &player->StatusManager;
-        rules.Seed(id => statusManager->GetStatusIndex(id) >= 0);
+        rules.Seed(id => Statuses.Has((Character*)player, id, player->GetGameObjectId()));
     }
 
     private void AddRecast(int group, uint action, bool additional)
@@ -325,11 +325,11 @@ public sealed unsafe class CombatNativeState : IDisposable
     private void MirrorStatus(ushort id, double remaining, ushort param)
     {
         if (!PlayerMatches) return;
-        if (remaining <= 0) { Statuses.Remove((Character*)player, id); return; }
+        if (remaining <= 0) { Statuses.Remove((Character*)player, id, player->GetGameObjectId()); return; }
         // Permanent stances show no timer; the client uses -1 like PinnedStatus.
         var duration = double.IsPositiveInfinity(remaining) ? -1f : (float)remaining;
-        if (player->StatusManager.GetStatusIndex(id) < 0)
-            Statuses.AddStatusInit((Character*)player, id, param, duration);
+        if (!Statuses.Has((Character*)player, id, player->GetGameObjectId()))
+            Statuses.AddStatusInit((Character*)player, id, param, duration, player->GetGameObjectId());
         if (PlayerMatches) Statuses.Apply((Character*)player, id, duration, param, player->GetGameObjectId());
     }
 

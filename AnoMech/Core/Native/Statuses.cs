@@ -20,7 +20,7 @@ namespace AnoMech.Core.Native;
 // that one through bc->StatusManager.AddStatus instead.
 internal static unsafe class Statuses
 {
-    public static void Apply(Character* chara, ushort statusId, float duration, ushort param = 0, GameObjectId sourceObject = default)
+    public static void Apply(Character* chara, ushort statusId, float duration, ushort param = 0, GameObjectId? sourceObject = null)
     {
         if (chara == null || statusId == 0) return;
         var bc = (BattleChara*)chara;
@@ -31,9 +31,10 @@ internal static unsafe class Statuses
         for (int i = 0; i < slots.Length; i++)
         {
             if (slots[i].StatusId != statusId) continue;
+            if (sourceObject is {} source && slots[i].SourceObject != source) continue;
             slots[i].Param = param;
             slots[i].RemainingTime = duration == 0 ? 20: duration;
-            slots[i].SourceObject = sourceObject;
+            if (sourceObject is {} explicitSource) slots[i].SourceObject = explicitSource;
             return;
         }
 
@@ -45,7 +46,7 @@ internal static unsafe class Statuses
             slots[i].StatusId = statusId;
             slots[i].Param = param;
             slots[i].RemainingTime = duration == 0 ? 20: duration;
-            slots[i].SourceObject = sourceObject;
+            slots[i].SourceObject = sourceObject.GetValueOrDefault();
             if (bc->StatusManager.NumValidStatuses <= i)
                 bc->StatusManager.NumValidStatuses = (byte)(i + 1);
             return;
@@ -54,30 +55,36 @@ internal static unsafe class Statuses
 
     // NPCs need native AddStatus for form swaps. For the local player, insert
     // the slot before OnGainStatus so the effect receives its real lifetime.
-    public static void AddStatusInit(Character* chara, ushort statusId, ushort param, float duration = 0f)
+    public static void AddStatusInit(Character* chara, ushort statusId, ushort param, float duration = 0f, GameObjectId? sourceObject = null)
     {
         if (chara == null || statusId == 0) return;
         var bc = (BattleChara*)chara;
         var isLocalPlayer = Plugin.ObjectTable.LocalPlayer?.Address == (nint)chara;
-        if (isLocalPlayer && bc->StatusManager.GetStatusIndex(statusId) >= 0)
+        if ((isLocalPlayer || sourceObject.HasValue) && FindSlot(bc, statusId, sourceObject) >= 0)
         {
-            Apply(chara, statusId, duration, param);
+            Apply(chara, statusId, duration, param, sourceObject);
             return;
         }
 
-        if (!isLocalPlayer)
+        // Native AddStatus matches by ID only; never let it replace another caster's copy.
+        if (!isLocalPlayer && (!sourceObject.HasValue || bc->StatusManager.GetStatusIndex(statusId) < 0))
+        {
             bc->StatusManager.AddStatus(statusId, param);
+            var addedSlot = bc->StatusManager.GetStatusIndex(statusId);
+            if (addedSlot >= 0 && sourceObject is {} source)
+                bc->StatusManager.Status[addedSlot].SourceObject = source;
+        }
 
-        var slot = bc->StatusManager.GetStatusIndex(statusId);
+        var slot = FindSlot(bc, statusId, sourceObject);
         if (slot >= 0)
         {
             if (duration != 0f) bc->StatusManager.Status[slot].RemainingTime = duration;
             return;
         }
 
-        Apply(chara, statusId, duration, param);
+        Apply(chara, statusId, duration, param, sourceObject);
         // A full status array cannot accept the effect either.
-        slot = bc->StatusManager.GetStatusIndex(statusId);
+        slot = FindSlot(bc, statusId, sourceObject);
         if (slot >= 0)
         {
             // Direct insertion skips the sheet flags used by player buff effects.
@@ -88,11 +95,23 @@ internal static unsafe class Statuses
         }
     }
 
-    public static void Remove(Character* chara, ushort statusId)
+    public static bool Has(Character* chara, ushort statusId, GameObjectId sourceObject)
+        => chara != null && statusId != 0 && FindSlot((BattleChara*)chara, statusId, sourceObject) >= 0;
+
+    private static int FindSlot(BattleChara* bc, ushort statusId, GameObjectId? sourceObject)
+    {
+        var slots = bc->StatusManager.Status;
+        for (int i = 0; i < slots.Length; i++)
+            if (slots[i].StatusId == statusId && (sourceObject is not {} source || slots[i].SourceObject == source))
+                return i;
+        return -1;
+    }
+
+    public static void Remove(Character* chara, ushort statusId, GameObjectId? sourceObject = null)
     {
         if (chara == null || statusId == 0) return;
         var bc = (BattleChara*)chara;
-        var slot = bc->StatusManager.GetStatusIndex(statusId);
+        var slot = FindSlot(bc, statusId, sourceObject);
         if (slot >= 0 && slot <= bc->StatusManager.NumValidStatuses)
         {
             if (Plugin.ObjectTable.LocalPlayer?.Address == (nint)chara)

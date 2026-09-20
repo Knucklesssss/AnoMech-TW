@@ -205,9 +205,14 @@ public abstract unsafe class SimCharacter(Coordinates coordinates) : ISimObject,
         return s;
     }
 
-    public SimStatus AddStatusParam(ushort statusId, int param, float duration = 0f)
+    public SimStatus AddStatusParam(ushort statusId, int param, float duration = 0f, GameObjectId? sourceObject = null)
     {
-        var s = new SimStatus(this, statusId, duration, (ushort)param);
+        if (sourceObject.HasValue && statusList.Find(s => s.IsActive && s.StatusId == statusId && s.SourceObject == sourceObject) is {} existing)
+        {
+            existing.Reapply(duration, (ushort)param - existing.Stacks);
+            return existing;
+        }
+        var s = new SimStatus(this, statusId, duration, (ushort)param, sourceObject);
         statusList.Add(s);
         return s;
     }
