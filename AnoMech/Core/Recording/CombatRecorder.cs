@@ -258,15 +258,17 @@ internal sealed unsafe partial class CombatRecorder : IDisposable
     // 任何一個掛不上都只是少錄一類事件，不該讓整支插件失敗——所以個別 try/catch。
     private static Hook<T>? TryHook<T>(T target, T detour, string label) where T : Delegate
     {
+        Hook<T>? hook = null;
         try
         {
             var addr = Marshal.GetFunctionPointerForDelegate(target);
-            var hook = Plugin.GameInterop.HookFromAddress<T>(addr, detour);
+            hook = Plugin.GameInterop.HookFromAddress<T>(addr, detour);
             hook.Enable();
             return hook;
         }
         catch (Exception ex)
         {
+            hook?.Dispose();
             Plugin.Log.Warning($"[CombatRecorder] {label} 掛載失敗，該類事件不會被錄到：{ex.Message}");
             return null;
         }
