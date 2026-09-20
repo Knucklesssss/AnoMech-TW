@@ -10,7 +10,9 @@ internal static class MeleeCombatChecks
         Dragoon();
         Ninja();
         Samurai();
-        Console.WriteLine("PASS: melee role actions, movement requests, Monk, Dragoon, Ninja and Samurai.");
+        Reaper();
+        Viper();
+        Console.WriteLine("PASS: melee role actions, movement requests and all six melee jobs.");
     }
 
     private static void Monk()
@@ -294,6 +296,143 @@ internal static class MeleeCombatChecks
         Check(yaten.TryUse(7493, true, true, true) is not null && yaten.TakeMove() == new JobMove(JobMoveKind.Backward, 10, false),
             "Yaten must request a 10 y backward move.");
         Check(!yaten.CanUse(7493, true, true, true, bound: true, checkTiming: false), "Yaten must be refused while bound.");
+    }
+
+
+    private static void Reaper()
+    {
+        Check(JobCombatRegistry.Find(39, 90) != null, "Reaper level 90 must be registered.");
+        var rpr = new ReaperCombat();
+        // Trait 383 (level 78) turns the shared Soul weaponskill cooldown into two charges.
+        Check(rpr.GetCooldown(24380) == (9, 30, 2) && rpr.GetCooldown(24381) == (9, 30, 2),
+            "Soul Slice and Soul Scythe must share a two-charge cooldown per trait 383.");
+        Check(rpr.GetCooldown(24405) == (22, 120, 1), "Arcane Circle must keep its sheet contract.");
+
+        Hit(rpr, 24373);
+        Check(rpr.Soul == 10, "Slice must give 10 Soul.");
+        Gcd(rpr); Hit(rpr, 24374); Gcd(rpr); Hit(rpr, 24375);
+        Check(rpr.Soul == 30, "The Slice combo must give 10 Soul a step.");
+        Gcd(rpr); Hit(rpr, 24380);
+        Check(rpr.Soul == 80, "Soul Slice must give 50 Soul.");
+        Gcd(rpr);
+
+        Check(!rpr.CanUse(24382, true, true, true, checkTiming: false), "Gibbet needs Soul Reaver.");
+        Check(rpr.TryUse(24389, true, true, true) is not null, "Blood Stalk must spend 50 Soul.");
+        Check(rpr.Soul == 30 && rpr.CanUse(24382, true, true, true, checkTiming: false),
+            "Blood Stalk must leave Soul Reaver behind.");
+        rpr.Advance(1);
+        Hit(rpr, 24382);
+        Check(rpr.Shroud == 10, "Gibbet must bank 10 Shroud per trait 384.");
+        Check(rpr.Adjust(24389) == 24391, "Gibbet's Enhanced Gallows must turn Blood Stalk into Unveiled Gallows.");
+        Gcd(rpr);
+        Check(!rpr.CanUse(24382, true, true, true, checkTiming: false), "Gibbet must have spent its Soul Reaver.");
+
+        var shroud = new ReaperCombat();
+        Check(!shroud.CanUse(24394, false, false, true, checkTiming: false), "Enshroud needs 50 Shroud.");
+        for (var i = 0; i < 5; i++)
+        {
+            // Bank 50 Soul through both combos, spend it on an avatar ability, then cash the Soul Reaver.
+            Hit(shroud, 24373); Gcd(shroud);
+            Hit(shroud, 24374); Gcd(shroud);
+            Hit(shroud, 24375); Gcd(shroud);
+            Hit(shroud, 24376, aoe: true); Gcd(shroud);
+            Hit(shroud, 24377, aoe: true); Gcd(shroud);
+            shroud.TryUse(24389, true, true, true);
+            shroud.Advance(1);
+            Hit(shroud, 24384, aoe: true);
+            Gcd(shroud);
+        }
+        Check(shroud.Shroud >= 50, "Guillotine must bank Shroud too.");
+        Check(shroud.TryUse(24394, false, false, true) == null && shroud.LemureShroud == 5,
+            "Enshroud must fill the Lemure Shroud.");
+        Check(shroud.Adjust(24382) == 24395 && shroud.Adjust(24384) == 24397,
+            "Enshrouded must turn the Soul Reaver weaponskills into reapings.");
+        shroud.Advance(1);
+        Hit(shroud, 24382);
+        Check(shroud.LemureShroud == 4 && shroud.VoidShroud == 1,
+            "Void Reaping must spend a Lemure Shroud for a Void Shroud.");
+        Gcd(shroud); Hit(shroud, 24383);
+        Check(shroud.VoidShroud == 2 && shroud.Adjust(24389) == 24399 && shroud.Adjust(24392) == 24400,
+            "Two Void Shroud must arm Lemure's Slice and Scythe.");
+        shroud.Advance(1);
+        Check(shroud.TryUse(24389, true, true, true) is not null && shroud.VoidShroud == 0,
+            "Lemure's Slice must spend both Void Shroud.");
+        Gcd(shroud);
+        Cast(shroud, 24398, aoe: true);
+        Check(shroud.LemureShroud == 0 && shroud.EnshroudedRemaining == 0, "Communio must end Enshrouded.");
+
+        var gate = new ReaperCombat();
+        Check(gate.TryUse(24401, false, false, true) == null && gate.TakeMove() == new JobMove(JobMoveKind.Forward, 15, true),
+            "Hell's Ingress must request a 15 y forward move that marks the return point.");
+        Check(gate.Adjust(24402) == 24403 && gate.Adjust(24401) == 24401,
+            "Trait 382 must turn the opposite gate into Regress.");
+        gate.Advance(1);
+        Check(gate.TryUse(24402, false, false, true) == null && gate.TakeMove() == new JobMove(JobMoveKind.ReturnPoint, 0, false),
+            "Regress must request the return move.");
+        Check(!gate.CanUse(24401, false, false, true, bound: true, checkTiming: false), "The gates must be refused while bound.");
+    }
+
+    private static void Viper()
+    {
+        Check(JobCombatRegistry.Find(41, 90) != null, "Viper level 90 must be registered.");
+        var vpr = new ViperCombat();
+        // Trait 529 (level 84) raises Slither from two charges to three.
+        Check(vpr.GetCooldown(34646) == (14, 30, 3), "Slither must have 3 charges per trait 529.");
+        Check(vpr.GetCooldown(34620) == (15, 40, 2), "Vicewinder must have 2 charges.");
+        // A 3 s sheet recast is shortened by the same skill speed as the 2.5 s GCD.
+        var fast = new ViperCombat(2.0);
+        Check(Math.Abs(fast.GetCooldown(34621).Recast - 2.4) < 1e-9, "The Vicewinder follow-ups must scale with skill speed.");
+
+        Hit(vpr, 34606);
+        Check(vpr.Adjust(34606) == 34608, "The first fang must turn its own button into the second.");
+        Gcd(vpr); Hit(vpr, 34606);
+        Check(vpr.Statuses().Any(s => s.Id == 3668) && vpr.Adjust(34606) == 34610,
+            "Hunter's Sting must grant Hunter's Instinct and arm the third fang.");
+        Gcd(vpr); Hit(vpr, 34606);
+        Check(vpr.SerpentOffering == 10, "The third fang must give 10 Serpent Offering.");
+        Check(vpr.Adjust(35920) == 34634, "The third fang must turn Serpent's Tail into Death Rattle.");
+        vpr.Advance(1);
+        Check(vpr.TryUse(35920, true, true, true) is { ActionId: 34634 }, "Death Rattle must resolve.");
+        Check(vpr.Adjust(35920) == 35920, "Death Rattle must disarm Serpent's Tail.");
+
+        var aoe = new ViperCombat();
+        Hit(aoe, 34614, aoe: true); Gcd(aoe);
+        Check(aoe.Adjust(34614) == 34616, "The first steel fang must arm the second.");
+        Hit(aoe, 34614, aoe: true); Gcd(aoe);
+        Check(aoe.Adjust(34614) == 34618, "The second steel fang must arm the third.");
+        Hit(aoe, 34614, aoe: true);
+        Check(aoe.Adjust(35920) == 34635, "The third steel fang must turn Serpent's Tail into Last Lash.");
+
+        var coil = new ViperCombat();
+        Check(!coil.CanUse(34633, true, true, true, checkTiming: false), "Uncoiled Fury needs a Rattling Coil.");
+        Hit(coil, 34620);
+        Check(coil.RattlingCoil == 1, "Vicewinder must give a Rattling Coil.");
+        Check(coil.Adjust(35921) == 35921, "Twinblood must stay unarmed until the follow-up lands.");
+        Gcd(coil); Hit(coil, 34621);
+        Check(coil.SerpentOffering == 5 && coil.Adjust(35921) == 34636,
+            "Hunter's Coil must give 5 Serpent Offering and arm Twinblood.");
+        coil.Advance(1);
+        Check(coil.TryUse(35921, true, true, true) is { ActionId: 34636 }, "Twinfang Bite must resolve.");
+        Check(coil.Adjust(35922) == 34637, "Twinblood must allow its second use.");
+        Gcd(coil);
+        Hit(coil, 34633, aoe: true);
+        Check(coil.RattlingCoil == 0, "Uncoiled Fury must spend the Rattling Coil.");
+
+        var reawaken = new ViperCombat();
+        Check(!reawaken.CanUse(34626, true, true, true, checkTiming: false), "Reawaken needs 50 Serpent Offering.");
+        Check(reawaken.TryUse(34647, false, false, true) == null && reawaken.CanUse(34626, true, true, true, checkTiming: false),
+            "Serpent's Ire must ready Reawaken without the Offering.");
+        reawaken.Advance(1);
+        Hit(reawaken, 34626, aoe: true);
+        Check(reawaken.AnguineTribute == 4 && reawaken.Adjust(34606) == 34627 && reawaken.Adjust(34622) == 34630,
+            "Reawaken must grant four Anguine Tribute and rewrite the chain buttons.");
+        Gcd(reawaken);
+        Hit(reawaken, 34606, aoe: true);
+        Check(reawaken.AnguineTribute == 3, "A Legacy fang must spend one Anguine Tribute.");
+
+        var slither = new ViperCombat();
+        Check(slither.TryUse(34646, true, true, true) is { GapCloser: true }, "Slither must slide to its target.");
+        Check(!slither.CanUse(34646, true, true, true, bound: true, checkTiming: false), "Slither must be refused while bound.");
     }
 
     private static void RoleActions()

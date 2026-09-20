@@ -75,3 +75,40 @@ internal sealed unsafe class SamuraiNativeGauge : IJobGauge
         gauge->Kaeshi = (KaeshiAction)(byte)(sam.Kaeshi switch { 16485 => 1, 16486 => 2, 25782 => 3, _ => 0 });
     }
 }
+
+internal sealed unsafe class ReaperNativeGauge : IJobGauge
+{
+    private readonly ReaperGauge* gauge;
+
+    public ReaperNativeGauge() => gauge = (ReaperGauge*)HealerGauge.Current(39);
+    public bool Matches => HealerGauge.Matches(39, gauge);
+
+    public void Mirror(IJobCombat rules)
+    {
+        var rpr = (ReaperCombat)rules;
+        gauge->Soul = (byte)rpr.Soul;
+        gauge->Shroud = (byte)rpr.Shroud;
+        gauge->EnshroudedTimeRemaining = (ushort)Math.Ceiling(rpr.EnshroudedRemaining * 1000);
+        gauge->LemureShroud = (byte)rpr.LemureShroud;
+        gauge->VoidShroud = (byte)rpr.VoidShroud;
+    }
+}
+
+internal sealed unsafe class ViperNativeGauge : IJobGauge
+{
+    private readonly ViperGauge* gauge;
+
+    public ViperNativeGauge() => gauge = (ViperGauge*)HealerGauge.Current(41);
+    public bool Matches => HealerGauge.Matches(41, gauge);
+
+    public void Mirror(IJobCombat rules)
+    {
+        var vpr = (ViperCombat)rules;
+        gauge->RattlingCoilStacks = (byte)vpr.RattlingCoil;
+        gauge->AnguineTribute = (byte)vpr.AnguineTribute;
+        gauge->SerpentOffering = (byte)vpr.SerpentOffering;
+        gauge->ReawakenedTimer = (ushort)Math.Ceiling(vpr.ReawakenedRemaining * 1000);
+        // ponytail: DreadCombo and SerpentComboState encodings are unverified, so the chain state stays in
+        // the rules object and these bytes are left clear. Confirm against the in-game gauge.
+    }
+}

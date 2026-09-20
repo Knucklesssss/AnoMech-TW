@@ -25,6 +25,8 @@
     <Compile Include="../AnoMech/Core/Combat/DragoonCombat.cs" />
     <Compile Include="../AnoMech/Core/Combat/NinjaCombat.cs" />
     <Compile Include="../AnoMech/Core/Combat/SamuraiCombat.cs" />
+    <Compile Include="../AnoMech/Core/Combat/ReaperCombat.cs" />
+    <Compile Include="../AnoMech/Core/Combat/ViperCombat.cs" />
     <Compile Include="../AnoMech/Core/Combat/BardCombat.cs" />
     <Compile Include="../AnoMech/Core/Combat/MachinistCombat.cs" />
     <Compile Include="../AnoMech/Core/Combat/DancerCombat.cs" />
