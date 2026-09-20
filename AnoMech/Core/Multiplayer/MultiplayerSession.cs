@@ -593,7 +593,7 @@ internal sealed unsafe class MultiplayerSession : IDisposable
 
         if (failure is null)
         {
-            MultiplayerContext.Begin(MultiplayerRole.Client, 0, start.OverridePayload);
+            MultiplayerContext.Begin(MultiplayerRole.Client, Wire.HumanSlotMask(start.SlotOwners), start.OverridePayload);
             SimRandom.Reseed(start.Seed, -1);
             game.EventTimeScale = start.EventTimeScale;
             game.GodMode = start.GodMode;

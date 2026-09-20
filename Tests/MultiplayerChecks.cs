@@ -24,6 +24,7 @@ internal static class MultiplayerChecks
             PoseBufferInterpolates();
             DisconnectedSlotReturnsToAi();
             LimitBreakArbitration();
+            ClientKnowsHumanSlots();
         }
         finally
         {
@@ -336,5 +337,14 @@ internal static class MultiplayerChecks
         Check(buffer.TrySample(200, 20, out var late) && MathF.Abs(late.Position.X - 7f) < 1e-4f, "extrapolation is capped");
         var wrapped = PoseBuffer.Lerp(new NetPose(Vector3.Zero, 3f), new NetPose(Vector3.Zero, -3f), 0.5f);
         Check(MathF.Abs(MathF.Abs(wrapped.Rotation) - MathF.PI) < 0.01f, "rotation interpolates across the ±π seam");
+    }
+
+    private static void ClientKnowsHumanSlots()
+    {
+        // SlotOwners holds a player id per slot, or Wire.NoPlayer where the AI drives it.
+        byte[] owners = [1, Wire.NoPlayer, 2, Wire.NoPlayer, Wire.NoPlayer, Wire.NoPlayer, Wire.NoPlayer, Wire.NoPlayer];
+        Check(Wire.HumanSlotMask(owners) == 0b0000_0101, "every slot with an owner counts as human");
+        Check(Wire.HumanSlotMask([Wire.NoPlayer, Wire.NoPlayer, Wire.NoPlayer, Wire.NoPlayer,
+            Wire.NoPlayer, Wire.NoPlayer, Wire.NoPlayer, Wire.NoPlayer]) == 0, "an all-AI party has no human slots");
     }
 }

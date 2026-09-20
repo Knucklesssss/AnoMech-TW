@@ -22,6 +22,16 @@ public static class Wire
 
     public static bool ValidRole(byte role, bool allowNone) => role < Slots || (allowNone && role == NoRole);
 
+    // The client used to begin with an empty mask, so IsHumanControlled was always false there and the AI
+    // pressed limit breaks for remote players that the host left alone.
+    public static int HumanSlotMask(byte[] slotOwners)
+    {
+        var mask = 0;
+        for (var slot = 0; slot < Wire.Slots && slot < slotOwners.Length; slot++)
+            if (slotOwners[slot] != Wire.NoPlayer) mask |= 1 << slot;
+        return mask;
+    }
+
     public static bool TryGetFinite(this NetDataReader reader, float limit, out float value)
         => reader.TryGetFloat(out value) && float.IsFinite(value) && MathF.Abs(value) <= limit;
 }
