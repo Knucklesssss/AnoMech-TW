@@ -25,6 +25,7 @@ public sealed class SimWorld : ISimObject, IDisposable
         Combat?.Dispose();
         Combat = AnoMech.Core.Combat.LocalCombatSession.Start(this, level, out combatReason);
     }
+    internal AnoMech.Core.Combat.PracticeLimitBreakRuntime? LimitBreaks { get; set; }
     // Ownership
     private readonly List<ISimObject> children = new();
     private readonly EnmityHud enmityHud = new();
@@ -172,6 +173,7 @@ public sealed class SimWorld : ISimObject, IDisposable
     {
         Map.Tick();
         children.Update(deltaSeconds);
+        LimitBreaks?.Tick(deltaSeconds);
         enmityHud.Refresh(children.OfType<SimEnemy>(), deltaSeconds);
         partyHud.Refresh(Party);
         castBarHud.Refresh(Combat);
@@ -181,6 +183,8 @@ public sealed class SimWorld : ISimObject, IDisposable
     {
         HitRangeDebug.Clear();
         AnoMech.Core.Combat.TargetMitigation.Clear();
+        LimitBreaks?.Dispose();
+        LimitBreaks = null;
         Combat?.Dispose();
         children.Despawn();
         Party = SimParty.Empty;

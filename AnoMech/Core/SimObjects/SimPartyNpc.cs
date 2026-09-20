@@ -10,6 +10,7 @@ namespace AnoMech.Core.SimObjects;
 public sealed unsafe class SimPartyNpc : SimNpc, ISimPartyMember
 {
     public PartyRole Role { get; set; }
+    public override bool AnimationLock => base.AnimationLock || Plugin.GameInstance?.World.LimitBreaks?.IsBusy(Role) == true;
     public bool Dead { get; private set; }
     public byte ClassJob { get; }
     public string DisplayName { get; }

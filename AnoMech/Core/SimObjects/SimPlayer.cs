@@ -76,6 +76,7 @@ public sealed unsafe class SimPlayer(Coordinates coordinates) : SimCharacter(coo
 
     public void OnKilled()
     {
+        Plugin.GameInstance?.World.LimitBreaks?.Cancel(Role);
         Dead = true;
         StopMoving();
         DropHpBar(); // real-death bar drop (bots do the same in their own OnKilled); godmode skips this path
@@ -103,10 +104,11 @@ public sealed unsafe class SimPlayer(Coordinates coordinates) : SimCharacter(coo
         SyncInputLock();
     }
 
-    private void SyncInputLock()
+    internal void SyncInputLock()
     {
         var hooks = Plugin.PlayerInputHooks;
-        hooks.ZeroMovement = Dead || Movement.IsMoving;
-        hooks.DisableAllActions = Dead;
+        hooks.ZeroMovement = Dead || Movement.IsMoving ||
+            Plugin.GameInstance?.World.LimitBreaks?.IsRecovering(Role) == true;
+        hooks.DisableAllActions = Dead || Plugin.GameInstance?.World.LimitBreaks?.IsBusy(Role) == true;
     }
 }

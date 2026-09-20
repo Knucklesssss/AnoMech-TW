@@ -18,6 +18,7 @@ internal sealed unsafe class LocalCastBarHud : IDisposable
     private const uint CastIconNodeId = 8;
 
     private LocalCombatSession? session;
+    private uint CastingAction => Plugin.GameInstance?.World.LimitBreaks?.CastingAction is > 0 and var lb ? lb : session?.CastingAction ?? 0;
     private bool shown;
     private uint loadedIcon;
 
@@ -37,7 +38,7 @@ internal sealed unsafe class LocalCastBarHud : IDisposable
     public void Refresh(LocalCombatSession? combat)
     {
         session = combat is { Active: true, CastingAction: not 0 } ? combat : null;
-        if (session != null)
+        if (CastingAction != 0)
         {
             MarkArraysDirty();
             SetShown(true);
@@ -58,12 +59,12 @@ internal sealed unsafe class LocalCastBarHud : IDisposable
 
     private void OnPreDraw(AddonEvent type, AddonArgs args)
     {
-        if (session is not { CastingAction: not 0 } combat) return;
+        if (CastingAction == 0) return;
         SetShown(true);
         // The addon keeps the name it got when a real cast opened it, ignoring the string array.
         var addon = (AtkUnitBase*)args.Addon.Address;
         var nameNode = addon == null ? null : addon->GetTextNodeById(CastNameNodeId);
-        if (addon == null || !Plugin.DataManager.GetExcelSheet<Action>().TryGetRow(combat.CastingAction, out var action)) return;
+        if (addon == null || !Plugin.DataManager.GetExcelSheet<Action>().TryGetRow(CastingAction, out var action)) return;
         if (nameNode != null) nameNode->SetText(action.Name.ExtractText());
         if (loadedIcon != action.Icon && LoadIcon(addon, action.Icon)) loadedIcon = action.Icon;
     }
@@ -102,7 +103,7 @@ internal sealed unsafe class LocalCastBarHud : IDisposable
 
     private void OnPreRequestedUpdate(AddonEvent type, AddonArgs args)
     {
-        if (session is not { CastingAction: not 0 } combat) return;
+        if (CastingAction == 0) return;
         if (args is not AddonRequestedUpdateArgs reqArgs) return;
         var numArrays = (NumberArrayData**)reqArgs.NumberArrayData;
         var strArrays = (StringArrayData**)reqArgs.StringArrayData;
@@ -110,7 +111,7 @@ internal sealed unsafe class LocalCastBarHud : IDisposable
         var numArr = numArrays[(int)NumberArrayType.CastBar];
         var strArr = strArrays[(int)StringArrayType.CastBar];
         if (numArr == null || strArr == null || numArr->IntArray == null) return;
-        if (!Plugin.DataManager.GetExcelSheet<Action>().TryGetRow(combat.CastingAction, out var action)) return;
+        if (!Plugin.DataManager.GetExcelSheet<Action>().TryGetRow(CastingAction, out var action)) return;
         ((CastBarNumberArray*)numArr->IntArray)->CastIconId = action.Icon;
         strArr->SetValue(0, action.Name.ExtractText(), managed: true);
     }

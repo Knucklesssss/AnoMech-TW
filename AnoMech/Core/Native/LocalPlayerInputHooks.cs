@@ -1,4 +1,6 @@
 using System;
+using System.Linq;
+using AnoMech.Core.SimObjects;
 using AnoMech.Core.Combat;
 using System.Numerics;
 using System.Runtime.InteropServices;
@@ -188,7 +190,11 @@ public sealed unsafe class LocalPlayerInputHooks : IDisposable
         catch (Exception ex) { StopCombat(session, ex); }
         finally
         {
-            try { session?.AfterNativeUpdate(); }
+            try
+            {
+                session?.AfterNativeUpdate();
+                Plugin.GameInstance?.World.LimitBreaks?.AfterNativeUpdate();
+            }
             catch (Exception ex) { StopCombat(session, ex); }
         }
     }
@@ -198,6 +204,18 @@ public sealed unsafe class LocalPlayerInputHooks : IDisposable
         var session = Combat;
         try
         {
+            if (TryGetPracticeLimitBreak(actionType, actionId, out var runtime, out var lbAction))
+            {
+                if (DisableAllActions || Plugin.GameInstance!.Paused || !runtime.IsAvailable || lbAction == 0) return false;
+                var row = Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Action>().GetRow(lbAction);
+                if (row.TargetArea)
+                    return useActionHook!.Original(self, ActionType.Action, lbAction, targetId, extraParam, mode, comboRouteId, outOptAreaTargeted);
+                if (outOptAreaTargeted != null) *outOptAreaTargeted = false;
+                var started = runtime.TryStart(Plugin.GameInstance.World.Party.PlayerRole, lbAction, target: ResolveLimitBreakTarget(targetId));
+                if (started) actionUsedSincePoll = true;
+                return started;
+            }
+            if (Plugin.GameInstance?.World.LimitBreaks?.IsBusy(Plugin.GameInstance.World.Party.PlayerRole) == true && !IsStopAutosAction(actionType, actionId)) return false;
             if (session != null && session.TryInput(actionType, actionId, targetId, out var accepted))
             {
                 if (outOptAreaTargeted != null) *outOptAreaTargeted = false;
@@ -219,6 +237,17 @@ public sealed unsafe class LocalPlayerInputHooks : IDisposable
         var session = Combat;
         try
         {
+            if (TryGetPracticeLimitBreak(actionType, actionId, out var runtime, out var lbAction))
+            {
+                if (DisableAllActions || Plugin.GameInstance!.Paused || !runtime.IsAvailable || lbAction == 0) return false;
+                var area = Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Action>().GetRow(lbAction).TargetArea;
+                if (area && location == null) return false;
+                var local = area ? Plugin.GameInstance.World.Coordinates.ToLocal(*location) : (Vector3?)null;
+                var started = runtime.TryStart(Plugin.GameInstance.World.Party.PlayerRole, lbAction, local, ResolveLimitBreakTarget(targetId));
+                if (started) actionUsedSincePoll = true;
+                return started;
+            }
+            if (Plugin.GameInstance?.World.LimitBreaks?.IsBusy(Plugin.GameInstance.World.Party.PlayerRole) == true && !IsStopAutosAction(actionType, actionId)) return false;
             if (session != null && location != null && session.TryInputAt(actionType, actionId, targetId, *location, out var placed)) return placed;
             if (session != null && session.TryInput(actionType, actionId, targetId, out var accepted)) return accepted;
             if (DisableAllActions && !IsStopAutosAction(actionType, actionId)) return false;
@@ -257,6 +286,15 @@ public sealed unsafe class LocalPlayerInputHooks : IDisposable
         var session = Combat;
         try
         {
+            if (TryGetPracticeLimitBreak(type, id, out var runtime, out var action))
+            {
+                var status = actionStatusHook!.Original(self, type, id, target, checkRecast, checkCasting, extra);
+                if (status is not (0 or 574)) return status;
+                if (action == 0 || DisableAllActions || Plugin.GameInstance!.Paused || !runtime.IsAvailable ||
+                    runtime.IsBusy(Plugin.GameInstance.World.Party.PlayerRole) || session?.CastingAction > 0) return 574;
+                if (extra != null) *extra = 0;
+                return 0;
+            }
             if (session != null && (type == ActionType.Item || (type == ActionType.Action && id != SprintActionId)))
             {
                 if (extra != null) *extra = 0;
@@ -275,6 +313,27 @@ public sealed unsafe class LocalPlayerInputHooks : IDisposable
             return actionStatusHook!.Original(self, type, id, target, checkRecast, checkCasting, extra);
         }
         catch (Exception ex) { StopCombat(session, ex); if (extra != null) *extra = 0; return 572; }
+    }
+
+    private static bool TryGetPracticeLimitBreak(ActionType type, uint id, out PracticeLimitBreakRuntime runtime, out uint action)
+    {
+        runtime = null!;
+        action = 0;
+        if (Plugin.GameInstance?.World.LimitBreaks is not { } active) return false;
+        var requested = type == ActionType.GeneralAction && id == 3 || type == ActionType.Action &&
+            Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Action>().GetRowOrDefault(id)?.ActionCategory.RowId == 9;
+        if (!requested) return false;
+        runtime = active;
+        action = active.ActionFor(Plugin.GameInstance.World.Party.PlayerRole);
+        return true;
+    }
+
+    private static SimCharacter? ResolveLimitBreakTarget(ulong targetId)
+    {
+        if (targetId is 0 or 0xE0000000) targetId = Plugin.ObjectTable.LocalPlayer?.TargetObject?.EntityId ?? 0;
+        var world = Plugin.GameInstance!.World;
+        return world.Children.OfType<SimCharacter>().Concat(world.Party.ActiveMembers())
+            .FirstOrDefault(member => member.GameObjectId.ObjectId == targetId);
     }
 
     private static void StopCombat(LocalCombatSession? session, Exception ex)

@@ -45,6 +45,14 @@ public sealed unsafe class LocalCombatSession : IDisposable
     }
     public bool Active { get; private set; }
     public uint CastingAction => model.CastingAction;
+    private bool PracticeLimitBreakBusy => world.LimitBreaks?.IsBusy(player.Role) == true;
+    private bool practiceCastMirrored;
+    internal void MirrorPracticeCast(uint action, float elapsed, float total, GameObjectId target)
+    {
+        native.SetCast(action, elapsed, total, target);
+        native.Mirror(false);
+        practiceCastMirrored = action != 0;
+    }
     public double CastRemaining => Math.Max(0, castRemaining);
     public double CastTotal => castTotal;
     public float CastProgress => castTotal <= 0 ? 0 : (float)Math.Clamp(1 - castRemaining / castTotal, 0, 1);
@@ -141,6 +149,7 @@ public sealed unsafe class LocalCombatSession : IDisposable
             return;
         }
         if (Plugin.GameInstance!.Paused) { CancelCast("paused"); return; }
+        if (PracticeLimitBreakBusy) { buffer.Reset(); return; }
         if (model.CastingAction != 0) TickCast(seconds);
         TickAutoAttack(seconds);
         if (buffer.Pending is { } pending)
@@ -227,7 +236,7 @@ public sealed unsafe class LocalCombatSession : IDisposable
 
     public uint ActionStatus(uint id, ulong targetId, bool checkTiming)
     {
-        if (!CheckIdentity()) return 572;
+        if (!CheckIdentity() || PracticeLimitBreakBusy) return 572;
         if (targetId == 0xE0000000 || targetId == 0) targetId = CurrentTargetId();
         if (id == 7)
             return Alive && !Plugin.GameInstance!.Paused && !RestrictedStatus(movement: false)
@@ -275,6 +284,7 @@ public sealed unsafe class LocalCombatSession : IDisposable
     {
         accepted = false;
         if (!CheckIdentity()) return false;
+        if (PracticeLimitBreakBusy) return true;
         if ((type == ActionType.GeneralAction && id == 1) || (type == ActionType.Action && id == 7))
         {
             if (!Alive || Plugin.GameInstance!.Paused || RestrictedStatus(movement: false)) { AutoAttacking = false; return true; }
@@ -315,7 +325,7 @@ public sealed unsafe class LocalCombatSession : IDisposable
 
     private bool Validate(uint id, ulong targetId, bool timing)
     {
-        if (!Alive || Plugin.GameInstance!.Paused || RestrictedStatus(movement: false)) return false;
+        if (PracticeLimitBreakBusy || !Alive || Plugin.GameInstance!.Paused || RestrictedStatus(movement: false)) return false;
         id = Adjust(id);
         var target = ResolveTarget(id, targetId);
         var hasTarget = model.IsSelfAction(id) ? Enemies().Any(e => InEffectRange(id, Position(player), e)) : target != null;
@@ -506,6 +516,8 @@ public sealed unsafe class LocalCombatSession : IDisposable
     public void AfterNativeUpdate()
     {
         if (!CheckIdentity()) return;
+        if (PracticeLimitBreakBusy) { world.LimitBreaks!.MirrorCast(this); return; }
+        if (practiceCastMirrored) MirrorPracticeCast(0, 0, 0, default);
         var probe = model.CastingAction != 0 && !castProbeLogged && castRemaining <= castTotal / 2 && Plugin.LogManager.Enabled;
         if (probe) Log($"CastProbe afterNativeUpdate {native.CastDebugState()}");
         if (model.CastingAction != 0) native.SetCast(model.CastingAction, castTotal - castRemaining, castTotal, castTargetObject);
