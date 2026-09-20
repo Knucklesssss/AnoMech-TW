@@ -111,6 +111,14 @@ A2 延伸這個模型，而不是在旁邊另蓋一套主機權威模型：
 AI 的判斷在每台機器上都一樣（決定性），所以 AI 的 LB 不需要上線，
 但它一樣要經過本地 runtime 的槽佔用，與真人的 LB 競爭同一條槽。
 
+**前提：客戶端也要拿到人類格子遮罩。** 目前 `ClientStart` 呼叫
+`MultiplayerContext.Begin(MultiplayerRole.Client, 0, ...)`，遮罩固定為 0，
+所以 `IsHumanControlled` 在客戶端永遠是 false —— AI 會在客戶端替真人代按 LB，主機卻不會，兩邊立刻分歧。
+改為由 `start.SlotOwners` 推出遮罩傳入。
+
+這個遮罩在客戶端目前只影響 `AiManager` 的走位跳過判斷，而客戶端的真人格子本來就是
+`NetworkDriven`、姿勢由幀覆蓋，所以讓 AI 不去碰它們沒有副作用。
+
 ### 失敗與團滅
 
 判定收歸主機獨有：客戶端在多人場景中跳過三處與 LB 有關的判定分支 ——
