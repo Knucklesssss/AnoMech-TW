@@ -158,6 +158,7 @@ public sealed class Game : IDisposable
             return;
         }
 
+        Plugin.Recorder?.Stop();
         ResetInternal();
 
         var player = Plugin.ObjectTable.LocalPlayer;
