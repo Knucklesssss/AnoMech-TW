@@ -2,6 +2,7 @@ MitigationChecks.Run();
 HitRangeChecks.Run();
 P2StandardChecks.Run();
 P6OpeningChecks.Run();
+P6MeteorChecks.Run();
 OmegaAssignmentChecks.Run();
 PartyListOrderChecks.Run();
 CrossMonitorChecks.Run();
