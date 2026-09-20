@@ -34,6 +34,7 @@ namespace AnoMech.Core.Map
     public sealed class ZoneSession : IDisposable
     {
         public static bool EntrySucceeds = true;
+        internal OpcodeAllowlist IncomingOpcodes { get; } = new();
         public bool IsActive { get; private set; }
         public static bool IsSupportedStartLocation() => true;
         public void Enter(uint territory, Vector3 position, byte level, ushort itemLevel)

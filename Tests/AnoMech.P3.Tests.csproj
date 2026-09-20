@@ -42,6 +42,7 @@
     <Compile Include="../AnoMech/Core/Game/Party/PartyListOrderRules.cs" />
     <Compile Include="../AnoMech/Core/Map/StartLocationRules.cs" />
     <Compile Include="../AnoMech/Core/Map/MapController.cs" />
+    <Compile Include="../AnoMech/Core/Map/OpcodeAllowlist.cs" />
     <Compile Include="../AnoMech/Core/Map/TargetInstance.cs" />
     <Compile Include="../AnoMech/Scenarios/Top/P2PartySynergy/*Ai.cs" />
     <Compile Include="../AnoMech/Scenarios/Top/P2PartySynergy/*State*.cs" />
