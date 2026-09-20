@@ -67,4 +67,3 @@ try
 }
 finally { MultiplayerContext.End(); if (File.Exists(path)) File.Delete(path); }
 static void Check(bool value, string description) { if (!value) throw new Exception(description); }
-

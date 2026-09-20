@@ -102,4 +102,3 @@ internal sealed class NpcCollectorWindow : Window
         ImGui.EndTable();
     }
 }
-
