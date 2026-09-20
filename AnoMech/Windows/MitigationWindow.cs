@@ -26,7 +26,7 @@ public sealed class MitigationWindow : Window
     public override void Draw()
     {
         ImGui.TextWrapped("僅記錄本機施放。提示覆蓋狀態，不判定減傷是否足夠，不改血量或生死。");
-        ImGui.TextWrapped("持續時間依本次練習規則：雪仇／昏亂／牽制 15 秒，武裝解除 10 秒。未對應來源或傷害類型的機制不判定。");
+        ImGui.TextWrapped("90 等持續時間：雪仇／昏亂／牽制／武裝解除皆為 10 秒。未對應來源或傷害類型的機制不判定。");
         ImGui.TextUnformatted(TargetMitigation.LastUse);
         foreach (var enemy in plugin.Game.World.Children.OfType<SimEnemy>().Where(e => e.IsActive))
         {

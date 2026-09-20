@@ -5,6 +5,14 @@ internal static class MitigationChecks
     {
         var boss = new object(); var other = new object();
         TargetMitigation.Clear();
+        foreach (var action in new uint[] { 7535, 7560, 7549, 2887 })
+        {
+            TargetMitigation.Apply(boss, action);
+            Check(TargetMitigation.Active(boss).Single().Remaining == 10, $"Level 90 action {action} lasts ten seconds");
+            TargetMitigation.Tick(10);
+            Check(TargetMitigation.Active(boss).Length == 0, $"Level 90 action {action} expires at ten seconds");
+            TargetMitigation.Clear();
+        }
         TargetMitigation.Apply(boss, 7560);
         Check(Math.Abs(TargetMitigation.Reduction(boss, true) - .1f) < .0001f &&
             Math.Abs(TargetMitigation.Reduction(boss, false) - .05f) < .0001f, "Addle damage types");
@@ -17,7 +25,7 @@ internal static class MitigationChecks
         Check(TargetMitigation.Reduction(other, true) == 0, "Wrong target cannot reduce damage");
         TargetMitigation.Apply(boss, 7560);
         Check(TargetMitigation.Active(boss).Length == 2, "Same effect refreshes without stacking");
-        TargetMitigation.Tick(14.9f);
+        TargetMitigation.Tick(9.9f);
         TargetMitigation.Record(boss, "命中", true);
         Check(TargetMitigation.Reports[^1].Result.Contains("有覆蓋"), "Snapshot sees remaining duration");
         TargetMitigation.Tick(.2f);

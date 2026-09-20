@@ -18,9 +18,9 @@ public static class TargetMitigation
     public static bool Supported(uint action) => action is 7535 or 7560 or 7549 or 2887;
     public static MitigationEffect Rule(uint action) => action switch
     {
-        7535 => new(action, "雪仇", 15, .1f, .1f),
-        7560 => new(action, "昏亂", 15, .05f, .1f),
-        7549 => new(action, "牽制", 15, .1f, .05f),
+        7535 => new(action, "雪仇", 10, .1f, .1f),
+        7560 => new(action, "昏亂", 10, .05f, .1f),
+        7549 => new(action, "牽制", 10, .1f, .05f),
         2887 => new(action, "武裝解除", 10, .1f, .1f),
         _ => default,
     };
