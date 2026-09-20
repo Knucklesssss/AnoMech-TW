@@ -351,11 +351,13 @@ internal sealed unsafe class MultiplayerSession : IDisposable
                 if (hostRun is { } lbRun && used.RunId == lbRun.RunId && lbRun.Remote.TryGetValue(player.Id, out var caster))
                 {
                     lbRun.LimitBreakDirty = true;
-                    if (lbRun.Bar.TryClaim(caster.Role, used.RequestId)
-                        && game.World.LimitBreaks?.TryStartRemote((PartyRole)caster.Role, used.ActionId, used.CasterPosition, used.Aim) == true)
-                        lbRun.PendingLimitBreaks.Add((caster.Role, used.ActionId, used.CasterPosition, used.Aim));
-                    else
-                        lbRun.Bar.Release();
+                    if (lbRun.Bar.TryClaim(caster.Role, used.RequestId))
+                    {
+                        if (game.World.LimitBreaks?.TryStartRemote((PartyRole)caster.Role, used.ActionId, used.CasterPosition, used.Aim) == true)
+                            lbRun.PendingLimitBreaks.Add((caster.Role, used.ActionId, used.CasterPosition, used.Aim));
+                        else
+                            lbRun.Bar.Release();
+                    }
                 }
                 break;
             case MessageType.Appearance when AppearanceDto.TryRead(reader, out var look):
