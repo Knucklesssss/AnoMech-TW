@@ -26,6 +26,7 @@ public partial struct SpawnObjectPacket
     [FieldOffset(0x22)] public ushort Rotation;
     [FieldOffset(0x24)] public ushort FateId;
     [FieldOffset(0x26)] public byte EventState;
+    [FieldOffset(0x2C)] public ushort TimelineState;
     [FieldOffset(0x34)] public float PositionX;
     [FieldOffset(0x38)] public float PositionY;
     [FieldOffset(0x3C)] public float PositionZ;

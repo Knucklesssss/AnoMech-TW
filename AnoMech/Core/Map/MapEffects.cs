@@ -38,6 +38,7 @@ internal sealed unsafe class MapEffects : IDisposable
         // Info logging so i can gather logs of events from instance
         Plugin.Log.Info($"[MapEffect] index=0x{index:X} state=0x{state:X} flags=0x{flags:X}");
         Plugin.LogManager.LogMapEffect(index, state, flags);
+        Plugin.Recorder?.LogMapEffect(index, state, flags);
         return hook!.Original(module, index, state, flags);
     }
 

@@ -15,6 +15,7 @@ using AnoMech.Core.Game;
 using AnoMech.Core.Map;
 using AnoMech.Core.Multiplayer;
 using AnoMech.Core.Native;
+using AnoMech.Core.Recording;
 using AnoMech.Scenarios.Top.P3Monitors;
 using AnoMech.Windows;
 using AnoMech.Pointers;
@@ -66,6 +67,8 @@ public sealed class Plugin : IDalamudPlugin
     private PartyListOrderWindow PartyListOrderWindow { get; init; }
     private JobSupportWindow JobSupportWindow { get; init; }
     private NpcCollectorWindow NpcCollectorWindow { get; init; }
+    private RecorderWindow RecorderWindow { get; init; }
+    internal static CombatRecorder? Recorder { get; private set; }
     internal static MultiplayerSession Multiplayer { get; private set; } = null!;
     internal static ChainRunner Chain { get; private set; } = null!;
     private ChainWindow ChainWindow { get; init; }
@@ -100,6 +103,8 @@ public sealed class Plugin : IDalamudPlugin
         WindowSystem.AddWindow(JobSupportWindow);
         NpcCollectorWindow = new NpcCollectorWindow();
         WindowSystem.AddWindow(NpcCollectorWindow);
+        RecorderWindow = new RecorderWindow();
+        WindowSystem.AddWindow(RecorderWindow);
         Chain = new ChainRunner(Game, Configuration);
         ChainWindow = new ChainWindow(this, MainWindow);
         WindowSystem.AddWindow(ChainWindow);
@@ -113,7 +118,7 @@ public sealed class Plugin : IDalamudPlugin
 
         CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
         {
-            HelpMessage = "開啟 AnoMech。子指令：config、start、reset、leave、mark、actions、net、npc（怪物採集器）"
+            HelpMessage = "開啟 AnoMech。子指令：config、start、reset、leave、mark、actions、net、npc（怪物採集器）、record（錄製器）"
         });
         CommandManager.AddHandler(CommandAlias, new CommandInfo(OnCommand)
         {
@@ -144,6 +149,7 @@ public sealed class Plugin : IDalamudPlugin
         VfxContainerPointers.Initialize();
         VfxObjectPointers.Initialize();
         VfxDataPointers.Initialize();
+        Recorder = new CombatRecorder();
 
         SignatureReport.Log(
             typeof(CharacterManagerPointers), typeof(EventFrameworkPointers),
@@ -169,6 +175,8 @@ public sealed class Plugin : IDalamudPlugin
         DutyState.DutyCompleted -= OnDutyCompleted;
 
         WindowSystem.RemoveAllWindows();
+        Recorder?.Dispose();
+        Recorder = null;
 
         Multiplayer.Dispose();
         Game.Dispose();
@@ -203,10 +211,13 @@ public sealed class Plugin : IDalamudPlugin
             Game.Tick(fw->FrameDeltaTime);
         Chain.Tick(fw->FrameDeltaTime);
         NpcCollectorWindow.Tick(fw->FrameDeltaTime);
+        if (Game.World.Map.IsInInstance) Recorder?.Stop();
+        else Recorder?.Tick(fw->FrameDeltaTime);
     }
 
     private void OnTerritoryChanged(ushort territory)
     {
+        Recorder?.Stop();
         var row = DataManager.GetExcelSheet<TerritoryType>()?.GetRowOrDefault(territory);
         var isInn = row is { } location && StartLocationRules.IsAllowed(
             location.TerritoryIntendedUse.RowId, location.Name.ToString());
@@ -273,6 +284,9 @@ public sealed class Plugin : IDalamudPlugin
                 break;
             case "npc":
                 NpcCollectorWindow.Toggle();
+                break;
+            case "record":
+                RecorderWindow.Toggle();
                 break;
             default:
                 MainWindow.Toggle();
