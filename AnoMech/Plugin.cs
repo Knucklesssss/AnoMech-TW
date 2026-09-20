@@ -65,6 +65,7 @@ public sealed class Plugin : IDalamudPlugin
     private MultiplayerWindow MultiplayerWindow { get; init; }
     private PartyListOrderWindow PartyListOrderWindow { get; init; }
     private JobSupportWindow JobSupportWindow { get; init; }
+    private NpcCollectorWindow NpcCollectorWindow { get; init; }
     internal static MultiplayerSession Multiplayer { get; private set; } = null!;
     internal static ChainRunner Chain { get; private set; } = null!;
     private ChainWindow ChainWindow { get; init; }
@@ -97,6 +98,8 @@ public sealed class Plugin : IDalamudPlugin
         WindowSystem.AddWindow(PartyListOrderWindow);
         JobSupportWindow = new JobSupportWindow();
         WindowSystem.AddWindow(JobSupportWindow);
+        NpcCollectorWindow = new NpcCollectorWindow();
+        WindowSystem.AddWindow(NpcCollectorWindow);
         Chain = new ChainRunner(Game, Configuration);
         ChainWindow = new ChainWindow(this, MainWindow);
         WindowSystem.AddWindow(ChainWindow);
@@ -110,7 +113,7 @@ public sealed class Plugin : IDalamudPlugin
 
         CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
         {
-            HelpMessage = "開啟 AnoMech。子指令：config、start、reset、leave、mark、actions、net"
+            HelpMessage = "開啟 AnoMech。子指令：config、start、reset、leave、mark、actions、net、npc（怪物採集器）"
         });
         CommandManager.AddHandler(CommandAlias, new CommandInfo(OnCommand)
         {
@@ -199,6 +202,7 @@ public sealed class Plugin : IDalamudPlugin
         if (!Multiplayer.Update(fw->FrameDeltaTime))
             Game.Tick(fw->FrameDeltaTime);
         Chain.Tick(fw->FrameDeltaTime);
+        NpcCollectorWindow.Tick(fw->FrameDeltaTime);
     }
 
     private void OnTerritoryChanged(ushort territory)
@@ -266,6 +270,9 @@ public sealed class Plugin : IDalamudPlugin
                 break;
             case "net":
                 MultiplayerWindow.Toggle();
+                break;
+            case "npc":
+                NpcCollectorWindow.Toggle();
                 break;
             default:
                 MainWindow.Toggle();
