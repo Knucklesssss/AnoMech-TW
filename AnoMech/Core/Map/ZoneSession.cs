@@ -54,6 +54,7 @@ public sealed unsafe class ZoneSession : IDisposable
     // ── State ─────────────────────────────────────────────────────────────────
 
     private readonly ushort heartbeatOpcode;
+    internal OpcodeAllowlist IncomingOpcodes { get; } = new();
     private uint? loadedInstanceContent;
 
     // Set true right before we open the Social window for a party resync; the Social
@@ -808,7 +809,7 @@ public sealed unsafe class ZoneSession : IDisposable
 #else
             const bool safeMode = true;
 #endif
-            if ((!safeMode && !sessionSave.IsHousing) || Plugin.Config.ZoneDownOpcodes.Contains(*(ushort*)(a3 + 2)))
+            if ((!safeMode && !sessionSave.IsHousing) || IncomingOpcodes.Contains(*(ushort*)(a3 + 2)))
                 receivePacketHook!.Original(a1, a2, a3);
         }
         catch (Exception e)

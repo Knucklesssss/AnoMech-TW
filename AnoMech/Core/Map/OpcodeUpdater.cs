@@ -1,67 +1,83 @@
 using System;
-using System.Linq;
+using System.IO;
 using System.Net.Http;
+using System.Threading;
 using FFXIVClientStructs.FFXIV.Client.System.Framework;
 using ThreadingTask = System.Threading.Tasks.Task;
 
 namespace AnoMech.Core.Map;
 
-// Downloads per-version ZoneDown opcode allowlist from Hyperborea's GitHub so the
-// packet firewall stays current after game patches. Runs asynchronously on first
-// plugin load when the stored game version doesn't match the running binary.
-internal sealed unsafe class OpcodeUpdater : IDisposable
+internal sealed class OpcodeUpdater : IDisposable
 {
-    private static string CurrentVersion =>
-        $"{Framework.Instance()->GameVersionString}_{typeof(OpcodeUpdater).Assembly.GetName().Version}";
+    private readonly OpcodeAllowlist runtime;
+    private readonly Configuration config;
+    private readonly OpcodeUpdateOwner? owner;
 
-    private volatile bool disposed;
-
-    internal OpcodeUpdater()
+    internal OpcodeUpdater(OpcodeAllowlist runtime)
     {
-        if (CurrentVersion == Plugin.Config.ZoneFirewallGameVersion)
+        this.runtime = runtime;
+        config = Plugin.Config;
+        // Keep A's previous allowlist while a version refresh is pending or fails.
+        var validCache = OpcodeData.TryValidate(config.ZoneDownOpcodes, out var cached);
+        if (validCache) runtime.Publish(cached);
+        var version = CaptureGameVersion();
+        if (string.IsNullOrEmpty(version))
+        {
+            Plugin.Log.Warning("[OpcodeUpdater] Native game version unavailable; keeping previous opcodes.");
+            return;
+        }
+        owner = new OpcodeUpdateOwner(version);
+        var cacheKey = $"{version}_{typeof(OpcodeUpdater).Assembly.GetName().Version}";
+        if (validCache && cacheKey == config.ZoneFirewallGameVersion)
         {
             Plugin.Log.Information("[OpcodeUpdater] Opcodes are current.");
             return;
         }
-        Plugin.Log.Information("[OpcodeUpdater] Game version changed — fetching new opcodes.");
-        var version = new string(Framework.Instance()->GameVersionString);
-        ThreadingTask.Run(() => DownloadOpcodes(version));
+        _ = DownloadAsync(owner, cacheKey);
     }
 
-    private void DownloadOpcodes(string gameVersion)
+    private static unsafe string? CaptureGameVersion()
     {
-        if (disposed) return;
-        using var client = new HttpClient();
+        var framework = Framework.Instance();
+        return framework == null ? null : new string(framework->GameVersionString);
+    }
+
+    private async ThreadingTask DownloadAsync(OpcodeUpdateOwner sessionOwner, string cacheKey)
+    {
         try
         {
-            var url = $"https://github.com/kawaii/Hyperborea/raw/main/opcodes/{gameVersion}.txt";
-            var lines = client.GetStringAsync(url).Result
-                .ReplaceLineEndings()
-                .Split(Environment.NewLine);
-            if (disposed) return;
-            foreach (var line in lines)
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(sessionOwner.Token);
+            timeout.CancelAfter(TimeSpan.FromSeconds(10));
+            using var client = new HttpClient();
+            // Preserve A's upstream branch and redirect policy.
+            var url = $"https://github.com/kawaii/Hyperborea/raw/main/opcodes/{Uri.EscapeDataString(sessionOwner.GameVersion)}.txt";
+            using var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, timeout.Token).ConfigureAwait(false);
+            response.EnsureSuccessStatusCode();
+            await using var stream = await response.Content.ReadAsStreamAsync(timeout.Token).ConfigureAwait(false);
+            var body = await OpcodeData.ReadBoundedAsync(stream, timeout.Token).ConfigureAwait(false);
+            if (!OpcodeData.TryParse(body, out var opcodes))
+                throw new InvalidDataException("Opcode document failed validation.");
+            if (sessionOwner.IsDisposed) return;
+            await Plugin.Framework.Run(() => sessionOwner.TryCommit(sessionOwner.GameVersion, () =>
             {
-                if (!line.StartsWith("ZoneDown=")) continue;
-                var opcodes = line["ZoneDown=".Length..].Split(",")
-                    .Select(uint.Parse)
-                    .ToArray();
-                if (!opcodes.Any(o => o != 0)) throw new Exception("Parsed empty opcode list.");
-                Plugin.Framework.Run(() =>
+                if (!OpcodeCacheCommit.TryPersistAndPublish(runtime, cacheKey, opcodes,
+                        () => config.ZoneFirewallGameVersion, () => config.ZoneDownOpcodes,
+                        (key, values) => { config.ZoneFirewallGameVersion = key; config.ZoneDownOpcodes = values; },
+                        config.Save, out var error))
                 {
-                    Plugin.Config.ZoneDownOpcodes = opcodes;
-                    Plugin.Config.ZoneFirewallGameVersion = CurrentVersion;
-                    Plugin.Config.Save();
-                    Plugin.Log.Information($"[OpcodeUpdater] ZoneDown opcodes updated: {string.Join(", ", opcodes)}");
-                });
-                return;
-            }
-            Plugin.Log.Warning("[OpcodeUpdater] ZoneDown= line not found in opcode file.");
+                    Plugin.Log.Warning($"[OpcodeUpdater] Cache save failed; keeping previous opcodes: {error?.Message}");
+                    return;
+                }
+                Plugin.Log.Information($"[OpcodeUpdater] ZoneDown opcodes updated: {runtime.Count} entries.");
+            })).ConfigureAwait(false);
         }
-        catch (Exception e)
+        catch (OperationCanceledException) when (sessionOwner.IsDisposed) { }
+        catch (Exception error)
         {
-            Plugin.Log.Warning($"[OpcodeUpdater] Failed to fetch opcodes: {e.Message}");
+            if (!sessionOwner.IsDisposed)
+                Plugin.Log.Warning($"[OpcodeUpdater] Failed to fetch opcodes: {error.Message}");
         }
     }
 
-    public void Dispose() => disposed = true;
+    public void Dispose() => owner?.Dispose();
 }

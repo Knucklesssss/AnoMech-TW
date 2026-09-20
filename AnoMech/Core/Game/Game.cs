@@ -72,7 +72,7 @@ public sealed class Game : IDisposable
     public Game()
     {
         World = new SimWorld(Events);
-        opcodeUpdater = new OpcodeUpdater();
+        opcodeUpdater = new OpcodeUpdater(World.Map.IncomingOpcodes);
         Scenarios = new IScenario[]
         {
             new TopP2PartySynergyScenario(),

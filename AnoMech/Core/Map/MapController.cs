@@ -12,6 +12,7 @@ public sealed class MapController : IDisposable
 {
     private readonly MapEffects effects = new();
     private readonly ZoneSession zone = new();
+    internal OpcodeAllowlist IncomingOpcodes => zone.IncomingOpcodes;
 
     // Collider-deactivation state. Zone-load is async (resources stream in over
     // several frames), so each pending drop re-tries DisableSpawnAreaColliders
