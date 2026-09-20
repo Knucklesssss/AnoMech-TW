@@ -47,6 +47,13 @@ public class ConfigWindow : Window, IDisposable
             configuration.Save();
         }
 
+        var mitigation = configuration.ShowMitigationFeedback;
+        if (ImGui.Checkbox("顯示目標減傷練習提示", ref mitigation))
+        {
+            configuration.ShowMitigationFeedback = mitigation;
+            configuration.Save();
+        }
+
         var ranges = configuration.ShowHitRanges;
         if (ImGui.Checkbox("顯示通用傷害判定範圍（命中後）##hitranges", ref ranges))
         {

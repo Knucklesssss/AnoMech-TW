@@ -232,6 +232,7 @@ public sealed class Game : IDisposable
     {
         HitRangeDebug.Tick(deltaSeconds);
         if (Paused) return;
+        AnoMech.Core.Combat.TargetMitigation.Tick(deltaSeconds);
         Events.Tick(deltaSeconds * EventTimeScale);
         World.Tick(deltaSeconds);
         if (activeScenario != null)

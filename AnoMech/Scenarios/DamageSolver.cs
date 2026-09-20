@@ -15,6 +15,7 @@ public class DamageSolver
     private Dictionary<ushort, int> statusStacksOverwrites = [];
 
     SimParty party;
+    public SimEnemy? MitigationSource { get; set; }
 
     public DamageSolver(SimParty party)
     {
@@ -45,6 +46,12 @@ public class DamageSolver
         List<SimCharacter> deadTargets = [];
         if (excludeTargets is { Length: > 0 })
             targets = targets.Where(t => !excludeTargets.Contains(t)).ToList();
+        if (targets.Count > 0 && !damageType.Contains(DamageType.Lethal))
+        {
+            var owner = MitigationSource ?? (source is SimEnemy enemy && enemy.EnemyListMode != EnemyListMode.Never ? enemy : null);
+            AnoMech.Core.Combat.TargetMitigation.Record(owner, ActionLookup.Name(actionId),
+                damageType.Contains(DamageType.Magic) ? true : damageType.Contains(DamageType.Physical) ? false : null);
+        }
         HashSet<DamageType> damageTypeBase = [DamageType.Any];
         Array.ForEach(damageType, d => damageTypeBase.Add(d));
         HashSet<DamageType> damageTypeWildCharge = new(damageTypeBase);
@@ -189,4 +196,5 @@ public enum DamageType
     Earth,
     Black,
     White,
+    Physical,
 }

@@ -381,6 +381,19 @@ public sealed unsafe class LocalCombatSession : IDisposable
         var self = model.IsSelfAction(id);
         var hasTarget = self ? Enemies().Any(e => InEffectRange(id, Position(player), e)) : target != null;
         var hit = model.TryUse(id, hasTarget, target != null && InRange(id, target), inCombat, Alive, Bound);
+        if (TargetMitigation.Supported(id))
+        {
+            var recipients = id == 7535 ? Enemies().Where(e => InEffectRange(id, Position(player), e)).ToArray()
+                : target is SimEnemy enemy ? new[] { enemy } : Array.Empty<SimEnemy>();
+            foreach (var recipient in recipients)
+            {
+                TargetMitigation.Apply(recipient, id);
+                var statusId = (ushort)(id switch { 7535 => 1193, 7560 => 1203, 7549 => 1195, _ => 860 });
+                recipient.AddStatus(statusId, TargetMitigation.Rule(id).Remaining, overrideStacks: true);
+            }
+            TargetMitigation.LastUse = recipients.Length == 0 ? $"{TargetMitigation.Rule(id).Name}：未命中敵人"
+                : $"{TargetMitigation.Rule(id).Name}：已覆蓋 {recipients.Length} 個目標";
+        }
         // This client-only timer initializer supplies the actual additional
         // recast duration. Main groups are replaced by the pure model below.
         native.StartCooldown(id);

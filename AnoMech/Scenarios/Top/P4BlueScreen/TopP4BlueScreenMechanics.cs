@@ -76,6 +76,7 @@ public sealed class TopP4BlueScreenMechanics(SimWorld world, TopP4BlueScreenStat
 
     private void ResolveSpread(int round)
     {
+        AnoMech.Core.Combat.TargetMitigation.Record(boss, $"P4 第 {round + 1} 輪分散砲", true);
         var positions = Snapshot();
         var directions = positions.Where(p => p != null).Select(p => p!.Value).ToArray();
         Fail(TopP4BlueScreenRules.FailedSpreads(positions, directions), $"P4 第 {round + 1} 輪：分散砲重疊");
@@ -93,6 +94,7 @@ public sealed class TopP4BlueScreenMechanics(SimWorld world, TopP4BlueScreenStat
 
     private void ResolveStacks(int round)
     {
+        AnoMech.Core.Combat.TargetMitigation.Record(boss, $"P4 第 {round + 1} 輪分攤砲", true);
         var positions = Snapshot();
         var targets = state.StackTargets[round].Select(role => (int)role).ToArray();
         Fail(TopP4BlueScreenRules.FailedStacks(positions, targets), $"P4 第 {round + 1} 輪：分攤不足四人、重疊或未承傷");

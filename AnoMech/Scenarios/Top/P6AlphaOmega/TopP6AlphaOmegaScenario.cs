@@ -89,6 +89,7 @@ public sealed class TopP6AlphaOmegaScenario(bool unlimitedOnly = false) : IScena
             Fail("P6 阿爾法歐米茄未能生成。");
             return;
         }
+        damage.MitigationSource = boss;
         if (unlimitedOnly)
         {
             world.EnforceArenaBoundary(Geometry.ArenaRadius, replace: true);
