@@ -271,6 +271,13 @@ internal static class MultiplayerChecks
             "the frame carries the accepted limit breaks");
         Check(lbFrameBack.FailReason == "魔數：H1 未在 DEBUFF 到期前完成 LB。", "the frame carries the failure reason");
 
+        var longReason = new string('魔', 200); // 3 bytes/char in UTF-8: well past the 256-byte budget
+        var longFrame = new TickFrame { Tick = 8, FailReason = longReason };
+        var longBack = RoundTrip(w => FrameCodec.Write(w, longFrame),
+            (NetDataReader r, out TickFrame v) => FrameCodec.TryRead(r, out v), "TickFrame(over-long fail reason)");
+        Check(longBack.FailReason is { Length: > 0 } clamped && System.Text.Encoding.UTF8.GetByteCount(clamped) <= 256,
+            "an over-long fail reason is clamped to fit instead of poisoning the frame batch");
+
         var plainFrame = RoundTrip(w => FrameCodec.Write(w, new TickFrame { Tick = 7 }),
             (NetDataReader r, out TickFrame v) => FrameCodec.TryRead(r, out v), "TickFrame(plain)");
         Check(plainFrame.LimitBreakHolder == LimitBreakArbiter.Nobody && plainFrame.LimitBreaks.Count == 0

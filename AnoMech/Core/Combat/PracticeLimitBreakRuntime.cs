@@ -149,10 +149,7 @@ internal sealed unsafe class PracticeLimitBreakRuntime : IDisposable
         if (cast.ActionId == 0)
         {
             Complete(pending);
-            // Only the local player's press needs announcing: AI presses are deterministic on every machine,
-            // and a replayed remote press must not echo back out.
-            if (caster is SimPlayer)
-                MultiplayerContext.LimitBreakUsed?.Invoke((int)role, actionId, caster.Position, location ?? target?.Position);
+            AnnounceIfLocalPlayer(caster, role, actionId, location, target);
             return true;
         }
 
@@ -171,11 +168,16 @@ internal sealed unsafe class PracticeLimitBreakRuntime : IDisposable
         }
 
         SyncPlayerLock(pending);
-        // Only the local player's press needs announcing: AI presses are deterministic on every machine,
-        // and a replayed remote press must not echo back out.
+        AnnounceIfLocalPlayer(caster, role, actionId, location, target);
+        return true;
+    }
+
+    // Only the local player's press needs announcing: AI presses are deterministic on every machine,
+    // and a replayed remote press must not echo back out.
+    private static void AnnounceIfLocalPlayer(SimCharacter caster, PartyRole role, uint actionId, Vector3? location, SimCharacter? target)
+    {
         if (caster is SimPlayer)
             MultiplayerContext.LimitBreakUsed?.Invoke((int)role, actionId, caster.Position, location ?? target?.Position);
-        return true;
     }
 
     // TryStart refuses a location for anything that is not ground targeted, so a relayed aim point becomes
@@ -185,6 +187,9 @@ internal sealed unsafe class PracticeLimitBreakRuntime : IDisposable
         if (disposed || !TryGetValidatedAction(actionId, out var action)) return false;
         var caster = world.Party.Get(role);
         if (caster == null) return false;
+        // Resolve the geometry from where the presser actually stood: on every other machine
+        // this member is an interpolated network puppet, not the true origin of the press.
+        caster.SetPosition(casterPosition);
         if (action.TargetArea) return TryStart(role, actionId, aim, null);
         if (aim is { } point)
             caster.SetRotation(MathF.Atan2(point.X - casterPosition.X, point.Z - casterPosition.Z));

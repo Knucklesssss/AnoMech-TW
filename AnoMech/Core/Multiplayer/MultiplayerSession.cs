@@ -230,7 +230,9 @@ internal sealed unsafe class MultiplayerSession : IDisposable
         MultiplayerContext.InvulnGranted = (role, seconds) => run.PendingInvulns.Add(((byte)role, seconds));
         MultiplayerContext.LimitBreakUsed = (role, actionId, caster, aim) =>
         {
-            if (!run.Bar.TryClaim((byte)role, run.Bar.Acks[role] + 1)) return;
+            // The local runtime already granted this press, so the arbiter follows it rather than voting.
+            run.Bar.Release();
+            run.Bar.TryClaim((byte)role, run.Bar.Acks[role] + 1);
             run.PendingLimitBreaks.Add(((byte)role, actionId, caster, aim));
             run.LimitBreakDirty = true;
         };
@@ -449,7 +451,6 @@ internal sealed unsafe class MultiplayerSession : IDisposable
     private void RunHostTick(HostRun run)
     {
         run.PendingInvulns.Clear();
-        run.PendingLimitBreaks.Clear();
         SimRandom.Reseed(run.Seed, run.Tick);
         game.Tick(Step);
 
@@ -493,6 +494,7 @@ internal sealed unsafe class MultiplayerSession : IDisposable
             frame.LimitBreakHolder = run.Bar.Holder;
             Array.Copy(run.Bar.Acks, frame.LimitBreakAcks, Wire.Slots);
             frame.LimitBreaks.AddRange(run.PendingLimitBreaks);
+            run.PendingLimitBreaks.Clear();
             run.LimitBreakDirty = false;
         }
         if (run.PendingFailReason is { } reason)
@@ -546,8 +548,6 @@ internal sealed unsafe class MultiplayerSession : IDisposable
             Net.Host?.Broadcast(MessageType.StopRun, new StopRunDto(run.RunId, StopReason.HostStopped).Write, DeliveryMethod.ReliableOrdered);
         foreach (var remote in run.Remote.Values) remote.Puppet.Member.NetworkDriven = false;
         hostRun = null;
-        MultiplayerContext.LimitBreakUsed = null;
-        MultiplayerContext.RunFailed = null;
         run.Bar.Reset();
         MultiplayerContext.End();
         BroadcastLobby();
@@ -760,7 +760,7 @@ internal sealed unsafe class MultiplayerSession : IDisposable
             if (frame.LimitBreakHolder != run.Role)
             {
                 game.World.LimitBreaks?.Cancel((PartyRole)run.Role);
-                Chat("極限技已被其他人使用。");
+                Chat("極限技未能使用，已取消本機的施放。");
             }
             run.PendingLimitBreakRequest = 0;
         }
@@ -811,7 +811,6 @@ internal sealed unsafe class MultiplayerSession : IDisposable
             game.GodMode = run.PreviousGodMode;
         }
         clientRun = null;
-        MultiplayerContext.LimitBreakUsed = null;
         MultiplayerContext.End();
         if (reset) game.Reset();
         if (message is not null) Chat(message);

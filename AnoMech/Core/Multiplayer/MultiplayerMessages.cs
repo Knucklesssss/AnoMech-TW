@@ -431,10 +431,11 @@ public static class FrameCodec
 
     public static void Write(NetDataWriter writer, TickFrame frame)
     {
+        var failReason = ClampFailReason(frame.FailReason);
         var flags = (byte)((frame.Markers != null ? HasMarkers : 0) | (frame.Invulns.Count > 0 ? HasInvulns : 0)
                            | (frame.Sync != null ? HasSync : 0) | (frame.TimelineMask != 0 ? HasTimelines : 0)
                            | (frame.LimitBreaks.Count > 0 || frame.LimitBreakHolder != LimitBreakArbiter.Nobody ? HasLimitBreaks : 0)
-                           | (frame.FailReason != null ? HasFailReason : 0));
+                           | (failReason != null ? HasFailReason : 0));
         writer.Put(frame.Tick);
         writer.Put(flags);
         writer.Put(frame.PoseMask);
@@ -484,8 +485,25 @@ public static class FrameCodec
                 }
             }
         }
-        if (frame.FailReason != null) writer.Put(frame.FailReason);
+        if (failReason != null) writer.Put(failReason);
         frame.Sync?.Write(writer);
+    }
+
+    // The reader rejects an empty or over-long reason and poisons the whole batch, so the writer
+    // must never hand it one: drop empty, and cut to the byte budget without splitting a character.
+    private static string? ClampFailReason(string? reason)
+    {
+        if (string.IsNullOrEmpty(reason)) return null;
+        if (System.Text.Encoding.UTF8.GetByteCount(reason) <= MaxFailReasonBytes) return reason;
+        var clamped = new System.Text.StringBuilder();
+        var bytes = 0;
+        foreach (var rune in reason.EnumerateRunes())
+        {
+            if (bytes + rune.Utf8SequenceLength > MaxFailReasonBytes) break;
+            bytes += rune.Utf8SequenceLength;
+            clamped.Append(rune);
+        }
+        return clamped.Length > 0 ? clamped.ToString() : null;
     }
 
     public static bool TryRead(NetDataReader reader, out TickFrame frame)
