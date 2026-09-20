@@ -7,7 +7,7 @@ namespace AnoMech.Core.Net;
 
 public static class NetProtocol
 {
-    public const ushort Version = 4; // Moogle Omega initial assignments require matching simulation builds.
+    public const ushort Version = 5; // StopReason.HostLeft: the room only follows the host out on matching builds.
     public const uint Magic = 0x414D5031; // "AMP1"
     public const int MaxPlayers = 8;
     public const byte HostPlayerId = 0;

@@ -251,6 +251,14 @@ internal sealed unsafe class MultiplayerSession : IDisposable
         if (hostRun is not null) EndHostRun(broadcast: true);
     }
 
+    // Leaving is not the same as stopping: Reset and Leave used to send the identical StopRun, and with no
+    // run active HostStopRun sent nothing at all, so the room was never told to follow the host out.
+    public void HostLeave()
+    {
+        if (hostRun is not null) EndHostRun(broadcast: false);
+        Net.Host?.Broadcast(MessageType.StopRun, new StopRunDto(0, StopReason.HostLeft).Write, DeliveryMethod.ReliableOrdered);
+    }
+
     private void SyncHostAttachment()
     {
         if (ReferenceEquals(Net.Host, attachedHost)) return;
@@ -549,7 +557,17 @@ internal sealed unsafe class MultiplayerSession : IDisposable
                 }
                 break;
             case MessageType.StopRun when StopRunDto.TryRead(reader, out var stop):
-                if (clientRun is { } active && stop.RunId == active.RunId)
+                // HostLeft carries no run of its own, so it is not matched against one.
+                if (stop.Reason == StopReason.HostLeft)
+                {
+                    if (clientRun is not null) EndClientRun(null, reset: false);
+                    if (game.World.Map.IsInInstance)
+                    {
+                        Chat("房主離開了場地，你也一起離開。");
+                        game.Leave();
+                    }
+                }
+                else if (clientRun is { } active && stop.RunId == active.RunId)
                     EndClientRun("房主結束了多人場景。", reset: true);
                 break;
             default:

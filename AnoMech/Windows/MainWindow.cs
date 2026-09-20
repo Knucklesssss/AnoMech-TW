@@ -372,7 +372,7 @@ public unsafe class MainWindow : Window, IDisposable
             ImGui.SameLine();
             if (ImGui.Button("離開##leave"))
             {
-                multiplayer.HostStopRun();
+                multiplayer.HostLeave();
                 game.Leave();
             }
         }

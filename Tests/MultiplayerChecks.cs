@@ -215,6 +215,14 @@ internal static class MultiplayerChecks
         Check(transform == new TransformDto(4, poses[3], 4321), "Transform and its animation survive");
         var marks = Enumerable.Repeat(Wire.NoRole, Wire.MarkerSlots).ToArray();
         marks[5] = 2;
+        var stopped = RoundTrip(new StopRunDto(7, StopReason.HostStopped).Write,
+            (NetDataReader r, out StopRunDto v) => StopRunDto.TryRead(r, out v), "StopRun");
+        Check(stopped == new StopRunDto(7, StopReason.HostStopped), "StopRun keeps its run id and reason");
+        // Reset and Leave used to send the identical StopRun, so the room could not know to follow the host out.
+        var left = RoundTrip(new StopRunDto(0, StopReason.HostLeft).Write,
+            (NetDataReader r, out StopRunDto v) => StopRunDto.TryRead(r, out v), "StopRun(HostLeft)");
+        Check(left.Reason == StopReason.HostLeft && left.Reason != stopped.Reason,
+            "Leaving must reach the room as its own reason, distinct from stopping the run");
         var marksBack = RoundTrip(new MarkersDto(4, 11, 1u << 5, marks).Write, (NetDataReader r, out MarkersDto v) => MarkersDto.TryRead(r, out v), "Markers");
         Check(marksBack.RunId == 4 && marksBack.RequestId == 11 && marksBack.ChangedMask == 1u << 5 && marksBack.Markers.SequenceEqual(marks), "a client's marker change survives");
         Check(Rejects(new MarkersDto(4, 1, 1, Enumerable.Repeat((byte)8, Wire.MarkerSlots).ToArray()).Write,

@@ -202,6 +202,8 @@ public static class AppearanceDto
 public enum StopReason : byte
 {
     HostStopped = 1,
+    // The host left the instance, not just the run: the room follows them out.
+    HostLeft = 2,
 }
 
 public readonly record struct StopRunDto(uint RunId, StopReason Reason)
