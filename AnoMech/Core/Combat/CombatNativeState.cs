@@ -39,6 +39,9 @@ internal static class JobNativeGauge
         35 => new RedMageNativeGauge(),
         42 => new PictomancerNativeGauge(),
         20 => new MonkNativeGauge(),
+        22 => new DragoonNativeGauge(),
+        30 => new NinjaNativeGauge(),
+        34 => new SamuraiNativeGauge(),
         _ => throw new InvalidOperationException($"No native gauge adapter for job {classJob}."),
     };
 }

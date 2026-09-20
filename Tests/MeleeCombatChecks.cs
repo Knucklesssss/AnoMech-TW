@@ -7,7 +7,10 @@ internal static class MeleeCombatChecks
         RoleActions();
         Movement();
         Monk();
-        Console.WriteLine("PASS: melee role actions, movement requests and Monk.");
+        Dragoon();
+        Ninja();
+        Samurai();
+        Console.WriteLine("PASS: melee role actions, movement requests, Monk, Dragoon, Ninja and Samurai.");
     }
 
     private static void Monk()
@@ -107,6 +110,192 @@ internal static class MeleeCombatChecks
         Check(mnk.TryUse(25762, true, true, true) is { GapCloser: true }, "Thunderclap must slide to its target.");
     }
 
+
+    private static void Dragoon()
+    {
+        Check(JobCombatRegistry.Find(22, 90) != null, "Dragoon level 90 must be registered.");
+        var drg = new DragoonCombat();
+        // Trait 438 (level 88) and trait 580 (level 84) each raise a one-charge ability to two.
+        Check(drg.GetCooldown(83) == (15, 40, 2), "Life Surge must have 2 charges per trait 438.");
+        Check(drg.GetCooldown(36951) == (20, 60, 2), "Winged Glide must have 2 charges per trait 580.");
+        Check(drg.GetCooldown(25773) == (5, 10, 1), "Wyrmwind Thrust must keep its sheet contract.");
+        Check(drg.Adjust(84) == 25771 && drg.Adjust(88) == 25772 && drg.Adjust(92) == 16478,
+            "Trait 437 and 275 upgrades must map to the level-90 actions.");
+        Check(drg.Adjust(75) == 75, "True Thrust must stay itself without Draconian Fire.");
+
+        Hit(drg, 75); Gcd(drg);
+        Check(drg.IsHighlighted(78) && drg.IsHighlighted(87), "True Thrust must start both combos.");
+        Hit(drg, 87);
+        Check(drg.Statuses().Any(st => st.Id == 2720 && st.Remaining == 30), "Disembowel must grant Power Surge on its combo.");
+        Gcd(drg);
+        Hit(drg, 25772); Gcd(drg); Hit(drg, 3556); Gcd(drg);
+
+        // The AOE combo is what grants Draconian Fire, which turns True Thrust into Raiden Thrust.
+        Hit(drg, 86, aoe: true); Gcd(drg); Hit(drg, 7397, aoe: true); Gcd(drg); Hit(drg, 16477, aoe: true);
+        Check(drg.DraconianFireReady && drg.Adjust(75) == 16479 && drg.Adjust(86) == 25770,
+            "A finished Coerthan Torment combo must grant Draconian Fire.");
+        Gcd(drg);
+        Hit(drg, 75);
+        Check(drg.FirstmindsFocus == 1 && !drg.DraconianFireReady,
+            "Raiden Thrust must spend Draconian Fire for one Firstminds Focus.");
+        Check(!drg.CanUse(25773, true, true, true, checkTiming: false), "Wyrmwind Thrust needs two Firstminds Focus.");
+
+        var fire = new DragoonCombat();
+        Hit(fire, 86, aoe: true); Gcd(fire); Hit(fire, 7397, aoe: true); Gcd(fire); Hit(fire, 16477, aoe: true); Gcd(fire);
+        Hit(fire, 75); Gcd(fire);
+        Hit(fire, 86, aoe: true); Gcd(fire); Hit(fire, 7397, aoe: true); Gcd(fire); Hit(fire, 16477, aoe: true); Gcd(fire);
+        Hit(fire, 86, aoe: true);
+        Check(fire.FirstmindsFocus == 2 && fire.CanUse(25773, true, true, true, checkTiming: false),
+            "Draconian Fury must also give Firstminds Focus, up to two.");
+        Gcd(fire);
+        Hit(fire, 25773, aoe: true);
+        Check(fire.FirstmindsFocus == 0, "Wyrmwind Thrust must spend both Firstminds Focus.");
+
+        var dive = new DragoonCombat();
+        Check(!dive.CanUse(7400, true, true, true, checkTiming: false), "Nastrond needs Nastrond Ready.");
+        Check(!dive.CanUse(16480, true, true, true, checkTiming: false), "Stardiver needs Life of the Dragon.");
+        Check(dive.TryUse(3555, true, true, true) is { IsAoe: true }, "Geirskogul must hit.");
+        Check(dive.LifeOfTheDragonRemaining == 20 && dive.CanUse(7400, true, true, true, checkTiming: false)
+              && dive.CanUse(16480, true, true, true, checkTiming: false),
+            "Trait 163 must turn the Geirskogul buff straight into Life of the Dragon plus Nastrond Ready.");
+        dive.Advance(2);
+        Check(dive.TryUse(7400, true, true, true) is { IsAoe: true } && !dive.CanUse(7400, true, true, true, checkTiming: false),
+            "Nastrond must spend Nastrond Ready.");
+
+        var jump = new DragoonCombat();
+        Check(jump.TryUse(92, true, true, true) is { ActionId: 16478 }, "Jump must resolve as High Jump.");
+        Check(jump.CanUse(7399, true, true, true, checkTiming: false), "High Jump must ready Mirage Dive.");
+        jump.Advance(1);
+        Check(jump.TryUse(94, false, false, true) == null && jump.TakeMove() == new JobMove(JobMoveKind.Backward, 15, false),
+            "Elusive Jump must request a 15 y backward move.");
+        Check(!jump.CanUse(94, false, false, true, bound: true, checkTiming: false), "Elusive Jump must be refused while bound.");
+    }
+
+    private static void Ninja()
+    {
+        Check(JobCombatRegistry.Find(30, 90) != null, "Ninja level 90 must be registered.");
+        var nin = new NinjaCombat();
+        Check(nin.GetCooldown(2262) == (16, 60, 2), "Shukuchi must have 2 charges per trait 279.");
+        Check(nin.GetCooldown(2259) == (4, 20, 2), "The mudra group must have 2 charges.");
+        Check(nin.Adjust(2246) == 3566 && nin.Adjust(2248) == 36957, "Trait 515 and 585 upgrades must map through.");
+
+        // Ten then Chi is Raiton, which banks Raiju Ready.
+        Use(nin, 2259); nin.Advance(0.6); Use(nin, 2261); nin.Advance(0.6);
+        Check(nin.Adjust(2260) == 2267, "Ten then Chi must spell Raiton.");
+        Hit(nin, 2260);
+        Check(nin.Mudras.Count == 0 && nin.CanUse(25778, true, true, true, checkTiming: false),
+            "Raiton must clear the mudras and ready Forked Raiju.");
+        Gcd(nin);
+        Hit(nin, 25778);
+        Check(!nin.CanUse(25778, true, true, true, checkTiming: false), "Forked Raiju must spend its Raiju Ready stack.");
+
+        var rabbit = new NinjaCombat();
+        Use(rabbit, 2259); rabbit.Advance(0.6); Use(rabbit, 2259); rabbit.Advance(0.6);
+        Check(rabbit.Adjust(2260) == 2272, "An illegal mudra sequence must become Rabbit Medium.");
+        Check(rabbit.TryUse(2260, true, true, true) == null && rabbit.Mudras.Count == 0,
+            "Rabbit Medium must resolve without a hit and clear the mudras.");
+
+        var kassatsu = new NinjaCombat();
+        Check(kassatsu.TryUse(2264, false, false, true) == null, "Kassatsu must start.");
+        kassatsu.Advance(0.6);
+        Use(kassatsu, 2261); kassatsu.Advance(0.6); Use(kassatsu, 2259); kassatsu.Advance(0.6);
+        Check(kassatsu.Adjust(2260) == 16491, "Trait 250 must turn Katon into Goka Mekkyaku under Kassatsu.");
+        Hit(kassatsu, 2260, aoe: true);
+        Check(kassatsu.Adjust(2260) == 2272, "Kassatsu must be spent by the ninjutsu.");
+
+        var ninki = new NinjaCombat();
+        Hit(ninki, 2240);
+        Check(ninki.Ninki == 5, "Spinning Edge must give 5 Ninki.");
+        Gcd(ninki); Hit(ninki, 2242);
+        Check(ninki.Ninki == 10, "Gust Slash must add 5 Ninki on its combo.");
+        Gcd(ninki); Hit(ninki, 3563);
+        Check(ninki.Ninki == 25 && ninki.Kazematoi == 2, "Armor Crush must give 15 Ninki and two Kazematoi on its combo.");
+        Gcd(ninki); Hit(ninki, 2240); Gcd(ninki); Hit(ninki, 2242); Gcd(ninki); Hit(ninki, 2255);
+        Check(ninki.Kazematoi == 1, "Aeolian Edge must spend one Kazematoi.");
+        Check(ninki.Ninki == 50 && ninki.CanUse(16493, false, false, true, checkTiming: false),
+            "That rotation must bank exactly 50 Ninki and unlock Bunshin.");
+        Check(!new NinjaCombat().CanUse(16493, false, false, true, checkTiming: false), "Bunshin needs 50 Ninki.");
+
+        var bunshin = new NinjaCombat();
+        for (var i = 0; i < 12; i++) { Hit(bunshin, 2240); Gcd(bunshin); }
+        Check(bunshin.Ninki >= 50 && bunshin.TryUse(16493, false, false, true) == null,
+            "Bunshin must be usable once Ninki reaches 50.");
+        var before = bunshin.Ninki;
+        bunshin.Advance(0.6);
+        Hit(bunshin, 2240);
+        Check(bunshin.Ninki == Math.Min(100, before + 10),
+            "A Bunshin clone hit must add 5 Ninki on top of the weaponskill's own 5.");
+
+        var shukuchi = new NinjaCombat();
+        Check(shukuchi.TryUse(2262, false, false, true) == null && shukuchi.TakeMove() == new JobMove(JobMoveKind.GroundPoint, 0, false),
+            "Shukuchi must request a ground-targeted move.");
+        Check(!shukuchi.CanUse(2262, false, false, true, bound: true, checkTiming: false), "Shukuchi must be refused while bound.");
+    }
+
+    private static void Samurai()
+    {
+        Check(JobCombatRegistry.Find(34, 90) != null, "Samurai level 90 must be registered.");
+        var sam = new SamuraiCombat();
+        Check(sam.GetCooldown(7499) == (19, 55, 2), "Meikyo Shisui must have 2 charges per trait 443.");
+        Check(sam.GetCooldown(16487) == (8, 15, 1), "Shoha must keep its sheet contract.");
+        Check(sam.Adjust(7483) == 25780 && sam.Adjust(7498) == 36962, "Trait 519 and 589 upgrades must map through.");
+        Check(sam.CastTime(7487) == 1.3, "Trait 277 must shorten the iaijutsu cast to 1.3 s.");
+
+        Hit(sam, 7477);
+        Check(sam.Kenki == 5, "Hakaze must give the trait's 5 Kenki.");
+        Gcd(sam); Hit(sam, 7478); Gcd(sam); Hit(sam, 7481);
+        Check(sam.Sen == 2 && sam.Kenki == 25, "Gekko must give Getsu and 10 Kenki on its combo.");
+        Gcd(sam); Hit(sam, 7477); Gcd(sam); Hit(sam, 7480);
+        Check(sam.Sen == 3, "Yukikaze must add Setsu on its combo.");
+        Check(sam.Adjust(7867) == 7488, "Two Sen must make Iaijutsu into Tenka Goken.");
+        Gcd(sam); Cast(sam, 7867, aoe: true);
+        Check(sam.Sen == 0 && sam.Meditation == 1 && sam.Kaeshi == 16485,
+            "Tenka Goken must spend every Sen, bank Meditation and arm Kaeshi.");
+        Check(sam.Adjust(16483) == 16485, "Tsubame-gaeshi must repeat the last iaijutsu.");
+        Gcd(sam); Hit(sam, 16483, aoe: true);
+        Check(sam.Kaeshi == 0, "Tsubame-gaeshi must disarm itself.");
+
+        var three = new SamuraiCombat();
+        Hit(three, 7477); Gcd(three); Hit(three, 7478); Gcd(three); Hit(three, 7481); Gcd(three);
+        Hit(three, 7477); Gcd(three); Hit(three, 7479); Gcd(three); Hit(three, 7482); Gcd(three);
+        Hit(three, 7477); Gcd(three); Hit(three, 7480); Gcd(three);
+        Check(three.Adjust(7867) == 7487, "Three Sen must make Iaijutsu into Midare Setsugekka.");
+        Cast(three, 7867);
+        Check(three.Kaeshi == 16486 && three.Sen == 0, "Midare Setsugekka must arm Kaeshi Setsugekka.");
+
+        var hagakure = new SamuraiCombat();
+        Hit(hagakure, 7477); Gcd(hagakure); Hit(hagakure, 7478); Gcd(hagakure); Hit(hagakure, 7481); Gcd(hagakure);
+        var kenki = hagakure.Kenki;
+        Check(hagakure.TryUse(7495, false, false, true) == null && hagakure.Sen == 0 && hagakure.Kenki == kenki + 10,
+            "Hagakure must turn each Sen into 10 Kenki.");
+        Check(!hagakure.CanUse(7495, false, false, true, checkTiming: false), "Hagakure needs at least one Sen.");
+
+        var shoha = new SamuraiCombat();
+        Check(!shoha.CanUse(16487, true, true, true, checkTiming: false), "Shoha needs three Meditation.");
+
+        var meikyo = new SamuraiCombat();
+        Check(meikyo.TryUse(7499, false, false, true) == null, "Meikyo Shisui must start.");
+        meikyo.Advance(0.6);
+        Hit(meikyo, 7481);
+        Check(meikyo.Sen == 2 && meikyo.Statuses().Any(st => st.Id == 1298),
+            "Meikyo Shisui must satisfy the Gekko combo and grant Fugetsu.");
+
+        var ogi = new SamuraiCombat();
+        Check(!ogi.CanUse(25781, true, true, true, checkTiming: false), "Ogi Namikiri needs Ogi Namikiri Ready.");
+        Check(ogi.TryUse(16482, false, false, true) == null && ogi.Kenki == 50,
+            "Ikishoten must give 50 Kenki and ready Ogi Namikiri.");
+        ogi.Advance(1);
+        Cast(ogi, 25781, aoe: true);
+        Check(ogi.Kaeshi == 25782 && ogi.Adjust(16483) == 25782, "Ogi Namikiri must arm Kaeshi Namikiri.");
+
+        var yaten = new SamuraiCombat();
+        yaten.TryUse(16482, false, false, true);
+        yaten.Advance(1);
+        Check(yaten.TryUse(7493, true, true, true) is not null && yaten.TakeMove() == new JobMove(JobMoveKind.Backward, 10, false),
+            "Yaten must request a 10 y backward move.");
+        Check(!yaten.CanUse(7493, true, true, true, bound: true, checkTiming: false), "Yaten must be refused while bound.");
+    }
+
     private static void RoleActions()
     {
         var melee = new TestMelee();
@@ -176,6 +365,16 @@ internal static class MeleeCombatChecks
         var hit = job.TryUse(id, true, true, true);
         if (hit is not { } h || h.ActionId != expected || h.IsAoe != aoe)
             throw new Exception($"Expected hit {expected} (from {id}) aoe={aoe}; got {hit?.ToString() ?? "null"}. {job.DebugState}");
+    }
+
+    internal static void Cast(IJobCombat job, uint id, bool aoe = false)
+    {
+        var expected = job.Adjust(id);
+        Check(job.BeginCast(id, true, true, true), $"{id} must begin casting. {job.DebugState}");
+        job.Advance(2);
+        Check(job.CompleteCast(true, true, true, out var hit), $"{id} must complete its cast. {job.DebugState}");
+        if (hit is not { } h || h.ActionId != expected || h.IsAoe != aoe)
+            throw new Exception($"Expected cast hit {expected} (from {id}) aoe={aoe}; got {hit?.ToString() ?? "null"}. {job.DebugState}");
     }
 
     internal static void Use(IJobCombat job, uint id)

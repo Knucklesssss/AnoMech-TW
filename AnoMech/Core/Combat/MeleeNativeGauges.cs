@@ -23,3 +23,55 @@ internal sealed unsafe class MonkNativeGauge : IJobGauge
         gauge->BlitzTimeRemaining = (ushort)Math.Ceiling(mnk.PerfectBalanceRemaining * 1000);
     }
 }
+
+internal sealed unsafe class DragoonNativeGauge : IJobGauge
+{
+    private readonly DragoonGauge* gauge;
+
+    public DragoonNativeGauge() => gauge = (DragoonGauge*)HealerGauge.Current(22);
+    public bool Matches => HealerGauge.Matches(22, gauge);
+
+    public void Mirror(IJobCombat rules)
+    {
+        var drg = (DragoonCombat)rules;
+        gauge->LotdTimer = (short)Math.Ceiling(drg.LifeOfTheDragonRemaining * 1000);
+        gauge->LotdState = (byte)(drg.LifeOfTheDragonRemaining > 0 ? 2 : 0);
+        // Eyes of the Dragon were removed before level 90; the field stays cleared.
+        gauge->EyeCount = 0;
+        gauge->FirstmindsFocusCount = (byte)drg.FirstmindsFocus;
+    }
+}
+
+internal sealed unsafe class NinjaNativeGauge : IJobGauge
+{
+    private readonly NinjaGauge* gauge;
+
+    public NinjaNativeGauge() => gauge = (NinjaGauge*)HealerGauge.Current(30);
+    public bool Matches => HealerGauge.Matches(30, gauge);
+
+    public void Mirror(IJobCombat rules)
+    {
+        var nin = (NinjaCombat)rules;
+        gauge->Ninki = (byte)nin.Ninki;
+        gauge->Kazematoi = (byte)nin.Kazematoi;
+    }
+}
+
+internal sealed unsafe class SamuraiNativeGauge : IJobGauge
+{
+    private readonly SamuraiGauge* gauge;
+
+    public SamuraiNativeGauge() => gauge = (SamuraiGauge*)HealerGauge.Current(34);
+    public bool Matches => HealerGauge.Matches(34, gauge);
+
+    public void Mirror(IJobCombat rules)
+    {
+        var sam = (SamuraiCombat)rules;
+        gauge->Kenki = (byte)sam.Kenki;
+        gauge->MeditationStacks = (byte)sam.Meditation;
+        gauge->SenFlags = (SenFlags)sam.Sen;
+        // ponytail: the Kaeshi byte's encoding is unverified; 0/1/2/3 follows the order the client replaces
+        // 燕回返 in. Confirm against the in-game gauge.
+        gauge->Kaeshi = (KaeshiAction)(byte)(sam.Kaeshi switch { 16485 => 1, 16486 => 2, 25782 => 3, _ => 0 });
+    }
+}

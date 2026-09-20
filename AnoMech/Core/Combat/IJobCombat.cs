@@ -82,6 +82,9 @@ public static class JobCombatRegistry
         new(35, 90, 37004, gcd => new RedMageCombat(gcd)),
         new(42, 90, 34650, gcd => new PictomancerCombat(gcd)),
         new(20, 90, 53, gcd => new MonkCombat(gcd)),
+        new(22, 90, 75, gcd => new DragoonCombat(gcd)),
+        new(30, 90, 2240, gcd => new NinjaCombat(gcd)),
+        new(34, 90, 7477, gcd => new SamuraiCombat(gcd)),
     ];
 
     public static JobCombatEntry? Find(byte classJob, byte level)
