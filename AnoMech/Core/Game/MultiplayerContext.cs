@@ -29,6 +29,9 @@ public static class MultiplayerContext
     // The local player's own limit break: the host arbitrates the shared bar, so it has to hear about it.
     public static Action<int, uint, System.Numerics.Vector3, System.Numerics.Vector3?>? LimitBreakUsed { get; set; }
 
+    // Host only: the room sees the wipe but not the reason, which is judged here.
+    public static Action<string>? RunFailed { get; set; }
+
     // Host only: party slots moved by a remote player, which AI must leave alone.
     public static bool IsHumanControlled(int slot) => slot is >= 0 and < 32 && ((humanSlotMask >> slot) & 1) != 0;
 
@@ -45,6 +48,7 @@ public static class MultiplayerContext
         OverridePayload = overridePayload;
         InvulnGranted = null;
         LimitBreakUsed = null;
+        RunFailed = null;
     }
 
     public static void End()
@@ -54,6 +58,7 @@ public static class MultiplayerContext
         OverridePayload = null;
         InvulnGranted = null;
         LimitBreakUsed = null;
+        RunFailed = null;
         SimRandom.Disable();
     }
 }

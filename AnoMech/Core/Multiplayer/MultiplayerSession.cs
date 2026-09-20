@@ -234,6 +234,7 @@ internal sealed unsafe class MultiplayerSession : IDisposable
             run.PendingLimitBreaks.Add(((byte)role, actionId, caster, aim));
             run.LimitBreakDirty = true;
         };
+        MultiplayerContext.RunFailed = reason => run.PendingFailReason = reason;
         var party = game.World.Party;
         var owners = Enumerable.Repeat(Wire.NoPlayer, Wire.Slots).ToArray();
         foreach (var entry in hostLobby.Values)
@@ -546,6 +547,7 @@ internal sealed unsafe class MultiplayerSession : IDisposable
         foreach (var remote in run.Remote.Values) remote.Puppet.Member.NetworkDriven = false;
         hostRun = null;
         MultiplayerContext.LimitBreakUsed = null;
+        MultiplayerContext.RunFailed = null;
         run.Bar.Reset();
         MultiplayerContext.End();
         BroadcastLobby();

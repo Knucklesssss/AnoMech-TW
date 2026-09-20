@@ -203,7 +203,8 @@ public sealed partial class TopP6AlphaOmegaScenario(bool unlimitedOnly = false, 
         if (Extended && !solo) TopP6FullAi.StartLimitBreak(world, PartyRole.MainTank, null);
         world.Events.Add(5.996f, () =>
         {
-            if (Extended && !TopP6LimitBreakRules.IsTankLbActive(lastLimitBreakAt[(int)PartyRole.MainTank], limitBreakClock) &&
+            if (Extended && JudgesLimitBreaks &&
+                !TopP6LimitBreakRules.IsTankLbActive(lastLimitBreakAt[(int)PartyRole.MainTank], limitBreakClock) &&
                 !TopP6LimitBreakRules.IsTankLbActive(lastLimitBreakAt[(int)PartyRole.OffTank], limitBreakClock))
             { Fail("宇宙記憶：傷害結算前未開啟有效坦克極限技。"); return; }
             damage.Resolve(boss, ActionId.CosmoMemory, [DamageType.Magic], []);
@@ -464,10 +465,15 @@ public sealed partial class TopP6AlphaOmegaScenario(bool unlimitedOnly = false, 
             rotation: caster.Rotation, animationTargetId: target.GameObjectId, actionTargetId: target.GameObjectId);
     }
 
+    // Judging runs on the host alone: the checks read a local clock, and a relayed limit break arrives a
+    // playback delay late, so a client would fail a pull the host passed.
+    private static bool JudgesLimitBreaks => !MultiplayerContext.IsClient;
+
     private void Fail(string message)
     {
         failed = true;
         Plugin.ChatGui.PrintError(message);
+        MultiplayerContext.RunFailed?.Invoke(message);
         world.Party.WipeAllPlayers(message);
     }
 }

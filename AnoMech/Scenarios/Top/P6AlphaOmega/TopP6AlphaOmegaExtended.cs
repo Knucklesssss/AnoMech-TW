@@ -13,7 +13,7 @@ namespace AnoMech.Scenarios.Top.P6AlphaOmega;
 
 public sealed partial class TopP6AlphaOmegaScenario
 {
-    public bool SupportsMultiplayer => extendedStart == null;
+    public bool SupportsMultiplayer => true;
     private bool Extended => extendedStart != null;
     private bool startAtSecondUnlimited => extendedStart == "unlimited-second";
     private bool meteorOnly => extendedStart == "cosmo-meteor";
@@ -225,7 +225,7 @@ public sealed partial class TopP6AlphaOmegaScenario
         world.Events.Add(castAt + 4.968f, () =>
         {
             if (failed) return;
-            if (!TopP6LimitBreakRules.IsTankLbActive(lastLimitBreakAt[(int)tank], limitBreakClock))
+            if (JudgesLimitBreaks && !TopP6LimitBreakRules.IsTankLbActive(lastLimitBreakAt[(int)tank], limitBreakClock))
                 Fail($"魔數：{(tank == PartyRole.MainTank ? "MT" : "ST")} 未在傷害結算前開啟有效 LB。");
         });
         // The damage packet precedes the recorded six-second 3532 debuff.
@@ -239,7 +239,7 @@ public sealed partial class TopP6AlphaOmegaScenario
             if (!solo) TopP6FullAi.StartLimitBreak(world, healer, null);
             world.Events.Add(6f, () =>
             {
-                if (!failed && pendingMagicNumberHealer == healer)
+                if (!failed && JudgesLimitBreaks && pendingMagicNumberHealer == healer)
                     Fail($"魔數：{(healer == PartyRole.RegenHealer ? "H1" : "H2")} 未在 DEBUFF 到期前完成 LB。");
             });
         });
