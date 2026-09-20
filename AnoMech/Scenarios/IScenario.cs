@@ -10,6 +10,10 @@ public interface IScenario
 {
     string Name { get; }
 
+    // Optional heading the scenario list groups consecutive scenarios under.
+    // Null leaves the scenario ungrouped, as before.
+    string? Group => null;
+
     // Its phase — usually `=> TopZone.P5`.
     IPhase Phase { get; }
 

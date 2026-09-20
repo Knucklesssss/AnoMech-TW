@@ -9,6 +9,7 @@ using AnoMech.Core.SimObjects;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.Object;
 using static AnoMech.Scenarios.Top.TopConstants;
+using ImGui = Dalamud.Bindings.ImGui.ImGui;
 
 namespace AnoMech.Scenarios.Top.P6AlphaOmega;
 
@@ -18,14 +19,34 @@ namespace AnoMech.Scenarios.Top.P6AlphaOmega;
 // Continue through the first Wave Cannon, two autos and the second Cosmo Arrow.
 public sealed partial class TopP6AlphaOmegaScenario(bool unlimitedOnly = false, string? extendedStart = null) : IScenario
 {
+    // Short list labels; the full coverage and LB roster live in DrawSettings.
     public string Name => extendedStart switch
     {
-        "full" => "阿爾法歐米茄（完整時間軸／LB 練習）",
-        "unlimited" => "限制解除至 P6 結尾（LB 練習）",
-        "unlimited-second" => "第二次限制解除至 P6 結尾（LB 練習）",
-        "cosmo-meteor" => "宇宙流星至 P6 結尾（LB 練習）",
-        _ => unlimitedOnly ? "波動砲：限制解除（開場段）" : "阿爾法歐米茄開場",
+        "full" => "完整時間軸",
+        "unlimited" => "限制解除①",
+        "unlimited-second" => "限制解除②",
+        "cosmo-meteor" => "宇宙流星",
+        _ => unlimitedOnly ? "限制解除 → 波動砲" : "開場段",
     };
+
+    public string Group => Extended ? "LB 練習（至通關）" : "機制練習（無 LB）";
+
+    private string Coverage => extendedStart switch
+    {
+        "full" => "宇宙記憶 → 宇宙天箭①→宇宙龍炎衝① → 限制解除①→波動砲① → 宇宙天箭②→波動砲② → 限制解除②→宇宙龍炎衝② → 宇宙流星 → 魔數 ×2 → 代碼：*能*",
+        "unlimited" => "限制解除①→波動砲① → 宇宙天箭②→波動砲② → 限制解除②→宇宙龍炎衝② → 宇宙流星 → 魔數 ×2 → 代碼：*能*",
+        "unlimited-second" => "限制解除②→宇宙龍炎衝② → 宇宙流星 → 魔數 ×2 → 代碼：*能*",
+        "cosmo-meteor" => "宇宙流星 → 魔數 ×2 → 代碼：*能*",
+        _ => unlimitedOnly
+            ? "限制解除①→波動砲① → 宇宙天箭②（此處結束）"
+            : "宇宙記憶 → 宇宙天箭①→宇宙龍炎衝① → 限制解除①→波動砲① → 宇宙天箭②（此處結束）",
+    };
+
+    private string LimitBreakRoster => !Extended
+        ? "無。本場不判定極限技。"
+        : extendedStart == "full"
+            ? "坦克（宇宙記憶）→ 法系＋遠敏（宇宙流星）→ 坦克＋補師 ×2（魔數）"
+            : "法系＋遠敏（宇宙流星）→ 坦克＋補師 ×2（魔數）";
     public IPhase Phase => TopZone.P6;
     public bool SupportsSolo => extendedStart == null;
     public IReadOnlyList<IScenarioAi> AiStrats { get; } = extendedStart == null ? [new TopP6AlphaOmegaAi()] : [new TopP6FullAi()];
@@ -71,16 +92,25 @@ public sealed partial class TopP6AlphaOmegaScenario(bool unlimitedOnly = false, 
 
     public void DrawSettings()
     {
-        if (!Extended)
-        {
-            Dalamud.Bindings.ImGui.ImGui.TextWrapped("練習範圍至第二次宇宙天箭；後段時距仍待遊戲內校準。減傷效果不計算。");
-            return;
-        }
-        Dalamud.Bindings.ImGui.ImGui.TextWrapped("單人房間練習；一般職業技能與減傷提示沿用現有功能。需正確完成坦克、治療、遠程與法系極限技；不判定輸出是否足以通關，後段時序待遊戲內驗證。");
-        Dalamud.Bindings.ImGui.ImGui.TextWrapped("本場固定以正常速度執行。請使用符合選定職能的職業。核爆目前提供標記與走位演練，尚未判定距離衰減傷害。");
-        if (Dalamud.Bindings.ImGui.ImGui.RadioButton("核爆隨機", meteorD3MarkedOverride == null)) meteorD3MarkedOverride = null;
-        if (Dalamud.Bindings.ImGui.ImGui.RadioButton("核爆包含 D3", meteorD3MarkedOverride == true)) meteorD3MarkedOverride = true;
-        if (Dalamud.Bindings.ImGui.ImGui.RadioButton("核爆不含 D3", meteorD3MarkedOverride == false)) meteorD3MarkedOverride = false;
+        Section("涵蓋範圍", Coverage);
+        Section("需要的極限技", LimitBreakRoster);
+        Section("已知限制", Extended
+            ? "固定以正常速度執行。請使用符合選定職能的職業。不判定輸出是否足以通關，後段時序待遊戲內驗證。核爆僅提供標記與走位演練，尚未判定距離衰減傷害。"
+            : "後段時距仍待遊戲內校準。減傷效果不計算。");
+        if (!Extended) return;
+        ImGui.TextDisabled("核爆點名");
+        if (ImGui.RadioButton("隨機", meteorD3MarkedOverride == null)) meteorD3MarkedOverride = null;
+        if (ImGui.RadioButton("包含 D3", meteorD3MarkedOverride == true)) meteorD3MarkedOverride = true;
+        if (ImGui.RadioButton("不含 D3", meteorD3MarkedOverride == false)) meteorD3MarkedOverride = false;
+    }
+
+    private static void Section(string heading, string body)
+    {
+        ImGui.TextDisabled(heading);
+        ImGui.Indent();
+        ImGui.TextWrapped(body);
+        ImGui.Unindent();
+        ImGui.Spacing();
     }
 
     public void Run(SimWorld worldParam, int? selectedAi)
@@ -276,7 +306,8 @@ public sealed partial class TopP6AlphaOmegaScenario(bool unlimitedOnly = false, 
     {
         ScheduleBossCast(0f, ActionId.UnlimitedWaveCannon, 4.7f, 4.993f);
         var clockwise = rng.NextBool();
-        var startAngle = Extended ? rng.NextInt(8) * MathF.PI / 4f : MathF.PI / 4f;
+        // Retail samples the arc source at any of the eight waymarks, both rotations.
+        var startAngle = rng.NextInt(8) * MathF.PI / 4f;
         Plugin.ChatGui.Print($"[AnoMech] {(second ? "第二次" : "首次")}波動砲：限制解除：{(clockwise ? "順時針" : "逆時針")}；前兩圈直走、第三圈轉斜向，第六圈放下即回八方。");
         for (var lane = 0; lane < ExaflareOffsets.Length; lane++)
         {
@@ -302,7 +333,7 @@ public sealed partial class TopP6AlphaOmegaScenario(bool unlimitedOnly = false, 
         {
             using var scope = SimRandom.HostOnly();
             if (Extended) TopP6FullAi.RunUnlimited(startAngle, clockwise, world, second);
-            else TopP6AlphaOmegaAi.RunUnlimited(clockwise, world);
+            else TopP6AlphaOmegaAi.RunUnlimited(startAngle, clockwise, world);
         }
         if (second)
         {

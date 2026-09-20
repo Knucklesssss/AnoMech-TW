@@ -37,10 +37,25 @@ public sealed unsafe class SimCast : ISimObject
     private float animationLock;
     private float remainingAnimationLock;
 
-    public bool IsCasting => parent.BattleCharaPtr != null && parent.BattleCharaPtr->CastInfo.IsCasting;
+    // Telegraph for a self-driven cast, which gets no engine-spawned omen. Owned
+    // here: dropped on release (ResetCastState) and on cancel/teardown (Despawn).
+    private SimOmen? omen;
+
+    // The client owns the local player's CastInfo and tears it down the moment its
+    // own cast clock runs out, so a player cast tracks its own state instead of
+    // reading those fields back. Enemy casts stay driven by the native cast.
+    private bool selfDriven;
+
+    public bool IsCasting => selfDriven
+        ? casting
+        : parent.BattleCharaPtr != null && parent.BattleCharaPtr->CastInfo.IsCasting;
 
     public uint ActionId { get; private set; }
     public float Progress => total <= 0f ? 0f : Math.Clamp(elapsed / total, 0f, 1f);
+
+    // Resolved cast length of the in-flight cast; callers projecting a cast bar
+    // for the local player need it because its native CastInfo stays empty.
+    internal float CastTotal => total;
 
     // True while the cast bar is up or the release animation is still playing. A
     // following boss roots itself while busy so the action animation finishes in
@@ -85,6 +100,7 @@ public sealed unsafe class SimCast : ISimObject
         }
 
         this.animationLock = animationLock;
+        selfDriven = parent is SimPlayer;
         var castTimeValue = castTime.Value;
 
 
@@ -96,9 +112,27 @@ public sealed unsafe class SimCast : ISimObject
         // cast packet entirely for instants and fire the effect directly below.
         if (castTimeValue > 0)
         {
-            var target = targetId ?? chara->GetGameObjectId();
-            NativeCast(actionId, ActionType.Action, omenDelay, castTimeValue, false, parent.Rotation + omenRotate, localTargetLocation, target);
-            total = chara->CastInfo.TotalCastTime;
+            if (selfDriven)
+            {
+                // The cast packet leaves the local player's CastInfo untouched
+                // (measured: isCasting=False, total=0) yet still spawns the game's
+                // omen, which only gets reaped when the action effect fires — so a
+                // cast cancelled by movement left that circle on the floor forever.
+                // The caller mirrors the cast bar itself, so skip the packet and
+                // raise the telegraph through SimOmen, which this cast owns and
+                // therefore also takes down when the cast is cancelled.
+                total = castTimeValue;
+                omen = new SimOmen(coordinates, actionId,
+                    localTargetLocation ?? parent.Position, parent.Rotation + omenRotate,
+                    ally: true);
+            }
+            else
+            {
+                var target = targetId ?? chara->GetGameObjectId();
+                NativeCast(actionId, ActionType.Action, omenDelay, castTimeValue, false, parent.Rotation + omenRotate, localTargetLocation, target);
+                total = chara->CastInfo.TotalCastTime;
+                if (total <= 0f) total = castTimeValue;
+            }
         }
         else
         {
@@ -232,8 +266,7 @@ public sealed unsafe class SimCast : ISimObject
             return;
         }
 
-        var castInfo = chara->CastInfo;
-        elapsed = castInfo.CurrentCastTime;
+        elapsed = selfDriven ? elapsed + deltaSeconds : chara->CastInfo.CurrentCastTime;
 
         if (elapsed >= total)
         {
@@ -266,6 +299,7 @@ public sealed unsafe class SimCast : ISimObject
     // 20260529_193455).
     public void Despawn()
     {
+        DropOmen();
         var chara = parent.BattleCharaPtr;
         if (chara != null)
         {
@@ -276,8 +310,15 @@ public sealed unsafe class SimCast : ISimObject
         casting = false;
     }
 
+    private void DropOmen()
+    {
+        omen?.Despawn();
+        omen = null;
+    }
+
     private void ResetCastState()
     {
+        DropOmen();
         casting = false;
         targetLocation = null;
         targetId = null;

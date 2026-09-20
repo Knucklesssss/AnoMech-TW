@@ -38,13 +38,19 @@ public sealed unsafe class SimOmen : ISimObject
     // before this omen reports itself inactive for reaping.
     private float? remaining;
 
+    // Omen rows carry a second, friendly-tinted variant in PathAlly. A cast by the
+    // player has to use it, or their telegraph renders in the hostile palette and
+    // reads as a boss AOE.
+    private readonly bool ally;
+
     // Telegraph for `actionId` centered at `origin` (scenario-local) and oriented at
     // `rotation` (radians, already including any per-cast offset). No-ops when the
     // action has no Omen entry or its file can't be resolved.
-    internal SimOmen(Coordinates coordinates, uint actionId, Vector3 origin, float rotation, float? durationSeconds = null)
+    internal SimOmen(Coordinates coordinates, uint actionId, Vector3 origin, float rotation, float? durationSeconds = null, bool ally = false)
     {
         this.coordinates = coordinates;
         remaining = durationSeconds;
+        this.ally = ally;
         SpawnFromAction(actionId, origin, rotation);
     }
 
@@ -98,7 +104,7 @@ public sealed unsafe class SimOmen : ISimObject
             Plugin.Log.Information($"SimOmen: action {actionId:X} ({actionId}) has no Omen entry (Omen.RowId=0 or null)");
             return;
         }
-        var resolvedPath = ResolveActionOmenPath(actionId, omen.Path.ToString());
+        var resolvedPath = ResolveActionOmenPath(actionId, PickPath(omen));
         if (resolvedPath == null) return;
         Plugin.Log.Information($"SimOmen: action {actionId:X} omen path resolved to '{resolvedPath}' (CastType={action.CastType}, EffectRange={action.EffectRange}, XAxisMod={action.XAxisModifier})");
 
@@ -126,10 +132,18 @@ public sealed unsafe class SimOmen : ISimObject
         else if (action.OmenAlt.ValueNullable is { } omenAlt && omenAlt.RowId != 0)
         {
             // Defensive: some non-cross actions populate OmenAlt with a paired shape.
-            var altPath = ResolveActionOmenPath(actionId, omenAlt.Path.ToString());
+            var altPath = ResolveActionOmenPath(actionId, PickPath(omenAlt));
             if (altPath != null)
                 alt = VfxFunctions.SpawnStaticVfx(altPath, new Placement(globalOrigin, rotation), scale);
         }
+    }
+
+    // Falls back to the hostile path when a row leaves PathAlly empty.
+    private string PickPath(Lumina.Excel.Sheets.Omen omen)
+    {
+        if (!ally) return omen.Path.ToString();
+        var allyPath = omen.PathAlly.ToString();
+        return string.IsNullOrWhiteSpace(allyPath) ? omen.Path.ToString() : allyPath;
     }
 
     private static string? ResolveActionOmenPath(uint actionId, string rawPath)

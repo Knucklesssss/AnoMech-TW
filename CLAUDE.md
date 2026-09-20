@@ -11,7 +11,9 @@ The reference scenario is **TOP P5 Delta** (`Scenarios/Top/P5Delta/`). Treat it 
 ## Build / run
 
 - Build: `dotnet build` from `D:/Projects/ffxiv/AnoMech/`. Output is `bin/Debug/AnoMech.dll`.
-- The csproj uses `Dalamud.NET.Sdk/15.0.0` — Dalamud SDK resolves at build time from `%AppData%/XIVLauncher/addon/Hooks/dev/`. No NuGet restore tweaks are needed.
+- The csproj uses `Dalamud.NET.Sdk/13.0.0` (net9.0), matching the TC client's Dalamud 13. No NuGet restore tweaks are needed.
+- The SDK defaults to the Global client's Dalamud at `%AppData%/XIVLauncher/addon/Hooks/dev/`. If that holds a newer build (API 14 is net10), the build fails with CS1705. Point it at the TC Dalamud instead:
+  `DALAMUD_HOME="$APPDATA/FFXIVSimpleLauncher/Dalamud/Injector" dotnet build AnoMech/AnoMech.csproj`
 - **There are no automated tests.** Verification is "build clean → load DLL via Dalamud Dev Plugins → run a scenario in-game and watch." For UI / behavior changes, ask the user to run the plugin; you cannot.
 - In-game entry point: chat command `/anomech` (alias `/ano`) opens the main window. Subcommands: `config`, `start`, `reset`, `leave`. Buttons in the main window run scenarios and despawn/reset.
 

@@ -40,13 +40,13 @@ public sealed class TopP6AlphaOmegaAi : IScenarioAi<bool>
         ai.Move(48.3f, () => AiMove.All(Vector2.Zero), jitter: 0f);
     }
 
-    internal static void RunUnlimited(bool clockwise, SimWorld world)
+    internal static void RunUnlimited(float startAngle, bool clockwise, SimWorld world)
     {
         var ai = new AiManager(world);
-        // First source is NE. Start 1.5 waymark intervals against the rotation:
-        // CW between A/4, CCW between B/2. Each straight dodge clears the 6y bait.
+        // The source is any of the eight waymarks. Start 1.5 waymark intervals
+        // against the rotation from it. Each straight dodge clears the 6y bait.
         var direction = clockwise ? 1f : -1f;
-        var heading = MathF.PI / 4f - direction * 3f * MathF.PI / 8f;
+        var heading = startAngle - direction * 3f * MathF.PI / 8f;
         const float dodgeDistance = 7f; // 6y puddle + 1y clearance.
         const float turnRadius = 2f * dodgeDistance;
         // Chord length is one dodge, not a fixed 45-degree lap around the boss.

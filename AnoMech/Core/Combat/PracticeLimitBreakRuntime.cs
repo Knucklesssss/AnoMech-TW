@@ -37,14 +37,14 @@ internal sealed unsafe class PracticeLimitBreakRuntime : IDisposable
         if (disposed || world.Combat is { Active: true }) return;
         if (active is { Caster: SimPlayer } cast && cast.Caster.BattleCharaPtr != null)
             nativeCast.Mirror(cast.Caster.BattleCharaPtr, cast.ActionId, cast.Elapsed,
-                cast.Caster.BattleCharaPtr->CastInfo.TotalCastTime, cast.Target?.GameObjectId ?? cast.Caster.GameObjectId);
+                cast.Cast.CastTotal, cast.Target?.GameObjectId ?? cast.Caster.GameObjectId);
         else nativeCast.Clear();
     }
 
     internal void MirrorCast(LocalCombatSession combat)
     {
         if (active is { Caster: SimPlayer } cast && cast.Caster.BattleCharaPtr != null)
-            combat.MirrorPracticeCast(cast.ActionId, cast.Elapsed, cast.Caster.BattleCharaPtr->CastInfo.TotalCastTime,
+            combat.MirrorPracticeCast(cast.ActionId, cast.Elapsed, cast.Cast.CastTotal,
                 cast.Target?.GameObjectId ?? cast.Caster.GameObjectId);
         else combat.MirrorPracticeCast(0, 0, 0, default);
     }
@@ -151,6 +151,14 @@ internal sealed unsafe class PracticeLimitBreakRuntime : IDisposable
             return true;
         }
 
+        // HandleActorCastPacket never lands on the local player, so its CastInfo
+        // is still empty here and the shared IsCasting checks (here and in Tick)
+        // would cancel every player LB. Project the cast now; AfterNativeUpdate
+        // keeps it refreshed for the rest of the cast.
+        if (caster is SimPlayer && caster.BattleCharaPtr != null)
+            nativeCast.Mirror(caster.BattleCharaPtr, actionId, 0f, cast.CastTotal,
+                target?.GameObjectId ?? caster.GameObjectId);
+
         if (!cast.IsCasting)
         {
             CancelActive(pending);
@@ -204,7 +212,7 @@ internal sealed unsafe class PracticeLimitBreakRuntime : IDisposable
         // delta so pause/time scaling cannot complete the LB in wall-clock time.
         pending.Elapsed += deltaSeconds;
         var native = pending.Caster.BattleCharaPtr;
-        native->CastInfo.CurrentCastTime = MathF.Min(pending.Elapsed, native->CastInfo.TotalCastTime);
+        native->CastInfo.CurrentCastTime = MathF.Min(pending.Elapsed, pending.Cast.CastTotal);
         pending.Cast.Tick(deltaSeconds);
         if (active is null || !ReferenceEquals(active, pending))
             return;

@@ -220,8 +220,21 @@ public unsafe class MainWindow : Window, IDisposable
                 if (!ImGui.CollapsingHeader(zone.Name, ImGuiTreeNodeFlags.DefaultOpen)) continue;
                 ImGui.Indent();
                 foreach (var phase in plugin.Game.PhasesOf(zone))
+                {
+                    string? group = null;
+                    var firstInPhase = true;
                     foreach (var scenario in plugin.Game.ScenariosOf(phase))
                     {
+                        if (scenario.Group != group)
+                        {
+                            group = scenario.Group;
+                            if (group != null)
+                            {
+                                if (!firstInPhase) ImGui.Spacing();
+                                ImGui.TextDisabled(group);
+                            }
+                        }
+                        firstInPhase = false;
                         var selected = _selectedScenario == scenario;
                         if (selected) ImGui.PushStyleColor(ImGuiCol.Button, ImGui.GetColorU32(ImGuiCol.ButtonActive));
                         ImGui.PushID(scenario.Name);
@@ -230,6 +243,7 @@ public unsafe class MainWindow : Window, IDisposable
                         ImGui.PopID();
                         if (selected) ImGui.PopStyleColor();
                     }
+                }
                 ImGui.Unindent();
             }
         }

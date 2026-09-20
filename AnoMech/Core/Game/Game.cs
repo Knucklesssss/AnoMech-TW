@@ -82,7 +82,8 @@ public sealed class Game : IDisposable
             new TopP5DeltaScenario(),
             new TopP5SigmaScenario(),
             new TopP5OmegaScenario(),
-            new TopP6WaveCannon2Scenario(),
+            // P6 Exasquares/WC2 hidden: superseded by the P6AlphaOmega scenarios below.
+            // new TopP6WaveCannon2Scenario(),
             new UltimatePredationScenario(),
             new AnoMech.Scenarios.Top.P6AlphaOmega.TopP6AlphaOmegaScenario(),
             new AnoMech.Scenarios.Top.P6AlphaOmega.TopP6AlphaOmegaScenario(unlimitedOnly: true),
