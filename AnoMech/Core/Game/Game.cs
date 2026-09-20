@@ -249,7 +249,7 @@ public sealed class Game : IDisposable
         HitRangeDebug.Tick(deltaSeconds);
         if (Paused) return;
         AnoMech.Core.Combat.TargetMitigation.Tick(deltaSeconds);
-        Events.Tick(deltaSeconds * EventTimeScale);
+        Events.Tick(deltaSeconds * (World.LimitBreaks != null ? 1f : EventTimeScale));
         World.Tick(deltaSeconds);
         if (activeScenario != null)
         {

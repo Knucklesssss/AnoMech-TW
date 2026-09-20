@@ -77,6 +77,7 @@ public sealed partial class TopP6AlphaOmegaScenario(bool unlimitedOnly = false, 
             return;
         }
         Dalamud.Bindings.ImGui.ImGui.TextWrapped("單人房間練習；一般職業技能與減傷提示沿用現有功能。需正確完成坦克、治療、遠程與法系極限技；不判定輸出是否足以通關，後段時序待遊戲內驗證。");
+        Dalamud.Bindings.ImGui.ImGui.TextWrapped("本場固定以正常速度執行。請使用符合選定職能的職業。核爆目前提供標記與走位演練，尚未判定距離衰減傷害。");
         if (Dalamud.Bindings.ImGui.ImGui.RadioButton("核爆隨機", meteorD3MarkedOverride == null)) meteorD3MarkedOverride = null;
         if (Dalamud.Bindings.ImGui.ImGui.RadioButton("核爆包含 D3", meteorD3MarkedOverride == true)) meteorD3MarkedOverride = true;
         if (Dalamud.Bindings.ImGui.ImGui.RadioButton("核爆不含 D3", meteorD3MarkedOverride == false)) meteorD3MarkedOverride = false;

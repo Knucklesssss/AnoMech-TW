@@ -5,6 +5,9 @@ internal static class P6LimitBreakGeometryChecks
 {
     public static void Run()
     {
+        if (!TopP6LimitBreakRules.IsTankAction(199) || TopP6LimitBreakRules.IsTankAction(208) ||
+            !TopP6LimitBreakRules.IsHealerAction(24859) || TopP6LimitBreakRules.IsHealerAction(17105))
+            throw new Exception("Role overrides must not turn healer LB into tank mitigation or tank LB into cleanse.");
         if (!TopP6LimitBreakRules.Hits(new(6.5f, 11.26f), Vector2.Zero, 0, 15, 0, true) ||
             TopP6LimitBreakRules.Hits(new(16, 0), Vector2.Zero, 0, 15, 0, true))
             throw new Exception("Caster LB must use its ground circle, including the six comet positions.");

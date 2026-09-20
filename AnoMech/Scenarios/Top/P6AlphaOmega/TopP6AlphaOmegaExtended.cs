@@ -206,7 +206,10 @@ public sealed partial class TopP6AlphaOmegaScenario
             FinalRunReleaseAt - SecondUnlimitedAt - SecondUnlimitedMeteorAt);
         world.Events.Add(CompleteAt - SecondUnlimitedAt - SecondUnlimitedMeteorAt, () =>
         {
-            if (!failed) Plugin.ChatGui.Print("[AnoMech] P6 完整時間軸演練結束。");
+            if (failed) return;
+            if (cosmoMeteors.Concat(cosmoComets).Any(add => add is { IsActive: true }))
+                Fail("P6 演練未完成：仍有宇宙流星或宇宙隕星未被極限技擊破。");
+            else Plugin.ChatGui.Print("[AnoMech] P6 完整時間軸演練結束。");
         });
     }
 
@@ -309,8 +312,8 @@ public sealed partial class TopP6AlphaOmegaScenario
             world.LimitBreaks?.Refill();
         }
 
-        lastLimitBreakAt[(int)role] = limitBreakClock;
-        if (pendingMagicNumberHealer == role)
+        if (TopP6LimitBreakRules.IsTankAction(actionId)) lastLimitBreakAt[(int)role] = limitBreakClock;
+        if (pendingMagicNumberHealer == role && TopP6LimitBreakRules.IsHealerAction(actionId))
         {
             for (var member = 0; member < 8; member++)
                 party.Get(member)?.RemoveStatus(MagicNumberStatus);
@@ -401,6 +404,8 @@ public sealed partial class TopP6AlphaOmegaScenario
             .Select(position => SpawnCosmoAdd(CosmoMeteorBaseId, position)).ToArray();
         cosmoComets = CosmoCometPositions
             .Select(position => SpawnCosmoAdd(CosmoCometBaseId, position)).ToArray();
+        if (cosmoMeteors.Concat(cosmoComets).Any(add => add == null))
+            Fail("宇宙流星：必要的機制物件未能生成，請重試。");
     }
 
     private SimEnemy? SpawnCosmoAdd(uint baseId, Vector2 position)
