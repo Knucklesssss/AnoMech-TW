@@ -93,6 +93,8 @@ internal sealed unsafe class MultiplayerSession : IDisposable
         public float SendTimer { get; set; }
         public byte[] LastMarkers { get; set; } = Enumerable.Repeat(Wire.NoRole, Wire.MarkerSlots).ToArray();
         public uint MarkerRequest { get; set; }
+        public uint LimitBreakRequest { get; set; }
+        public uint PendingLimitBreakRequest { get; set; }
         public ushort[] Timelines { get; } = Enumerable.Repeat(Wire.InferTimeline, Wire.Slots).ToArray();
         public float PreviousTimeScale { get; init; }
         public bool PreviousGodMode { get; init; }
@@ -681,6 +683,15 @@ internal sealed unsafe class MultiplayerSession : IDisposable
                 WriteName(member, owner.Name);
         }
         MismatchCount = 0;
+        MultiplayerContext.LimitBreakUsed = (role, actionId, caster, aim) =>
+        {
+            if (clientRun is not { } sending || role != sending.Role) return;
+            sending.LimitBreakRequest++;
+            sending.PendingLimitBreakRequest = sending.LimitBreakRequest;
+            Net.Client.Send(MessageType.LimitBreakUsed,
+                new LimitBreakUsedDto(sending.RunId, sending.LimitBreakRequest, actionId, caster, aim).Write,
+                DeliveryMethod.ReliableOrdered);
+        };
         clientRun = run;
         Chat($"房主開始了多人場景：{SimGame.FullName(game.Scenarios[start.ScenarioIndex])}");
     }
@@ -736,6 +747,22 @@ internal sealed unsafe class MultiplayerSession : IDisposable
         for (var slot = 0; slot < Wire.Slots; slot++)
             if ((frame.TimelineMask & (1 << slot)) != 0) run.Timelines[slot] = frame.Timelines[slot];
         foreach (var (role, seconds) in frame.Invulns) party.GiveInvuln((PartyRole)role, seconds);
+        foreach (var (role, actionId, caster, aim) in frame.LimitBreaks)
+        {
+            // Our own press already started locally; replaying it would double the cast.
+            if (role == run.Role) continue;
+            game.World.LimitBreaks?.TryStartRemote((PartyRole)role, actionId, caster, aim);
+        }
+        if (frame.LimitBreakAcks[run.Role] >= run.PendingLimitBreakRequest && run.PendingLimitBreakRequest != 0)
+        {
+            if (frame.LimitBreakHolder != run.Role)
+            {
+                game.World.LimitBreaks?.Cancel((PartyRole)run.Role);
+                Chat("極限技已被其他人使用。");
+            }
+            run.PendingLimitBreakRequest = 0;
+        }
+        if (frame.FailReason is { } reason) Chat(reason);
 
         for (var slot = 0; slot < Wire.Slots; slot++)
         {
@@ -782,6 +809,7 @@ internal sealed unsafe class MultiplayerSession : IDisposable
             game.GodMode = run.PreviousGodMode;
         }
         clientRun = null;
+        MultiplayerContext.LimitBreakUsed = null;
         MultiplayerContext.End();
         if (reset) game.Reset();
         if (message is not null) Chat(message);
