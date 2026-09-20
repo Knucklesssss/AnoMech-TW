@@ -7,7 +7,7 @@ namespace AnoMech.Core.Net;
 
 public static class NetProtocol
 {
-    public const ushort Version = 5; // StopReason.HostLeft: the room only follows the host out on matching builds.
+    public const ushort Version = 6; // Shared limit break bar: the room must agree on who holds it.
     public const uint Magic = 0x414D5031; // "AMP1"
     public const int MaxPlayers = 8;
     public const byte HostPlayerId = 0;
@@ -39,6 +39,7 @@ public enum MessageType : byte
     Markers = 18,
     Appearance = 19,
     RestartRequest = 20,
+    LimitBreakUsed = 21,
 }
 
 public enum RejectReason : byte

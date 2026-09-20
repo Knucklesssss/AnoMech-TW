@@ -290,6 +290,45 @@ public sealed record MarkersDto(uint RunId, uint RequestId, uint ChangedMask, by
     }
 }
 
+// A client asking for the shared bar. Carries no object id: SimEnemy ids are allocated per machine,
+// so geometry is rebuilt from the caster's position and the point it aimed at instead.
+public readonly record struct LimitBreakUsedDto(uint RunId, uint RequestId, uint ActionId, Vector3 CasterPosition, Vector3? Aim)
+{
+    public void Write(NetDataWriter writer)
+    {
+        writer.Put(RunId);
+        writer.Put(RequestId);
+        writer.Put(ActionId);
+        writer.Put(CasterPosition.X);
+        writer.Put(CasterPosition.Y);
+        writer.Put(CasterPosition.Z);
+        writer.Put(Aim.HasValue);
+        if (Aim is { } aim)
+        {
+            writer.Put(aim.X);
+            writer.Put(aim.Y);
+            writer.Put(aim.Z);
+        }
+    }
+
+    public static bool TryRead(NetDataReader reader, out LimitBreakUsedDto used)
+    {
+        used = default;
+        if (!reader.TryGetUInt(out var runId) || !reader.TryGetUInt(out var requestId) || !reader.TryGetUInt(out var actionId)
+            || !reader.TryGetFinite(Wire.CoordinateLimit, out var cx) || !reader.TryGetFinite(Wire.CoordinateLimit, out var cy)
+            || !reader.TryGetFinite(Wire.CoordinateLimit, out var cz) || !reader.TryGetBool(out var hasAim)) return false;
+        Vector3? aim = null;
+        if (hasAim)
+        {
+            if (!reader.TryGetFinite(Wire.CoordinateLimit, out var ax) || !reader.TryGetFinite(Wire.CoordinateLimit, out var ay)
+                || !reader.TryGetFinite(Wire.CoordinateLimit, out var az)) return false;
+            aim = new Vector3(ax, ay, az);
+        }
+        used = new LimitBreakUsedDto(runId, requestId, actionId, new Vector3(cx, cy, cz), aim);
+        return true;
+    }
+}
+
 public sealed record SyncStateDto(float ScenarioElapsed, bool[] Dead, (ushort Id, ushort Stacks)[][] Statuses)
 {
     public void Write(NetDataWriter writer)
@@ -342,6 +381,11 @@ public sealed class TickFrame
     public byte TimelineMask { get; set; }
     public ushort[] Timelines { get; } = new ushort[Wire.Slots];
     public List<(byte Role, float Seconds)> Invulns { get; } = [];
+    public byte LimitBreakHolder { get; set; } = LimitBreakArbiter.Nobody;
+    public List<(byte Role, uint ActionId, Vector3 CasterPosition, Vector3? Aim)> LimitBreaks { get; } = [];
+    public uint[] LimitBreakAcks { get; } = new uint[Wire.Slots];
+    // Judging moved to the host, so the reason has to travel to the room that only sees the wipe.
+    public string? FailReason { get; set; }
     public SyncStateDto? Sync { get; set; }
 }
 
@@ -351,6 +395,10 @@ public static class FrameCodec
     private const byte HasInvulns = 2;
     private const byte HasSync = 4;
     private const byte HasTimelines = 8;
+    private const byte HasLimitBreaks = 16;
+    private const byte HasFailReason = 32;
+    private const int MaxLimitBreaksPerFrame = 8;
+    private const int MaxFailReasonBytes = 256;
 
     public static void WriteBatch(NetDataWriter writer, uint runId, IReadOnlyList<TickFrame> frames)
     {
@@ -374,7 +422,9 @@ public static class FrameCodec
     public static void Write(NetDataWriter writer, TickFrame frame)
     {
         var flags = (byte)((frame.Markers != null ? HasMarkers : 0) | (frame.Invulns.Count > 0 ? HasInvulns : 0)
-                           | (frame.Sync != null ? HasSync : 0) | (frame.TimelineMask != 0 ? HasTimelines : 0));
+                           | (frame.Sync != null ? HasSync : 0) | (frame.TimelineMask != 0 ? HasTimelines : 0)
+                           | (frame.LimitBreaks.Count > 0 || frame.LimitBreakHolder != LimitBreakArbiter.Nobody ? HasLimitBreaks : 0)
+                           | (frame.FailReason != null ? HasFailReason : 0));
         writer.Put(frame.Tick);
         writer.Put(flags);
         writer.Put(frame.PoseMask);
@@ -401,6 +451,30 @@ public static class FrameCodec
                 writer.Put(frame.Invulns[i].Seconds);
             }
         }
+        if ((flags & HasLimitBreaks) != 0)
+        {
+            writer.Put(frame.LimitBreakHolder);
+            for (var i = 0; i < Wire.Slots; i++) writer.Put(frame.LimitBreakAcks[i]);
+            var count = Math.Min(frame.LimitBreaks.Count, MaxLimitBreaksPerFrame);
+            writer.Put((byte)count);
+            for (var i = 0; i < count; i++)
+            {
+                var (role, actionId, caster, aim) = frame.LimitBreaks[i];
+                writer.Put(role);
+                writer.Put(actionId);
+                writer.Put(caster.X);
+                writer.Put(caster.Y);
+                writer.Put(caster.Z);
+                writer.Put(aim.HasValue);
+                if (aim is { } point)
+                {
+                    writer.Put(point.X);
+                    writer.Put(point.Y);
+                    writer.Put(point.Z);
+                }
+            }
+        }
+        if (frame.FailReason != null) writer.Put(frame.FailReason);
         frame.Sync?.Write(writer);
     }
 
@@ -408,7 +482,7 @@ public static class FrameCodec
     {
         frame = null!;
         if (!reader.TryGetUInt(out var tick) || !reader.TryGetByte(out var flags) || !reader.TryGetByte(out var mask)) return false;
-        if ((flags & ~(HasMarkers | HasInvulns | HasSync | HasTimelines)) != 0) return false;
+        if ((flags & ~(HasMarkers | HasInvulns | HasSync | HasTimelines | HasLimitBreaks | HasFailReason)) != 0) return false;
         var result = new TickFrame { Tick = tick, PoseMask = mask };
         for (var slot = 0; slot < Wire.Slots; slot++)
             if ((mask & (1 << slot)) != 0 && !NetPose.TryRead(reader, out result.Poses[slot])) return false;
@@ -436,6 +510,34 @@ public static class FrameCodec
                 if (!reader.TryGetByte(out var role) || !Wire.ValidRole(role, false) || !reader.TryGetFinite(3600f, out var seconds)) return false;
                 result.Invulns.Add((role, seconds));
             }
+        }
+        if ((flags & HasLimitBreaks) != 0)
+        {
+            if (!reader.TryGetByte(out var holder) || !Wire.ValidRole(holder, true)) return false;
+            result.LimitBreakHolder = holder;
+            for (var i = 0; i < Wire.Slots; i++)
+                if (!reader.TryGetUInt(out result.LimitBreakAcks[i])) return false;
+            if (!reader.TryGetByte(out var lbCount) || lbCount > MaxLimitBreaksPerFrame) return false;
+            for (var i = 0; i < lbCount; i++)
+            {
+                if (!reader.TryGetByte(out var role) || !Wire.ValidRole(role, false) || !reader.TryGetUInt(out var actionId)
+                    || !reader.TryGetFinite(Wire.CoordinateLimit, out var cx) || !reader.TryGetFinite(Wire.CoordinateLimit, out var cy)
+                    || !reader.TryGetFinite(Wire.CoordinateLimit, out var cz) || !reader.TryGetBool(out var hasAim)) return false;
+                Vector3? aim = null;
+                if (hasAim)
+                {
+                    if (!reader.TryGetFinite(Wire.CoordinateLimit, out var ax) || !reader.TryGetFinite(Wire.CoordinateLimit, out var ay)
+                        || !reader.TryGetFinite(Wire.CoordinateLimit, out var az)) return false;
+                    aim = new Vector3(ax, ay, az);
+                }
+                result.LimitBreaks.Add((role, actionId, new Vector3(cx, cy, cz), aim));
+            }
+        }
+        if ((flags & HasFailReason) != 0)
+        {
+            if (!reader.TryGetString(out var reason) || reason.Length == 0
+                || System.Text.Encoding.UTF8.GetByteCount(reason) > MaxFailReasonBytes) return false;
+            result.FailReason = reason;
         }
         if ((flags & HasSync) != 0)
         {

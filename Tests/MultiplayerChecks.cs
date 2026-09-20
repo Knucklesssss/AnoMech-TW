@@ -246,6 +246,33 @@ internal static class MultiplayerChecks
             (NetDataReader r, out StopRunDto v) => StopRunDto.TryRead(r, out v), "StopRun(HostLeft)");
         Check(left.Reason == StopReason.HostLeft && left.Reason != stopped.Reason,
             "Leaving must reach the room as its own reason, distinct from stopping the run");
+        var lbUsed = RoundTrip(new LimitBreakUsedDto(3, 9, 208, new Vector3(1.5f, 0f, -2.5f), new Vector3(0f, 0f, 4f)).Write,
+            (NetDataReader r, out LimitBreakUsedDto v) => LimitBreakUsedDto.TryRead(r, out v), "LimitBreakUsed");
+        Check(lbUsed == new LimitBreakUsedDto(3, 9, 208, new Vector3(1.5f, 0f, -2.5f), new Vector3(0f, 0f, 4f)),
+            "LimitBreakUsed keeps its run, request, action and both points");
+        var lbGround = RoundTrip(new LimitBreakUsedDto(3, 10, 205, new Vector3(0f, 0f, 0f), null).Write,
+            (NetDataReader r, out LimitBreakUsedDto v) => LimitBreakUsedDto.TryRead(r, out v), "LimitBreakUsed(no aim)");
+        Check(lbGround.Aim is null, "a missing aim point survives as null");
+        Check(Rejects(w => { w.Put(3u); w.Put(9u); w.Put(208u); w.Put(float.NaN); w.Put(0f); w.Put(0f); w.Put(false); },
+            (NetDataReader r, out LimitBreakUsedDto v) => LimitBreakUsedDto.TryRead(r, out v)),
+            "LimitBreakUsed with a non-finite coordinate is rejected");
+
+        var lbFrame = new TickFrame { Tick = 6, LimitBreakHolder = 2, FailReason = "魔數：H1 未在 DEBUFF 到期前完成 LB。" };
+        lbFrame.LimitBreaks.Add((2, 208, new Vector3(0f, 0f, 1f), null));
+        lbFrame.LimitBreakAcks[2] = 4;
+        var lbFrameBack = RoundTrip(w => FrameCodec.Write(w, lbFrame),
+            (NetDataReader r, out TickFrame v) => FrameCodec.TryRead(r, out v), "TickFrame(limit breaks)");
+        Check(lbFrameBack.LimitBreakHolder == 2 && lbFrameBack.LimitBreakAcks[2] == 4,
+            "the frame carries the bar holder and the acks");
+        Check(lbFrameBack.LimitBreaks.Count == 1 && lbFrameBack.LimitBreaks[0].ActionId == 208,
+            "the frame carries the accepted limit breaks");
+        Check(lbFrameBack.FailReason == "魔數：H1 未在 DEBUFF 到期前完成 LB。", "the frame carries the failure reason");
+
+        var plainFrame = RoundTrip(w => FrameCodec.Write(w, new TickFrame { Tick = 7 }),
+            (NetDataReader r, out TickFrame v) => FrameCodec.TryRead(r, out v), "TickFrame(plain)");
+        Check(plainFrame.LimitBreakHolder == LimitBreakArbiter.Nobody && plainFrame.LimitBreaks.Count == 0
+              && plainFrame.FailReason is null, "a frame with no limit break state stays empty");
+
         var marksBack = RoundTrip(new MarkersDto(4, 11, 1u << 5, marks).Write, (NetDataReader r, out MarkersDto v) => MarkersDto.TryRead(r, out v), "Markers");
         Check(marksBack.RunId == 4 && marksBack.RequestId == 11 && marksBack.ChangedMask == 1u << 5 && marksBack.Markers.SequenceEqual(marks), "a client's marker change survives");
         Check(Rejects(new MarkersDto(4, 1, 1, Enumerable.Repeat((byte)8, Wire.MarkerSlots).ToArray()).Write,
