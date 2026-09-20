@@ -26,6 +26,9 @@ public static class MultiplayerContext
     // Host only: AI-granted invulnerability is replayed on clients, which do not run AI.
     public static Action<int, float>? InvulnGranted { get; set; }
 
+    // The local player's own limit break: the host arbitrates the shared bar, so it has to hear about it.
+    public static Action<int, uint, System.Numerics.Vector3, System.Numerics.Vector3?>? LimitBreakUsed { get; set; }
+
     // Host only: party slots moved by a remote player, which AI must leave alone.
     public static bool IsHumanControlled(int slot) => slot is >= 0 and < 32 && ((humanSlotMask >> slot) & 1) != 0;
 
@@ -41,6 +44,7 @@ public static class MultiplayerContext
         humanSlotMask = humanSlots;
         OverridePayload = overridePayload;
         InvulnGranted = null;
+        LimitBreakUsed = null;
     }
 
     public static void End()
@@ -49,6 +53,7 @@ public static class MultiplayerContext
         humanSlotMask = 0;
         OverridePayload = null;
         InvulnGranted = null;
+        LimitBreakUsed = null;
         SimRandom.Disable();
     }
 }

@@ -1,5 +1,6 @@
 using System;
 using System.Numerics;
+using AnoMech.Core.Game;
 using AnoMech.Core.Game.Party;
 using AnoMech.Core.SimObjects;
 using ActionSheet = Lumina.Excel.Sheets.Action;
@@ -148,6 +149,10 @@ internal sealed unsafe class PracticeLimitBreakRuntime : IDisposable
         if (cast.ActionId == 0)
         {
             Complete(pending);
+            // Only the local player's press needs announcing: AI presses are deterministic on every machine,
+            // and a replayed remote press must not echo back out.
+            if (caster is SimPlayer)
+                MultiplayerContext.LimitBreakUsed?.Invoke((int)role, actionId, caster.Position, location ?? target?.Position);
             return true;
         }
 
@@ -166,7 +171,24 @@ internal sealed unsafe class PracticeLimitBreakRuntime : IDisposable
         }
 
         SyncPlayerLock(pending);
+        // Only the local player's press needs announcing: AI presses are deterministic on every machine,
+        // and a replayed remote press must not echo back out.
+        if (caster is SimPlayer)
+            MultiplayerContext.LimitBreakUsed?.Invoke((int)role, actionId, caster.Position, location ?? target?.Position);
         return true;
+    }
+
+    // TryStart refuses a location for anything that is not ground targeted, so a relayed aim point becomes
+    // a facing instead and the geometry falls back to the caster's own rotation.
+    internal bool TryStartRemote(PartyRole role, uint actionId, Vector3 casterPosition, Vector3? aim)
+    {
+        if (disposed || !TryGetValidatedAction(actionId, out var action)) return false;
+        var caster = world.Party.Get(role);
+        if (caster == null) return false;
+        if (action.TargetArea) return TryStart(role, actionId, aim, null);
+        if (aim is { } point)
+            caster.SetRotation(MathF.Atan2(point.X - casterPosition.X, point.Z - casterPosition.Z));
+        return TryStart(role, actionId, null, null);
     }
 
     internal void Refill()
