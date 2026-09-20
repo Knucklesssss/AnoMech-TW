@@ -15,12 +15,14 @@ unsafe
     Check(AnoMech.Pointers.StatusManagerPointers.GainCalls == 1, "Player must gain exactly one effect.");
     Check(AnoMech.Pointers.StatusManagerPointers.GainDuration == 9f, "OnGain must see the requested duration immediately.");
     Check(player.StatusManager.Status[0].RemainingTime == 9f, "Slot must be initialized before first Tick.");
+    Check(StatusManager.FlagRefreshCalls == 1, "Player gain must refresh native buff flags.");
     Statuses.AddStatusInit((Character*)(&player), 123, 3, 9f);
     Check(AnoMech.Pointers.StatusManagerPointers.GainCalls == 1, "Refresh must not replay gain VFX.");
     status.Tick(1f);
     Check(player.StatusManager.Status[0].RemainingTime == 8f, "Simulated countdown must remain authoritative.");
     status.Despawn();
     Check(player.StatusManager.GetStatusIndex(123) == -1, "Despawn must clear the status.");
+    Check(StatusManager.FlagRefreshCalls == 2, "Player removal must refresh flags to stop buff effects.");
     BattleChara boss = default;
     var transformation = new SimStatus(new SimCharacter { BattleCharaPtr = &boss }, 456, 0f, 490);
     Check(StatusManager.AddCalls == 1, "NPC transformations still need native AddStatus.");
@@ -58,7 +60,7 @@ namespace FFXIVClientStructs.FFXIV.Client.Game
     {
         private StatusSlots slots;
         public byte NumValidStatuses;
-        public static int AddCalls;
+        public static int AddCalls, FlagRefreshCalls;
         public Span<Status> Status => MemoryMarshal.CreateSpan(ref slots[0], 60);
         public void AddStatus(ushort id, ushort param)
         {
@@ -70,6 +72,11 @@ namespace FFXIVClientStructs.FFXIV.Client.Game
         {
             for (var i = 0; i < 60; i++) if (Status[i].StatusId == id) return i;
             return -1;
+        }
+        public void SetStatus(int index, ushort id, float duration, ushort param, GameObjectId source, bool refreshFlags)
+        {
+            if (refreshFlags) FlagRefreshCalls++;
+            Status[index] = new Status { StatusId = id, RemainingTime = duration, Param = param, SourceObject = source };
         }
         public void RemoveStatus(int index) => Status[index] = default;
     }

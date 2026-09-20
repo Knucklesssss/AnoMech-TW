@@ -77,8 +77,15 @@ internal static unsafe class Statuses
 
         Apply(chara, statusId, duration, param);
         // A full status array cannot accept the effect either.
-        if (bc->StatusManager.GetStatusIndex(statusId) >= 0)
+        slot = bc->StatusManager.GetStatusIndex(statusId);
+        if (slot >= 0)
+        {
+            // Direct insertion skips the sheet flags used by player buff effects.
+            if (isLocalPlayer)
+                bc->StatusManager.SetStatus(slot, statusId, bc->StatusManager.Status[slot].RemainingTime, param,
+                    bc->StatusManager.Status[slot].SourceObject, true);
             StatusManagerPointers.OnGainStatus(&bc->StatusManager, statusId, duration, param, 0, 0);
+        }
     }
 
     public static void Remove(Character* chara, ushort statusId)
@@ -87,6 +94,11 @@ internal static unsafe class Statuses
         var bc = (BattleChara*)chara;
         var slot = bc->StatusManager.GetStatusIndex(statusId);
         if (slot >= 0 && slot <= bc->StatusManager.NumValidStatuses)
-            bc->StatusManager.RemoveStatus(slot);
+        {
+            if (Plugin.ObjectTable.LocalPlayer?.Address == (nint)chara)
+                bc->StatusManager.SetStatus(slot, 0, 0f, 0, default, true);
+            if (bc->StatusManager.Status[slot].StatusId == statusId)
+                bc->StatusManager.RemoveStatus(slot);
+        }
     }
 }
