@@ -34,6 +34,7 @@ public unsafe class MainWindow : Window, IDisposable
 
     internal void ShowTab(MainTab tab)
     {
+        if (!IsOpen) currentTab = MainTab.Practice;
         pendingTab = tab;
         IsOpen = true;
     }
@@ -88,11 +89,8 @@ public unsafe class MainWindow : Window, IDisposable
     public MainWindow(Plugin plugin)
         : base(TitleWithVersion())
     {
-        SizeConstraints = new WindowSizeConstraints
-        {
-            MinimumSize = new Vector2(480, 320),
-            MaximumSize = new Vector2(float.MaxValue, float.MaxValue)
-        };
+        Size = new Vector2(900, 560);
+        SizeCondition = ImGuiCond.FirstUseEver;
 
         this.plugin = plugin;
         multiplayerPanel = new MultiplayerPanel(Plugin.Multiplayer);
@@ -117,6 +115,7 @@ public unsafe class MainWindow : Window, IDisposable
     public void Dispose() { }
 
     private bool _wasInInstance;
+    private bool compact;
 
     // Entering the fake-zone instance collapses the window out of the way and leaving opens and
     // expands it; in between it collapses and closes normally (/anomech reopens it).
@@ -136,15 +135,34 @@ public unsafe class MainWindow : Window, IDisposable
         }
         RespectCloseHotkey = !inInstance;
         _wasInInstance = inInstance;
-    }
 
-    public override void Draw()
-    {
-        var compact = plugin.Game.World.Map.IsInInstance && plugin.Configuration.CompactSimulationControls;
+        // Dalamud reads Flags/SizeConstraints before Draw() runs, so both must be decided here
+        // or the window is sized under the previous mode for one frame on every mode switch.
+        compact = inInstance && plugin.Configuration.CompactSimulationControls;
         // The compact strip should hug its content; the full panel must stay where the user put it,
         // or every tab switch would resize the window out from under them.
         if (compact) Flags |= ImGuiWindowFlags.AlwaysAutoResize;
         else Flags &= ~ImGuiWindowFlags.AlwaysAutoResize;
+        SizeConstraints = new WindowSizeConstraints
+        {
+            // The compact in-instance strip must keep auto-fitting to its small content; the
+            // tabbed panel's 480x320 floor would clamp it to an empty box over the player mid-pull.
+            MinimumSize = compact ? new Vector2(220, 80) : new Vector2(480, 320),
+            MaximumSize = new Vector2(float.MaxValue, float.MaxValue)
+        };
+    }
+
+    public override void OnClose()
+    {
+        currentTab = MainTab.Practice;
+    }
+
+    public override void Draw()
+    {
+        // Consumed once here so every Draw() path (compact strip, empty tab bar) clears the
+        // request instead of only the code after EndTabBar, which the compact branch never reaches.
+        var pending = pendingTab;
+        pendingTab = null;
 
         if (compact)
         {
@@ -165,19 +183,18 @@ public unsafe class MainWindow : Window, IDisposable
         }
 
         if (!ImGui.BeginTabBar("##maintabs")) return;
-        DrawTab(MainTab.Practice, "練習", DrawPracticeTab);
-        DrawTab(MainTab.Multiplayer, "多人連線", multiplayerPanel.Draw);
-        DrawTab(MainTab.Chain, "連戰", chainPanel.Draw);
-        DrawTab(MainTab.PartyOrder, "隊伍順序", partyOrderPanel.Draw);
-        DrawTab(MainTab.JobSupport, "職業支援", jobSupportPanel.Draw);
+        DrawTab(MainTab.Practice, "練習", DrawPracticeTab, pending);
+        DrawTab(MainTab.Multiplayer, "多人連線", multiplayerPanel.Draw, pending);
+        DrawTab(MainTab.Chain, "連戰", chainPanel.Draw, pending);
+        DrawTab(MainTab.PartyOrder, "隊伍順序", partyOrderPanel.Draw, pending);
+        DrawTab(MainTab.JobSupport, "職業支援", jobSupportPanel.Draw, pending);
         ImGui.EndTabBar();
-        pendingTab = null;
     }
 
     // A tab requested through ShowTab is forced selected for one frame; ImGui owns the choice otherwise.
-    private void DrawTab(MainTab tab, string label, Action draw)
+    private void DrawTab(MainTab tab, string label, Action draw, MainTab? pending)
     {
-        var flags = pendingTab == tab ? ImGuiTabItemFlags.SetSelected : ImGuiTabItemFlags.None;
+        var flags = pending == tab ? ImGuiTabItemFlags.SetSelected : ImGuiTabItemFlags.None;
         if (!ImGui.BeginTabItem(label, flags)) return;
         if (currentTab != tab)
         {
