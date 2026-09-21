@@ -1,29 +1,16 @@
 using System;
-using System.Numerics;
 using AnoMech.Core.Game.Party;
 using Dalamud.Bindings.ImGui;
-using Dalamud.Interface.Windowing;
 
 namespace AnoMech.Windows;
 
-public sealed class PartyListOrderWindow : Window, IDisposable
+public sealed class PartyListOrderPanel
 {
     private readonly Configuration configuration;
 
-    public PartyListOrderWindow(Plugin plugin) : base("隊伍列表順序###AnoMechPartyListOrder")
-    {
-        Flags = ImGuiWindowFlags.AlwaysAutoResize;
-        SizeConstraints = new WindowSizeConstraints
-        {
-            MinimumSize = new Vector2(360, 80),
-            MaximumSize = new Vector2(float.MaxValue, float.MaxValue),
-        };
-        configuration = plugin.Configuration;
-    }
+    public PartyListOrderPanel(Plugin plugin) => configuration = plugin.Configuration;
 
-    public void Dispose() { }
-
-    public override void Draw()
+    public void Draw()
     {
         var enabled = configuration.CustomPartyListOrder;
         if (ImGui.Checkbox("自訂模擬隊伍列表順序", ref enabled))

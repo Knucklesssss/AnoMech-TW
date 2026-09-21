@@ -1,28 +1,19 @@
-using System;
 using System.Linq;
 using System.Numerics;
 using AnoMech.Core.Combat;
 using Dalamud.Bindings.ImGui;
-using Dalamud.Interface.Windowing;
 using Lumina.Excel.Sheets;
 
 namespace AnoMech.Windows;
 
-public sealed class JobSupportWindow : Window, IDisposable
+public sealed class JobSupportPanel
 {
     private static readonly Vector4 Supported = new(0.45f, 0.9f, 0.45f, 1f);
     private static readonly (byte Role, string Name)[] Roles = [(1, "坦克"), (4, "治療"), (2, "近戰"), (3, "遠程")];
     // Blue Mage is a limited job with no place in ultimate practice.
     private const uint BlueMage = 36;
 
-    public JobSupportWindow() : base("職業支援列表###AnoMechJobSupport")
-    {
-        Flags = ImGuiWindowFlags.AlwaysAutoResize;
-    }
-
-    public void Dispose() { }
-
-    public override void Draw()
+    public void Draw()
     {
         ImGui.TextColored(Supported, "綠色：模擬中可用原本熱鍵練習技能循環");
         ImGui.TextDisabled("灰色：尚未支援，技能維持遊戲原本的樣子");

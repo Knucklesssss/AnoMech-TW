@@ -63,8 +63,6 @@ public sealed class Plugin : IDalamudPlugin
     internal static LogManager LogManager { get; private set; } = null!;
     private ConfigWindow ConfigWindow { get; init; }
     private MainWindow MainWindow { get; init; }
-    private PartyListOrderWindow PartyListOrderWindow { get; init; }
-    private JobSupportWindow JobSupportWindow { get; init; }
     private NpcCollectorWindow NpcCollectorWindow { get; init; }
     private RecorderWindow RecorderWindow { get; init; }
     private PositionEditorWindow PositionEditorWindow { get; init; }
@@ -94,10 +92,6 @@ public sealed class Plugin : IDalamudPlugin
         WindowSystem.AddWindow(MainWindow);
         WindowSystem.AddWindow(new HitRangeOverlay(this));
         WindowSystem.AddWindow(new MitigationWindow(this));
-        PartyListOrderWindow = new PartyListOrderWindow(this);
-        WindowSystem.AddWindow(PartyListOrderWindow);
-        JobSupportWindow = new JobSupportWindow();
-        WindowSystem.AddWindow(JobSupportWindow);
         NpcCollectorWindow = new NpcCollectorWindow();
         WindowSystem.AddWindow(NpcCollectorWindow);
         RecorderWindow = new RecorderWindow();
@@ -184,8 +178,6 @@ public sealed class Plugin : IDalamudPlugin
         ErrorLog.WriteSummary();
         ConfigWindow.Dispose();
         MainWindow.Dispose();
-        PartyListOrderWindow.Dispose();
-        JobSupportWindow.Dispose();
 #if DEBUG
         DamageDebugWindow.Dispose();
 #endif
@@ -411,8 +403,8 @@ public sealed class Plugin : IDalamudPlugin
     public void ToggleConfigUi() => ConfigWindow.Toggle();
     public void ToggleMultiplayerUi() => MainWindow.ShowTab(AnoMech.Windows.MainWindow.MainTab.Multiplayer);
     public void ToggleChainUi() => MainWindow.ShowTab(AnoMech.Windows.MainWindow.MainTab.Chain);
-    public void TogglePartyListOrderUi() => PartyListOrderWindow.Toggle();
-    public void ToggleJobSupportUi() => JobSupportWindow.Toggle();
+    public void TogglePartyListOrderUi() => MainWindow.ShowTab(AnoMech.Windows.MainWindow.MainTab.PartyOrder);
+    public void ToggleJobSupportUi() => MainWindow.ShowTab(AnoMech.Windows.MainWindow.MainTab.JobSupport);
     public void ToggleMainUi() => MainWindow.Toggle();
     public void TogglePositionEditorUi() => PositionEditorWindow.Toggle();
 }

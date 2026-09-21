@@ -21,6 +21,8 @@ public unsafe class MainWindow : Window, IDisposable
     private readonly Plugin plugin;
     private readonly MultiplayerPanel multiplayerPanel;
     private readonly ChainPanel chainPanel;
+    private readonly PartyListOrderPanel partyOrderPanel;
+    private readonly JobSupportPanel jobSupportPanel;
     private bool _leftPanelOpen = true;
 
     // internal because Plugin's Toggle*Ui entry points name a tab.
@@ -95,6 +97,8 @@ public unsafe class MainWindow : Window, IDisposable
         this.plugin = plugin;
         multiplayerPanel = new MultiplayerPanel(Plugin.Multiplayer);
         chainPanel = new ChainPanel(plugin, this);
+        partyOrderPanel = new PartyListOrderPanel(plugin);
+        jobSupportPanel = new JobSupportPanel();
         IsOpen = false;
 
         // Small gear in the title bar opens the settings window (same toggle as /anomech config).
@@ -164,6 +168,8 @@ public unsafe class MainWindow : Window, IDisposable
         DrawTab(MainTab.Practice, "練習", DrawPracticeTab);
         DrawTab(MainTab.Multiplayer, "多人連線", multiplayerPanel.Draw);
         DrawTab(MainTab.Chain, "連戰", chainPanel.Draw);
+        DrawTab(MainTab.PartyOrder, "隊伍順序", partyOrderPanel.Draw);
+        DrawTab(MainTab.JobSupport, "職業支援", jobSupportPanel.Draw);
         ImGui.EndTabBar();
         pendingTab = null;
     }
