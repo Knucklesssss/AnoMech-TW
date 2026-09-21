@@ -209,7 +209,10 @@ internal sealed unsafe class MultiplayerSession : IDisposable
         var scenarioIndex = game.Scenarios.ToList().IndexOf(scenario);
         var self = hostLobby[NetProtocol.HostPlayerId];
         var seed = (ulong)Random.Shared.NextInt64();
-        var humanMask = hostLobby.Values.Where(e => e.Id != NetProtocol.HostPlayerId).Aggregate(0, (mask, e) => mask | (1 << e.Role));
+        // The host used to leave its own slot out while the client derived the mask from SlotOwners
+        // and put it in. Nothing branched on the difference, but anything that does would diverge,
+        // so both sides now describe the same set: every slot a person is sitting in.
+        var humanMask = hostLobby.Values.Aggregate(0, (mask, e) => mask | (1 << e.Role));
 
         var appearances = new byte[]?[Wire.Slots];
         foreach (var entry in hostLobby.Values)
