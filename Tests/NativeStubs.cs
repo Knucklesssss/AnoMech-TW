@@ -11,6 +11,9 @@ namespace AnoMech.Core.SimObjects
     {
         public AnoMech.Core.Game.Ai.PracticePositions PracticePositions { get; } = new(
             new AnoMech.Core.Game.Ai.FilePracticePositionStore(() => throw new System.NotSupportedException("No position file in scenario regression tests.")));
+        // 0 means no fence, so ArenaClamp leaves authored positions alone and the scenario
+        // regression checks keep asserting the spots their strats actually author.
+        public float ArenaRadius { get; set; }
         public SimParty Party { get; } = new();
         public EventScheduler Events { get; } = new();
         public float Elapsed { get; private set; }

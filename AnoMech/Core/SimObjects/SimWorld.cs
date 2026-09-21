@@ -145,6 +145,9 @@ public sealed class SimWorld : ISimObject, IDisposable
         children.Add(new SimArenaBoundary(Party, this, radius, cause, showVfx: !Map.IsInInstance));
     }
 
+    // The active fence's radius, or 0 when the current scenario enforces no boundary.
+    public float ArenaRadius => children.OfType<SimArenaBoundary>().FirstOrDefault()?.Radius ?? 0f;
+
     // True when `local` (scenario-local) is outside the active arena fence; false
     // when the current scenario enforces no boundary.
     public bool IsOutsideArena(Vector3 local)

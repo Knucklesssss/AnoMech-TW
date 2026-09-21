@@ -51,7 +51,9 @@ public sealed class AiManager
                 if (destination is not { } local || MultiplayerContext.IsHumanControlled(i)) continue;
                 var member = world.Party.Get(i);
                 if (member == null || !member.IsAlive()) continue;
-                var target = Jitter(new Vector3(local.X, 0f, local.Y), jitter);
+                var jittered = Jitter(new Vector3(local.X, 0f, local.Y), jitter);
+                var inside = ArenaClamp.Inside(new Vector2(jittered.X, jittered.Z), world.ArenaRadius);
+                var target = new Vector3(inside.X, jittered.Y, inside.Y);
 
                 if (arrivalTime > 0f)
                 {

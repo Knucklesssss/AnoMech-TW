@@ -105,6 +105,42 @@ internal static class MoogleChecks
         Console.WriteLine("Moogle transition and monitor checks passed.");
         CheckP5();
         CheckDeltaStandardLocalTethers();
+        CheckDeltaMoogleStaysOffTheFence();
+    }
+
+
+    // Moogle Delta sends the near tether to the safe diagonal at (-14, ±14) — r 19.8 against a fence that kills
+    // on contact — and the swivel step carries the default jitter, so an outward roll used to walk that player
+    // into the fence. The clamp is what keeps jitter from reaching it.
+    private static void CheckDeltaMoogleStaysOffTheFence()
+    {
+        const float jitter = .3f;
+        const float radius = TopConstants.Geometry.ArenaRadius;
+        var limit = radius - ArenaClamp.Margin;
+
+        Check(ArenaClamp.Inside(new Vector2(0, 5), radius) == new Vector2(0, 5), "A spot well inside the fence is left alone.");
+        Check(MathF.Abs(ArenaClamp.Inside(new Vector2(0, radius + 1), radius).Length() - limit) < 1e-4f,
+            "A spot past the fence is pulled back to the margin.");
+        Check(ArenaClamp.Inside(new Vector2(0, 25), 0).Length() > radius, "A scenario with no fence leaves the point alone.");
+
+        var closest = 0f;
+        for (var run = 0; run < 256; run++)
+        {
+            var delta = new TopP5DeltaState(new(), PartyRole.MainTank);
+            var ai = new TopP5DeltaMoogleAi();
+            ai.Run(delta, new SimWorld());
+            var dodge = Move(ai, "SwivelDodge");
+            for (var slot = 0; slot < 8; slot++)
+            {
+                if (dodge[slot] is not { } spot || spot.Length() == 0) continue;
+                closest = MathF.Max(closest, spot.Length());
+                var outward = spot / spot.Length() * jitter;
+                Check(ArenaClamp.Inside(spot + outward, radius).Length() <= limit + 1e-4f,
+                    "A jittered Moogle Delta swivel spot must not reach the fence.");
+            }
+        }
+        Check(closest + jitter > radius,
+            "This check only means something while a Moogle swivel spot really can be jittered into the fence.");
     }
 
     // Standard Delta once Swivel Cannon is known, with AI jitter as margin: nobody in the cannon, Hello World reaches one

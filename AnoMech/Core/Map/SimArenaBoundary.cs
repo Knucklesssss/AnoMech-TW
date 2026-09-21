@@ -1,3 +1,4 @@
+using System;
 using System.Numerics;
 using AnoMech.Core.Game;
 using AnoMech.Core.Native;
@@ -28,6 +29,7 @@ internal sealed unsafe class SimArenaBoundary : ISimObject
 
     public bool IsAlive => true;
     public bool IsActive => true;
+    internal float Radius => MathF.Sqrt(radiusSq);
 
     internal SimArenaBoundary(SimParty party, SimWorld world, float radius, string cause, bool showVfx = true)
     {
