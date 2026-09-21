@@ -27,6 +27,7 @@ internal static class MultiplayerChecks
             LimitBreakArbitration();
             ClientKnowsHumanSlots();
             AiLeavesHumanLimitBreaks();
+            DeltaAiTetherPinsHoldAcrossMachines();
         }
         finally
         {
@@ -378,5 +379,86 @@ internal static class MultiplayerChecks
         Check(!TopP6LimitBreakRules.AiMayPress(PartyRole.MainTank), "a human slot presses its own limit break");
         Check(!TopP6LimitBreakRules.AiMayPress(PartyRole.OffTank), "every human slot is left alone, not just the local one");
         MultiplayerContext.End();
+    }
+
+    // Tether index groups: 0-1 close inner, 2-3 close outer, 4-5 far inner, 6-7 far outer.
+    private static int TetherIndex(TopP5DeltaState state, PartyRole role)
+    {
+        for (var i = 0; i < 8; i++)
+            if (state.TetherOrder[i] == role) return i;
+        return -1;
+    }
+
+    private static void DeltaAiTetherPinsHoldAcrossMachines()
+    {
+        // A pin names a party slot, which is the same person on every machine, so unlike
+        // TetherAssignment it must survive the sanitizer and reach the client intact.
+        var authored = new TopP5DeltaStateOverrides();
+        authored.SetAiTether(PartyRole.CasterDps, AiTetherGroup.FarOuter);
+        authored.SetAiTether(PartyRole.MeleeDpsA, AiTetherGroup.CloseInner);
+        var host = MultiplayerOverrides.Sanitize(authored);
+        Check(host.AiTether(PartyRole.CasterDps) == AiTetherGroup.FarOuter, "an AI tether pin is not treated as a player-bound setting");
+        var client = MultiplayerOverrides.Deserialize<TopP5DeltaStateOverrides>(MultiplayerOverrides.Serialize(host));
+        Check(client.AiTether(PartyRole.CasterDps) == AiTetherGroup.FarOuter
+              && client.AiTether(PartyRole.MeleeDpsA) == AiTetherGroup.CloseInner, "every pin reaches the client");
+        Check(client.AiTether(PartyRole.ShieldHealer) == AiTetherGroup.Auto, "an unpinned slot stays automatic");
+
+        // The host sits in MainTank, one more player in PhysRangedDps; the rest are AI. Both
+        // machines derive this same mask from SlotOwners.
+        byte[] owners = [0, Wire.NoPlayer, Wire.NoPlayer, Wire.NoPlayer, Wire.NoPlayer, Wire.NoPlayer, 1, Wire.NoPlayer];
+        var mask = Wire.HumanSlotMask(owners);
+
+        for (ulong seed = 1; seed <= 50; seed++)
+        {
+            MultiplayerContext.Begin(MultiplayerRole.Host, mask, null);
+            SimRandom.Reseed(seed, -1);
+            var onHost = new TopP5DeltaState(host, PartyRole.MainTank);
+            MultiplayerContext.Begin(MultiplayerRole.Client, mask, null);
+            SimRandom.Reseed(seed, -1);
+            var onClient = new TopP5DeltaState(client, PartyRole.PhysRangedDps);
+            MultiplayerContext.End();
+
+            Check(onHost.TetherOrder.SequenceEqual(onClient.TetherOrder),
+                $"a pinned run resolves to the same tether order on host and client for seed {seed}");
+            Check(TetherIndex(onHost, PartyRole.CasterDps) is 6 or 7, $"the pinned caster lands in far outer for seed {seed}");
+            Check(TetherIndex(onHost, PartyRole.MeleeDpsA) is 0 or 1, $"the pinned melee lands in close inner for seed {seed}");
+        }
+
+        // A pin on a slot a player is sitting in does nothing: players stay randomly assigned, and
+        // the run must come out exactly as it would with no pin at all.
+        var onHuman = new TopP5DeltaStateOverrides();
+        onHuman.SetAiTether(PartyRole.MainTank, AiTetherGroup.FarOuter);
+        onHuman.SetAiTether(PartyRole.PhysRangedDps, AiTetherGroup.FarOuter);
+        var none = new TopP5DeltaStateOverrides();
+        for (ulong seed = 1; seed <= 20; seed++)
+        {
+            MultiplayerContext.Begin(MultiplayerRole.Host, mask, null);
+            SimRandom.Reseed(seed, -1);
+            var pinned = new TopP5DeltaState(onHuman, PartyRole.MainTank);
+            SimRandom.Reseed(seed, -1);
+            var unpinned = new TopP5DeltaState(none, PartyRole.MainTank);
+            MultiplayerContext.End();
+            Check(pinned.TetherOrder.SequenceEqual(unpinned.TetherOrder),
+                $"pinning a slot a player occupies changes nothing for seed {seed}");
+        }
+
+        // Far outer holds two. A third pin cannot be honoured, and must not evict either of the
+        // two that were placed or throw.
+        var crowded = new TopP5DeltaStateOverrides();
+        crowded.SetAiTether(PartyRole.RegenHealer, AiTetherGroup.FarOuter);
+        crowded.SetAiTether(PartyRole.ShieldHealer, AiTetherGroup.FarOuter);
+        crowded.SetAiTether(PartyRole.MeleeDpsB, AiTetherGroup.FarOuter);
+        for (ulong seed = 1; seed <= 20; seed++)
+        {
+            MultiplayerContext.Begin(MultiplayerRole.Host, mask, null);
+            SimRandom.Reseed(seed, -1);
+            var state = new TopP5DeltaState(crowded, PartyRole.MainTank);
+            MultiplayerContext.End();
+            Check(TetherIndex(state, PartyRole.RegenHealer) is 6 or 7, $"the first pin into a full group is honoured for seed {seed}");
+            Check(TetherIndex(state, PartyRole.ShieldHealer) is 6 or 7, $"the second pin into a full group is honoured for seed {seed}");
+            Check(state.TetherOrder.Distinct().Count() == 8, $"the tether order stays a permutation for seed {seed}");
+        }
+
+        SimRandom.Disable();
     }
 }

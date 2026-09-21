@@ -1,3 +1,6 @@
+using System;
+using AnoMech.Core.Game.Party;
+using AnoMech.Scenarios.Top.P3Monitors;
 using Dalamud.Bindings.ImGui;
 
 namespace AnoMech.Scenarios.Top.P5Delta;
@@ -34,6 +37,8 @@ public sealed class TopP5DeltaSettingsWindow
 
             SettingsGrid.End();
         }
+
+        DrawAiTethers();
     }
 
     private void ResetAll()
@@ -46,6 +51,7 @@ public sealed class TopP5DeltaSettingsWindow
         Overrides.Monitor = null;
         Overrides.HelloWorld = HelloWorldOption.Auto;
         Overrides.BeyondDefence = null;
+        Overrides.AiTetherPins = 0;
     }
 
 #if DEBUG
@@ -128,5 +134,32 @@ public sealed class TopP5DeltaSettingsWindow
         if (ImGui.RadioButton("是##bd",  b == true))  Overrides.BeyondDefence = true;
         ImGui.SameLine();
         if (ImGui.RadioButton("否##bd",   b == false)) Overrides.BeyondDefence = false;
+    }
+
+    // Index order matches AiTetherGroup. The wording follows the 連線 row above, where the
+    // sheet's Close group is the one players call 遠.
+    private static readonly string[] AiTetherLabels = ["自動", "遠-內", "遠-外", "近-內", "近-外"];
+
+    private void DrawAiTethers()
+    {
+        if (!ImGui.CollapsingHeader("固定 AI 連線分組##aitether")) return;
+
+        ImGui.TextDisabled("只對 AI 接手的格子生效；有真人坐的格子照舊隨機分。");
+        ImGui.TextDisabled("每組只有兩個位子，釘超過兩個時後面的會維持隨機。");
+        if (ImGui.Button("全部自動##resetai")) Overrides.AiTetherPins = 0;
+
+        if (!SettingsGrid.Begin("##p5deltaai")) return;
+        foreach (PartyRole role in Enum.GetValues<PartyRole>())
+        {
+            SettingsGrid.Row($"{TopP3MonitorRules.RoleLabel(role)}：");
+            var current = Overrides.AiTether(role);
+            for (var choice = 0; choice < AiTetherLabels.Length; choice++)
+            {
+                if (choice > 0) ImGui.SameLine();
+                if (ImGui.RadioButton($"{AiTetherLabels[choice]}##aitether{(int)role}", (int)current == choice))
+                    Overrides.SetAiTether(role, (AiTetherGroup)choice);
+            }
+        }
+        SettingsGrid.End();
     }
 }

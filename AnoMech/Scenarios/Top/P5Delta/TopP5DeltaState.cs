@@ -112,6 +112,8 @@ public sealed class TopP5DeltaState
             }
         }
 
+        ApplyAiTetherPins(roles, overrides, playerRole);
+
         TetherOrder = roles;
         var playerSlot = Array.IndexOf(roles, playerRole);
         var playerInClose = playerSlot < 4;
@@ -186,6 +188,55 @@ public sealed class TopP5DeltaState
     }
 
     private static Side RandomSide(Random rng) => rng.Next(2) == 0 ? Side.Left : Side.Right;
+
+    // Tether indices: 0-1 close inner, 2-3 close outer, 4-5 far inner, 6-7 far outer.
+    private static int[]? GroupIndices(AiTetherGroup group) => group switch
+    {
+        AiTetherGroup.CloseInner => [0, 1],
+        AiTetherGroup.CloseOuter => [2, 3],
+        AiTetherGroup.FarInner   => [4, 5],
+        AiTetherGroup.FarOuter   => [6, 7],
+        _                        => null,
+    };
+
+    // Holds AI-driven slots to the group the host pinned them to, leaving every player randomly
+    // assigned as before.
+    //
+    // Two things keep the host and its clients in step. Roles are walked in PartyRole order rather
+    // than shuffled order, so the outcome does not depend on how the deal came out; and a pin takes
+    // the lowest free index in its group instead of drawing one, so no random draw depends on who is
+    // human. That matters because "who is human" is the one input here that is read per machine.
+    private static void ApplyAiTetherPins(PartyRole[] roles, TopP5DeltaStateOverrides overrides, PartyRole playerRole)
+    {
+        if (overrides.AiTetherPins == 0) return;
+        var claimed = new bool[roles.Length];
+        for (var slot = 0; slot < roles.Length; slot++)
+        {
+            var role = (PartyRole)slot;
+            if (DrivenByPlayer(slot, playerRole)) continue;
+            if (GroupIndices(overrides.AiTether(role)) is not { } group) continue;
+
+            var current = Array.IndexOf(roles, role);
+            if (Array.IndexOf(group, current) >= 0 && !claimed[current])
+            {
+                claimed[current] = true;
+                continue;
+            }
+            var target = -1;
+            foreach (var index in group)
+                if (!claimed[index]) { target = index; break; }
+            if (target < 0) continue;   // the group is full; this one stays where the deal put it
+
+            (roles[current], roles[target]) = (roles[target], roles[current]);
+            claimed[target] = true;
+        }
+    }
+
+    // In a multiplayer run every player is in the human mask, which both machines derive from the
+    // host's SlotOwners, so the answer is the same on all of them. Solo has no mask and exactly one
+    // player, and nothing to stay in step with.
+    private static bool DrivenByPlayer(int slot, PartyRole playerRole)
+        => MultiplayerContext.InRun ? MultiplayerContext.IsHumanControlled(slot) : slot == (int)playerRole;
 
     private static PartyRole[] ShuffleRoles(Random rng)
     {
