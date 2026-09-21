@@ -1,6 +1,7 @@
 using System;
 using System.Numerics;
 using AnoMech.Core.Game;
+using AnoMech.Core.Multiplayer;
 using AnoMech.Core.Native;
 using AnoMech.Core.SimObjects;
 using FFXIVClientStructs.FFXIV.Client.Graphics.Scene;
@@ -50,7 +51,15 @@ internal sealed unsafe class SimArenaBoundary : ISimObject
         // Member positions are scenario-local; the boundary is centered on local zero.
         foreach (var member in party.ActiveMembers())
         {
-            if (IsOutside(member.Position)) member.Die(cause);
+            // "Died outside the arena" on its own says nothing about why — a report of it cannot be
+            // acted on without knowing where the body was. Carry the offending spot in the cause.
+            var at = member.Position;
+            if (!IsOutside(at)) continue;
+            var distance = MathF.Sqrt(at.X * at.X + at.Z * at.Z);
+            var detail = $"{cause}（距中心 {distance:F1}y / 上限 {Radius:F1}y，座標 {at.X:F1}, {at.Z:F1}）";
+            if (MultiplayerContext.InRun)
+                NetLog.Write($"fence: {(member as ISimPartyMember)?.Role.ToString() ?? "?"} killed — {detail} (native {member.NativePosition.X:F1}, {member.NativePosition.Z:F1})");
+            member.Die(detail);
         }
     }
 
