@@ -71,7 +71,6 @@ public sealed class Plugin : IDalamudPlugin
     internal static CombatRecorder? Recorder { get; private set; }
     internal static MultiplayerSession Multiplayer { get; private set; } = null!;
     internal static ChainRunner Chain { get; private set; } = null!;
-    private ChainWindow ChainWindow { get; init; }
 #if DEBUG
     private DamageDebugWindow DamageDebugWindow { get; init; }
 #endif
@@ -106,8 +105,6 @@ public sealed class Plugin : IDalamudPlugin
         PositionEditorWindow = new PositionEditorWindow();
         WindowSystem.AddWindow(PositionEditorWindow);
         Chain = new ChainRunner(Game, Configuration);
-        ChainWindow = new ChainWindow(this, MainWindow);
-        WindowSystem.AddWindow(ChainWindow);
 #if DEBUG
         DamageDebugWindow = new DamageDebugWindow(this);
         WindowSystem.AddWindow(DamageDebugWindow);
@@ -189,7 +186,6 @@ public sealed class Plugin : IDalamudPlugin
         MainWindow.Dispose();
         PartyListOrderWindow.Dispose();
         JobSupportWindow.Dispose();
-        ChainWindow.Dispose();
 #if DEBUG
         DamageDebugWindow.Dispose();
 #endif
@@ -414,7 +410,7 @@ public sealed class Plugin : IDalamudPlugin
 
     public void ToggleConfigUi() => ConfigWindow.Toggle();
     public void ToggleMultiplayerUi() => MainWindow.ShowTab(AnoMech.Windows.MainWindow.MainTab.Multiplayer);
-    public void ToggleChainUi() => ChainWindow.Toggle();
+    public void ToggleChainUi() => MainWindow.ShowTab(AnoMech.Windows.MainWindow.MainTab.Chain);
     public void TogglePartyListOrderUi() => PartyListOrderWindow.Toggle();
     public void ToggleJobSupportUi() => JobSupportWindow.Toggle();
     public void ToggleMainUi() => MainWindow.Toggle();

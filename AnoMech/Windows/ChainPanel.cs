@@ -3,27 +3,22 @@ using System.Linq;
 using System.Numerics;
 using AnoMech.Core.Game;
 using Dalamud.Bindings.ImGui;
-using Dalamud.Interface.Windowing;
 using SimGame = AnoMech.Core.Game.Game;
 
 namespace AnoMech.Windows;
 
-public sealed class ChainWindow : Window, IDisposable
+public sealed class ChainPanel
 {
     private readonly Plugin plugin;
     private readonly MainWindow main;
 
-    internal ChainWindow(Plugin plugin, MainWindow main) : base("連戰###AnoMechChain")
+    internal ChainPanel(Plugin plugin, MainWindow main)
     {
         this.plugin = plugin;
         this.main = main;
-        Size = new Vector2(620, 420);
-        SizeCondition = ImGuiCond.FirstUseEver;
     }
 
-    public void Dispose() { }
-
-    public override void Draw()
+    public void Draw()
     {
         var chain = Plugin.Chain;
         var config = plugin.Configuration;
