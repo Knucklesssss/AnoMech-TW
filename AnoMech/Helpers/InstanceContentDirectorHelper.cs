@@ -1,3 +1,4 @@
+using AnoMech.Core;
 using AnoMech.Pointers;
 using FFXIVClientStructs.FFXIV.Client.Game.Event;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
@@ -30,7 +31,11 @@ internal static unsafe class InstanceContentDirectorHelper
 
         if (EventFrameworkPointers.ProcessDirectorUpdate is null)
         {
-            Plugin.Log.Error($"[InstanceContentDirectorHelper] ProcessDirectorUpdate did not resolve on this client — dropping director update 0x{category:X}.");
+            // Permanent on API13 — the 7.5 signature matches nothing, see EventFrameworkPointers.
+            // Commence() fires three of these per scenario start, so a console Error each time buries
+            // the real ones. ErrorLog writes each distinct category once and counts the repeats.
+            ErrorLog.Record("DirectorUpdate",
+                $"ProcessDirectorUpdate did not resolve on this client — dropping director update 0x{category:X}.");
             return;
         }
 
