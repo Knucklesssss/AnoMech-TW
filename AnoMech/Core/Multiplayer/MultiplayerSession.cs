@@ -200,6 +200,7 @@ internal sealed unsafe class MultiplayerSession : IDisposable
     {
         if (!CanHostStart(scenario, out var reason))
         {
+            NetLog.Write($"host: start refused — {reason}");
             Chat($"無法開始多人場景：{reason}");
             return;
         }
@@ -222,6 +223,7 @@ internal sealed unsafe class MultiplayerSession : IDisposable
         if (!started)
         {
             MultiplayerContext.End();
+            NetLog.Write("host: scenario refused to start locally");
             Chat("房主這邊無法開始場景（請確認在旅館或住宅室內，且沒有切換到其他副本）。");
             return;
         }
@@ -233,6 +235,7 @@ internal sealed unsafe class MultiplayerSession : IDisposable
             // The local runtime already granted this press, so the arbiter follows it rather than voting.
             run.Bar.Release();
             run.Bar.TryClaim((byte)role, run.Bar.Acks[role] + 1);
+            NetLog.Write($"host: LB own press {role} action={actionId} caster={caster:F2} aim={aim?.ToString("F2") ?? "-"}");
             run.PendingLimitBreaks.Add(((byte)role, actionId, caster, aim));
             run.LimitBreakDirty = true;
         };
@@ -258,6 +261,8 @@ internal sealed unsafe class MultiplayerSession : IDisposable
             game.EventTimeScale, game.GodMode, owners, MultiplayerContext.OverridePayload ?? [], poses, appearances);
         Net.Host!.Broadcast(MessageType.StartRun, start.Write, DeliveryMethod.ReliableOrdered);
         hostRun = run;
+        NetLog.Write($"host: run {run.RunId} start \"{SimGame.FullName(scenario)}\" strat={strat} waymark={waymark} " +
+                     $"seed={seed:X16} humanMask=0x{humanMask:X2} owners=[{string.Join(",", owners)}] protocol=v{NetProtocol.Version}");
         BroadcastLobby();
         Chat($"多人場景開始：{SimGame.FullName(scenario)}");
     }
@@ -272,6 +277,7 @@ internal sealed unsafe class MultiplayerSession : IDisposable
     public void HostLeave()
     {
         if (hostRun is not null) EndHostRun(broadcast: false);
+        NetLog.Write("host: leave — broadcasting HostLeft");
         Net.Host?.Broadcast(MessageType.StopRun, new StopRunDto(0, StopReason.HostLeft).Write, DeliveryMethod.ReliableOrdered);
     }
 
@@ -305,6 +311,7 @@ internal sealed unsafe class MultiplayerSession : IDisposable
         hostLobby[player.Id] = new LobbyEntry { Id = player.Id, Name = player.Name };
         AssignRole(hostLobby[player.Id], Wire.NoRole);
         BroadcastLobby();
+        NetLog.Write($"host: #{player.Id} \"{player.Name}\" joined");
         Chat($"{player.Name} 加入了房間。");
     }
 
@@ -314,10 +321,12 @@ internal sealed unsafe class MultiplayerSession : IDisposable
         if (hostRun?.Remote.TryGetValue(player.Id, out var remote) == true)
         {
             HandOverToAi(remote);
+            NetLog.Write($"host: #{player.Id} \"{player.Name}\" dropped mid-run ({reason}) — slot {(PartyRole)remote.Role} handed to AI");
             Chat($"{player.Name} 已斷線，該角色改由 AI 接手。");
         }
         else
         {
+            NetLog.Write($"host: #{player.Id} \"{player.Name}\" left ({reason})");
             Chat($"{player.Name} 離開了房間。");
         }
         BroadcastLobby();
@@ -359,9 +368,19 @@ internal sealed unsafe class MultiplayerSession : IDisposable
                     if (lbRun.Bar.TryClaim(caster.Role, used.RequestId))
                     {
                         if (game.World.LimitBreaks?.TryStartRemote((PartyRole)caster.Role, used.ActionId, used.CasterPosition, used.Aim) == true)
+                        {
                             lbRun.PendingLimitBreaks.Add((caster.Role, used.ActionId, used.CasterPosition, used.Aim));
+                            NetLog.Write($"host: LB claim ACCEPTED {(PartyRole)caster.Role} req={used.RequestId} action={used.ActionId}");
+                        }
                         else
+                        {
                             lbRun.Bar.Release();
+                            NetLog.Write($"host: LB claim accepted but runtime refused {(PartyRole)caster.Role} req={used.RequestId} action={used.ActionId} — bar released");
+                        }
+                    }
+                    else
+                    {
+                        NetLog.Write($"host: LB claim REJECTED {(PartyRole)caster.Role} req={used.RequestId} — bar held by {HolderName(lbRun.Bar.Holder)}");
                     }
                 }
                 break;
@@ -372,10 +391,12 @@ internal sealed unsafe class MultiplayerSession : IDisposable
                 if (hostRun is { } failedRun && failed.RunId == failedRun.RunId && failedRun.Remote.TryGetValue(player.Id, out var stuck) && stuck.Connected)
                 {
                     HandOverToAi(stuck);
+                    NetLog.Write($"host: #{player.Id} could not start ({failed.Reason}) — slot {(PartyRole)stuck.Role} handed to AI");
                     Chat($"{entry.Name} 無法開始場景：{failed.Reason}。該角色改由 AI 接手。");
                 }
                 else
                 {
+                    NetLog.Write($"host: #{player.Id} could not start ({failed.Reason})");
                     Chat($"{entry.Name} 無法開始場景：{failed.Reason}");
                 }
                 break;
@@ -384,6 +405,7 @@ internal sealed unsafe class MultiplayerSession : IDisposable
                 HostStartRun(current.Scenario, current.Strat, current.Waymark);
                 break;
             default:
+                NetLog.Write($"host: dropped {header.Type} from #{player.Id}");
                 Plugin.Log.Warning($"[Multiplayer] Dropped {header.Type} from player #{player.Id}");
                 break;
         }
@@ -457,6 +479,7 @@ internal sealed unsafe class MultiplayerSession : IDisposable
         // The runtime frees the bar on its own (a cancel, a refill, a finished cast); mirror that decision.
         if (run.Bar.Holder != LimitBreakArbiter.Nobody && game.World.LimitBreaks?.IsAvailable == true)
         {
+            NetLog.Write($"host: LB bar freed by runtime (was {HolderName(run.Bar.Holder)}) at tick {run.Tick}");
             run.Bar.Release();
             run.LimitBreakDirty = true;
         }
@@ -500,6 +523,7 @@ internal sealed unsafe class MultiplayerSession : IDisposable
         if (run.PendingFailReason is { } reason)
         {
             frame.FailReason = reason;
+            NetLog.Write($"host: run failed at tick {run.Tick} — {reason}");
             run.PendingFailReason = null;
         }
         if (run.Tick % SyncIntervalTicks == 0) frame.Sync = CaptureSync();
@@ -548,6 +572,7 @@ internal sealed unsafe class MultiplayerSession : IDisposable
             Net.Host?.Broadcast(MessageType.StopRun, new StopRunDto(run.RunId, StopReason.HostStopped).Write, DeliveryMethod.ReliableOrdered);
         foreach (var remote in run.Remote.Values) remote.Puppet.Member.NetworkDriven = false;
         hostRun = null;
+        NetLog.Write($"host: run {run.RunId} end at tick {run.Tick} (broadcast={broadcast})");
         run.Bar.Reset();
         MultiplayerContext.End();
         BroadcastLobby();
@@ -608,6 +633,7 @@ internal sealed unsafe class MultiplayerSession : IDisposable
                 break;
             case MessageType.StopRun when StopRunDto.TryRead(reader, out var stop):
                 // HostLeft carries no run of its own, so it is not matched against one.
+                NetLog.Write($"client: StopRun run={stop.RunId} reason={stop.Reason}");
                 if (stop.Reason == StopReason.HostLeft)
                 {
                     if (clientRun is not null) EndClientRun(null, reset: false);
@@ -621,6 +647,7 @@ internal sealed unsafe class MultiplayerSession : IDisposable
                     EndClientRun("房主結束了多人場景。", reset: true);
                 break;
             default:
+                NetLog.Write($"client: dropped malformed or unexpected {header.Type} from host");
                 Plugin.Log.Warning($"[Multiplayer] Dropped malformed or unexpected {header.Type} from host");
                 break;
         }
@@ -660,6 +687,7 @@ internal sealed unsafe class MultiplayerSession : IDisposable
         }
         if (failure is not null)
         {
+            NetLog.Write($"client: run {start.RunId} refused — {failure}");
             Chat($"無法加入房主的場景：{failure}");
             Net.Client.Send(MessageType.RunFailed, new RunFailedDto(start.RunId, failure).Write, DeliveryMethod.ReliableOrdered);
             return;
@@ -690,11 +718,14 @@ internal sealed unsafe class MultiplayerSession : IDisposable
             if (clientRun is not { } sending || role != sending.Role) return;
             sending.LimitBreakRequest++;
             sending.PendingLimitBreakRequest = sending.LimitBreakRequest;
+            NetLog.Write($"client: LB sent req={sending.LimitBreakRequest} action={actionId} caster={caster:F2} aim={aim?.ToString("F2") ?? "-"}");
             Net.Client.Send(MessageType.LimitBreakUsed,
                 new LimitBreakUsedDto(sending.RunId, sending.LimitBreakRequest, actionId, caster, aim).Write,
                 DeliveryMethod.ReliableOrdered);
         };
         clientRun = run;
+        NetLog.Write($"client: run {start.RunId} start \"{SimGame.FullName(game.Scenarios[start.ScenarioIndex])}\" as {(PartyRole)role} " +
+                     $"seed={start.Seed:X16} humanMask=0x{Wire.HumanSlotMask(start.SlotOwners):X2} delay={run.Clock.DelayTicks} protocol=v{NetProtocol.Version}");
         Chat($"房主開始了多人場景：{SimGame.FullName(game.Scenarios[start.ScenarioIndex])}");
     }
 
@@ -707,6 +738,7 @@ internal sealed unsafe class MultiplayerSession : IDisposable
             var tick = (uint)(first + i);
             if (!run.Frames.Remove(tick, out var frame))
             {
+                NetLog.Write($"client: starved at tick {tick} — buffered {run.Clock.BufferedTicks}, run ended");
                 EndClientRun($"缺少房主第 {tick} 幀的資料，多人場景已結束。", reset: true);
                 return;
             }
@@ -753,18 +785,28 @@ internal sealed unsafe class MultiplayerSession : IDisposable
         {
             // Our own press already started locally; replaying it would double the cast.
             if (role == run.Role) continue;
-            game.World.LimitBreaks?.TryStartRemote((PartyRole)role, actionId, caster, aim);
+            var replayed = game.World.LimitBreaks?.TryStartRemote((PartyRole)role, actionId, caster, aim);
+            NetLog.Write($"client: LB replay {(PartyRole)role} action={actionId} at tick {frame.Tick} — {(replayed == true ? "ok" : "REFUSED")}");
         }
         if (frame.LimitBreakAcks[run.Role] >= run.PendingLimitBreakRequest && run.PendingLimitBreakRequest != 0)
         {
             if (frame.LimitBreakHolder != run.Role)
             {
+                NetLog.Write($"client: LB req={run.PendingLimitBreakRequest} LOST at tick {frame.Tick} (bar held by {HolderName(frame.LimitBreakHolder)}) — rolling back");
                 game.World.LimitBreaks?.Cancel((PartyRole)run.Role);
                 Chat("極限技未能使用，已取消本機的施放。");
             }
+            else
+            {
+                NetLog.Write($"client: LB req={run.PendingLimitBreakRequest} confirmed at tick {frame.Tick}");
+            }
             run.PendingLimitBreakRequest = 0;
         }
-        if (frame.FailReason is { } reason) Chat(reason);
+        if (frame.FailReason is { } reason)
+        {
+            NetLog.Write($"client: host reports failure at tick {frame.Tick} — {reason}");
+            Chat(reason);
+        }
 
         for (var slot = 0; slot < Wire.Slots; slot++)
         {
@@ -800,6 +842,7 @@ internal sealed unsafe class MultiplayerSession : IDisposable
         }
         if (issues.Count == 0) return;
         MismatchCount++;
+        NetLog.Write($"client: MISMATCH #{MismatchCount} at tick {tick}: {string.Join("; ", issues)}");
         Plugin.Log.Warning($"[Multiplayer] State mismatch at tick {tick}: {string.Join("; ", issues)}");
     }
 
@@ -817,6 +860,10 @@ internal sealed unsafe class MultiplayerSession : IDisposable
     }
 
     // ---------------- Shared ----------------
+
+    private static string HolderName(byte role) =>
+        role == LimitBreakArbiter.Nobody ? "nobody" : ((PartyRole)role).ToString();
+
 
     private SyncStateDto CaptureSync()
     {

@@ -73,6 +73,7 @@ public class ConfigWindow : Window, IDisposable
         ImGui.SameLine();
         if (ImGui.Button("開啟記錄資料夾##openlogs"))
             Plugin.LogManager.OpenLogsFolder();
+        ImGui.TextDisabled("同一個資料夾裡的 net-*.log 是多人連線記錄，一直開著，不受上面的勾選影響。");
 
         if (ImGui.Button("開啟錯誤日誌資料夾##openerrors"))
             AnoMech.Core.ErrorLog.OpenFolder();
