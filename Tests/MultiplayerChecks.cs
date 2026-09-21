@@ -336,14 +336,28 @@ internal static class MultiplayerChecks
 
     private static void PoseBufferInterpolates()
     {
+        // 0.3y per 50ms is 6y/s — a sprinting player. The old numbers here were 5y per 50ms, which
+        // no character can do, and that is why the burst case below went unnoticed.
         var buffer = new PoseBuffer();
         buffer.Add(0, new NetPose(Vector3.Zero, 0));
-        buffer.Add(50, new NetPose(new Vector3(5, 0, 0), 0));
+        buffer.Add(50, new NetPose(new Vector3(.3f, 0, 0), 0));
         buffer.Add(40, new NetPose(new Vector3(99, 0, 0), 0));
         Check(buffer.Count == 2, "an out-of-order sample is ignored");
-        Check(buffer.TrySample(25, 20, out var middle) && MathF.Abs(middle.Position.X - 2.5f) < 1e-4f, "halfway between samples");
+        Check(buffer.TrySample(25, 20, out var middle) && MathF.Abs(middle.Position.X - .15f) < 1e-4f, "halfway between samples");
         Check(buffer.TrySample(-10, 20, out var early) && early.Position.X == 0, "before the first sample holds the first pose");
-        Check(buffer.TrySample(200, 20, out var late) && MathF.Abs(late.Position.X - 7f) < 1e-4f, "extrapolation is capped");
+        Check(buffer.TrySample(200, 20, out var late) && MathF.Abs(late.Position.X - .42f) < 1e-4f,
+            "extrapolation runs only as far ahead as it is allowed to look");
+
+        // Transform is Sequenced and samples are stamped on arrival, so a stalled connection can
+        // deliver two reports a millisecond apart carrying a full step. Dividing by that span reads
+        // as hundreds of y/s, and the projection used to fling the puppet out of the arena, where the
+        // fence killed its owner on their own client — only ever while they were moving.
+        var burst = new PoseBuffer();
+        burst.Add(0, new NetPose(Vector3.Zero, 0));
+        burst.Add(1, new NetPose(new Vector3(.3f, 0, 0), 0));
+        // Unbounded, span=1ms projects the 0.3y step 100x to 30y. The cap allows 100ms of running.
+        Check(burst.TrySample(101, 100, out var flung) && flung.Position.X - .3f <= .7f + 1e-4f,
+            "a burst of arrivals must not extrapolate past what a player can run");
         var wrapped = PoseBuffer.Lerp(new NetPose(Vector3.Zero, 3f), new NetPose(Vector3.Zero, -3f), 0.5f);
         Check(MathF.Abs(MathF.Abs(wrapped.Rotation) - MathF.PI) < 0.01f, "rotation interpolates across the ±π seam");
     }

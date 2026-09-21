@@ -61,6 +61,9 @@ public sealed class PlaybackClock
 public sealed class PoseBuffer
 {
     private const int Capacity = 32;
+
+    // Sprint, with room to spare. The cap on how far extrapolation may project past the newest report.
+    private const float MaxSpeedPerSecond = 7f;
     private readonly List<(double TimeMs, NetPose Pose)> samples = [];
 
     public int Count => samples.Count;
@@ -99,8 +102,16 @@ public sealed class PoseBuffer
         var previous = samples[^2];
         var span = last.TimeMs - previous.TimeMs;
         var ahead = Math.Min(renderTimeMs - last.TimeMs, maxExtrapolationMs);
-        var velocityScale = (float)(ahead / span);
-        pose = new NetPose(last.Pose.Position + (last.Pose.Position - previous.Pose.Position) * velocityScale, last.Pose.Rotation);
+        // Samples are stamped on arrival, and Transform is Sequenced, so a burst can land two reports
+        // a millisecond apart while carrying a full step of real movement. Dividing by that span
+        // estimates a velocity hundreds of times too fast, and the projection throws the puppet clear
+        // of the arena — where the fence kills its owner on their own client. Bound the projection by
+        // what a player can physically cover in that time instead of trusting the sample spacing.
+        var projected = span > 0 ? (last.Pose.Position - previous.Pose.Position) * (float)(ahead / span) : Vector3.Zero;
+        var reach = MaxSpeedPerSecond * (float)(ahead / 1000d);
+        var distance = projected.Length();
+        if (distance > reach) projected *= reach / distance;
+        pose = new NetPose(last.Pose.Position + projected, last.Pose.Rotation);
         return true;
     }
 
