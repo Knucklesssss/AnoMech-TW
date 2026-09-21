@@ -20,6 +20,20 @@ public unsafe class MainWindow : Window, IDisposable
 {
     private readonly Plugin plugin;
     private bool _leftPanelOpen = true;
+
+    // internal because Plugin's Toggle*Ui entry points name a tab.
+    internal enum MainTab { Practice, Multiplayer, Chain, PartyOrder, JobSupport }
+
+    // Set by Plugin's Toggle*Ui entry points; consumed on the next frame to force that tab open.
+    private MainTab? pendingTab;
+    private MainTab currentTab = MainTab.Practice;
+
+    internal void ShowTab(MainTab tab)
+    {
+        pendingTab = tab;
+        IsOpen = true;
+    }
+
     internal IScenario? SelectedScenario => _selectedScenario;
     private IScenario? _selectedScenario;
 
@@ -72,10 +86,9 @@ public unsafe class MainWindow : Window, IDisposable
     {
         SizeConstraints = new WindowSizeConstraints
         {
-            MinimumSize = new Vector2(220, 80),
+            MinimumSize = new Vector2(480, 320),
             MaximumSize = new Vector2(float.MaxValue, float.MaxValue)
         };
-        Flags |= ImGuiWindowFlags.AlwaysAutoResize;
 
         this.plugin = plugin;
         IsOpen = false;
@@ -126,7 +139,13 @@ public unsafe class MainWindow : Window, IDisposable
 
     public override void Draw()
     {
-        if (plugin.Game.World.Map.IsInInstance && plugin.Configuration.CompactSimulationControls)
+        var compact = plugin.Game.World.Map.IsInInstance && plugin.Configuration.CompactSimulationControls;
+        // The compact strip should hug its content; the full panel must stay where the user put it,
+        // or every tab switch would resize the window out from under them.
+        if (compact) Flags |= ImGuiWindowFlags.AlwaysAutoResize;
+        else Flags &= ~ImGuiWindowFlags.AlwaysAutoResize;
+
+        if (compact)
         {
             if (ImGui.BeginCombo("##compactscene", _selectedScenario is { } selected ? DisplayName(selected) : "選擇場景"))
             {
@@ -143,19 +162,35 @@ public unsafe class MainWindow : Window, IDisposable
             DrawMainContent(compact: true);
             return;
         }
-        var leftWidth = _leftPanelOpen ? ScenarioPanelWidth() : 30f;
 
-        if (ImGui.BeginTable("##layout", 2, ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.SizingFixedFit))
-        {
-            ImGui.TableSetupColumn("##left", ImGuiTableColumnFlags.WidthFixed, leftWidth);
-            ImGui.TableSetupColumn("##right", ImGuiTableColumnFlags.WidthStretch);
-            ImGui.TableNextRow();
-            ImGui.TableSetColumnIndex(0);
-            DrawScenariosPanel();
-            ImGui.TableSetColumnIndex(1);
-            DrawMainContent();
-            ImGui.EndTable();
-        }
+        if (!ImGui.BeginTabBar("##maintabs")) return;
+        DrawTab(MainTab.Practice, "練習", DrawPracticeTab);
+        ImGui.EndTabBar();
+        pendingTab = null;
+    }
+
+    // A tab requested through ShowTab is forced selected for one frame; ImGui owns the choice otherwise.
+    private void DrawTab(MainTab tab, string label, Action draw)
+    {
+        var flags = pendingTab == tab ? ImGuiTabItemFlags.SetSelected : ImGuiTabItemFlags.None;
+        if (!ImGui.BeginTabItem(label, flags)) return;
+        currentTab = tab;
+        draw();
+        ImGui.EndTabItem();
+    }
+
+    private void DrawPracticeTab()
+    {
+        var leftWidth = _leftPanelOpen ? ScenarioPanelWidth() : 30f;
+        if (!ImGui.BeginTable("##layout", 2, ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.SizingFixedFit)) return;
+        ImGui.TableSetupColumn("##left", ImGuiTableColumnFlags.WidthFixed, leftWidth);
+        ImGui.TableSetupColumn("##right", ImGuiTableColumnFlags.WidthStretch);
+        ImGui.TableNextRow();
+        ImGui.TableSetColumnIndex(0);
+        DrawScenariosPanel();
+        ImGui.TableSetColumnIndex(1);
+        DrawMainContent();
+        ImGui.EndTable();
     }
 
     // Size the left panel to the widest scenario label so names never clip as scenarios are added.
