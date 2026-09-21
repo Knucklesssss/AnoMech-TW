@@ -173,8 +173,45 @@ public unsafe class MainWindow : Window, IDisposable
                 foreach (var scenario in plugin.Game.ScenariosOf(phase))
                     widest = Math.Max(widest, ImGui.CalcTextSize(DisplayName(scenario)).X + buttonExtra);
         }
+        widest = Math.Max(widest, PanelToolsWidth());
         var measured = widest + style.CellPadding.X * 2;
         return Math.Max(180f, measured);
+    }
+
+    // The four window toggles across the top of the panel. Label and full name are kept together
+    // because the panel measures this row to size itself — a label only the drawing side knew
+    // about would be cut off.
+    private static readonly (string Label, string Full)[] PanelTools =
+    [
+        ("多人", "多人同步"),
+        ("連戰功能", "連戰功能"),
+        ("隊伍列表順序", "隊伍列表順序"),
+        ("職業支援", "職業支援列表"),
+    ];
+
+    private static float PanelToolsWidth()
+    {
+        var style = ImGui.GetStyle();
+        var width = style.ItemSpacing.X * (PanelTools.Length - 1);
+        foreach (var (label, _) in PanelTools)
+            width += ImGui.CalcTextSize(label).X + style.FramePadding.X * 2;
+        return width;
+    }
+
+    private void DrawPanelTools()
+    {
+        Action[] toggles =
+        [
+            plugin.ToggleMultiplayerUi, plugin.ToggleChainUi,
+            plugin.TogglePartyListOrderUi, plugin.ToggleJobSupportUi,
+        ];
+        for (var i = 0; i < PanelTools.Length; i++)
+        {
+            var (label, full) = PanelTools[i];
+            if (i > 0) ImGui.SameLine();
+            if (ImGui.Button($"{label}##paneltool{i}")) toggles[i]();
+            if (label != full && ImGui.IsItemHovered()) ImGui.SetTooltip(full);
+        }
     }
 
     private static void DrawJobSupport()
@@ -208,10 +245,7 @@ public unsafe class MainWindow : Window, IDisposable
             ImGui.TextUnformatted("場景");
             ImGui.SameLine();
             if (ImGui.SmallButton("<##collapse")) _leftPanelOpen = false;
-            if (ImGui.Button("多人同步##openmultiplayer", new Vector2(-1, 0))) plugin.ToggleMultiplayerUi();
-            if (ImGui.Button("連戰##openchain", new Vector2(-1, 0))) plugin.ToggleChainUi();
-            if (ImGui.Button("隊伍列表順序##openpartyorder", new Vector2(-1, 0))) plugin.TogglePartyListOrderUi();
-            if (ImGui.Button("職業支援列表##openjobsupport", new Vector2(-1, 0))) plugin.ToggleJobSupportUi();
+            DrawPanelTools();
             DrawJobSupport();
             ImGui.Separator();
 
