@@ -63,7 +63,6 @@ public sealed class Plugin : IDalamudPlugin
     internal static LogManager LogManager { get; private set; } = null!;
     private ConfigWindow ConfigWindow { get; init; }
     private MainWindow MainWindow { get; init; }
-    private MultiplayerWindow MultiplayerWindow { get; init; }
     private PartyListOrderWindow PartyListOrderWindow { get; init; }
     private JobSupportWindow JobSupportWindow { get; init; }
     private NpcCollectorWindow NpcCollectorWindow { get; init; }
@@ -89,15 +88,13 @@ public sealed class Plugin : IDalamudPlugin
         Game = new Game();
         GameInstance = Game;
         ConfigWindow = new ConfigWindow(this);
-        MainWindow = new MainWindow(this);
         Multiplayer = new MultiplayerSession(Game);
-        MultiplayerWindow = new MultiplayerWindow(Multiplayer);
+        MainWindow = new MainWindow(this);
 
         WindowSystem.AddWindow(ConfigWindow);
         WindowSystem.AddWindow(MainWindow);
         WindowSystem.AddWindow(new HitRangeOverlay(this));
         WindowSystem.AddWindow(new MitigationWindow(this));
-        WindowSystem.AddWindow(MultiplayerWindow);
         PartyListOrderWindow = new PartyListOrderWindow(this);
         WindowSystem.AddWindow(PartyListOrderWindow);
         JobSupportWindow = new JobSupportWindow();
@@ -190,7 +187,6 @@ public sealed class Plugin : IDalamudPlugin
         ErrorLog.WriteSummary();
         ConfigWindow.Dispose();
         MainWindow.Dispose();
-        MultiplayerWindow.Dispose();
         PartyListOrderWindow.Dispose();
         JobSupportWindow.Dispose();
         ChainWindow.Dispose();
@@ -283,7 +279,7 @@ public sealed class Plugin : IDalamudPlugin
                 Game.Leave();
                 break;
             case "net":
-                MultiplayerWindow.Toggle();
+                ToggleMultiplayerUi();
                 break;
             case "npc":
                 NpcCollectorWindow.Toggle();
@@ -417,7 +413,7 @@ public sealed class Plugin : IDalamudPlugin
     }
 
     public void ToggleConfigUi() => ConfigWindow.Toggle();
-    public void ToggleMultiplayerUi() => MultiplayerWindow.Toggle();
+    public void ToggleMultiplayerUi() => MainWindow.ShowTab(AnoMech.Windows.MainWindow.MainTab.Multiplayer);
     public void ToggleChainUi() => ChainWindow.Toggle();
     public void TogglePartyListOrderUi() => PartyListOrderWindow.Toggle();
     public void ToggleJobSupportUi() => JobSupportWindow.Toggle();

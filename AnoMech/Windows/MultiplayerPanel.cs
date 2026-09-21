@@ -1,14 +1,12 @@
-using System;
 using System.Linq;
 using System.Numerics;
 using AnoMech.Core.Multiplayer;
 using AnoMech.Core.Net;
 using Dalamud.Bindings.ImGui;
-using Dalamud.Interface.Windowing;
 
 namespace AnoMech.Windows;
 
-internal sealed class MultiplayerWindow : Window, IDisposable
+internal sealed class MultiplayerPanel
 {
     private static readonly Vector4 Good = new(0.45f, 0.9f, 0.45f, 1f);
     private static readonly Vector4 Bad = new(1f, 0.45f, 0.45f, 1f);
@@ -20,22 +18,13 @@ internal sealed class MultiplayerWindow : Window, IDisposable
     private string inviteInput = "";
     private bool directConnection;
 
-    public MultiplayerWindow(MultiplayerSession session)
-        : base("多人同步###AnoMechConnectionTest")
-    {
-        SizeConstraints = new WindowSizeConstraints
-        {
-            MinimumSize = new Vector2(480, 320),
-            MaximumSize = new Vector2(float.MaxValue, float.MaxValue),
-        };
-        this.session = session;
-    }
+    public MultiplayerPanel(MultiplayerSession session) => this.session = session;
 
-    public override void OnOpen() => directConnection = HostReadiness.PublicAddressOnThisPc();
+    // Probing the public address is a network round trip, so it runs when the tab is brought up
+    // rather than every frame — the same moment the window's OnOpen used to fire.
+    public void OnShown() => directConnection = HostReadiness.PublicAddressOnThisPc();
 
-    public void Dispose() { }
-
-    public override void Draw()
+    public void Draw()
     {
         if (session.RunStatus.Length > 0) ImGui.TextColored(Good, session.RunStatus);
         DrawIdentity();

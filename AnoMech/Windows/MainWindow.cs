@@ -19,6 +19,7 @@ namespace AnoMech.Windows;
 public unsafe class MainWindow : Window, IDisposable
 {
     private readonly Plugin plugin;
+    private readonly MultiplayerPanel multiplayerPanel;
     private bool _leftPanelOpen = true;
 
     // internal because Plugin's Toggle*Ui entry points name a tab.
@@ -91,6 +92,7 @@ public unsafe class MainWindow : Window, IDisposable
         };
 
         this.plugin = plugin;
+        multiplayerPanel = new MultiplayerPanel(Plugin.Multiplayer);
         IsOpen = false;
 
         // Small gear in the title bar opens the settings window (same toggle as /anomech config).
@@ -100,13 +102,6 @@ public unsafe class MainWindow : Window, IDisposable
             IconOffset = new Vector2(2f, 1f),
             Click = _ => plugin.ToggleConfigUi(),
             ShowTooltip = () => ImGui.SetTooltip("設定"),
-        });
-        TitleBarButtons.Add(new TitleBarButton
-        {
-            Icon = FontAwesomeIcon.Users,
-            IconOffset = new Vector2(2f, 1f),
-            Click = _ => plugin.ToggleMultiplayerUi(),
-            ShowTooltip = () => ImGui.SetTooltip("多人同步"),
         });
 #if DEBUG
         debugMenu = new DebugMenu(plugin);
@@ -165,6 +160,7 @@ public unsafe class MainWindow : Window, IDisposable
 
         if (!ImGui.BeginTabBar("##maintabs")) return;
         DrawTab(MainTab.Practice, "練習", DrawPracticeTab);
+        DrawTab(MainTab.Multiplayer, "多人連線", multiplayerPanel.Draw);
         ImGui.EndTabBar();
         pendingTab = null;
     }
@@ -174,7 +170,11 @@ public unsafe class MainWindow : Window, IDisposable
     {
         var flags = pendingTab == tab ? ImGuiTabItemFlags.SetSelected : ImGuiTabItemFlags.None;
         if (!ImGui.BeginTabItem(label, flags)) return;
-        currentTab = tab;
+        if (currentTab != tab)
+        {
+            currentTab = tab;
+            if (tab == MainTab.Multiplayer) multiplayerPanel.OnShown();
+        }
         draw();
         ImGui.EndTabItem();
     }
