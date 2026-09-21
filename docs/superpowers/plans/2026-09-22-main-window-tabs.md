@@ -49,7 +49,8 @@
 - Consumes: 無
 - Produces:
   - `internal enum MainTab { Practice, Multiplayer, Chain, PartyOrder, JobSupport }`
-  - `private MainTab requestedTab;` 與 `private MainTab? pendingTab;` —— `pendingTab` 由後續 task 的 `Plugin.Toggle*Ui()` 設定，用來在下一幀強制切到指定分頁
+  - `private MainTab? pendingTab;` —— 由後續 task 的 `Plugin.Toggle*Ui()` 設定，用來在下一幀強制切到指定分頁
+  - `private MainTab currentTab;` —— 記住上一幀選中的分頁，Task 2 用它判斷「剛切過來」
   - `internal void ShowTab(MainTab tab)` —— 後續 task 由 `Plugin` 呼叫
   - `MainWindow.SizeConstraints.MinimumSize` 提高為 `(480, 320)`
 
