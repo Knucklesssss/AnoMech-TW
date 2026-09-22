@@ -4,6 +4,7 @@ P2StandardChecks.Run();
 P6OpeningChecks.Run();
 P6MeteorChecks.Run();
 P6LimitBreakGeometryChecks.Run();
+MoogleP6ClockChecks.Run();
 OmegaAssignmentChecks.Run();
 PartyListOrderChecks.Run();
 CrossMonitorChecks.Run();

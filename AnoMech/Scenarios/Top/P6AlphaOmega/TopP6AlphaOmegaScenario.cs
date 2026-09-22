@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -49,7 +49,9 @@ public sealed partial class TopP6AlphaOmegaScenario(bool unlimitedOnly = false, 
             : "法系＋遠敏（宇宙流星）→ 坦克＋補師 ×2（魔數）";
     public IPhase Phase => TopZone.P6;
     public bool SupportsSolo => extendedStart == null;
-    public IReadOnlyList<IScenarioAi> AiStrats { get; } = extendedStart == null ? [new TopP6AlphaOmegaAi()] : [new TopP6FullAi()];
+    public IReadOnlyList<IScenarioAi> AiStrats { get; } = extendedStart == null
+        ? [new TopP6AlphaOmegaAi(), new TopP6AlphaOmegaAi(moogle: true)]
+        : [new TopP6FullAi(), new TopP6FullAi(moogle: true)];
 
     private SimWorld world = null!;
     private SimParty party = null!;
@@ -57,6 +59,9 @@ public sealed partial class TopP6AlphaOmegaScenario(bool unlimitedOnly = false, 
     private SimEnemy? boss;
     private bool failed;
     private bool solo;
+    // Index 1 is the moogle strat in both AiStrats lists above.
+    private int aiIndex;
+    private bool moogle;
     private readonly Rng rng = new();
 
     // Actual effects, not cast-end estimates: packets include ~0.3s cast slide.
@@ -118,6 +123,8 @@ public sealed partial class TopP6AlphaOmegaScenario(bool unlimitedOnly = false, 
         world = worldParam;
         party = world.Party;
         solo = selectedAi is null;
+        aiIndex = selectedAi ?? 0;
+        moogle = aiIndex == 1;
         damage = new DamageSolver(party);
         damage.SetStatuses(DamageType.Magic, StatusId.MagicVulnerabilityUp);
         failed = false;
@@ -214,7 +221,7 @@ public sealed partial class TopP6AlphaOmegaScenario(bool unlimitedOnly = false, 
         world.Events.Add(8.324f, () => boss?.AddStatusParam(StatusId.CodeMi, 0));
         var inFirst = rng.NextBool();
         ScheduleCosmoArrow(inFirst);
-        if (!solo) ScenarioAiRunner.Run(AiStrats, 0, inFirst, world);
+        if (!solo) ScenarioAiRunner.Run(AiStrats, aiIndex, inFirst, world);
         if (Extended) ScheduleFullCosmoDive(); else ScheduleCosmoDive();
         ScheduleAutoAttacks(AutoAttacks);
         world.Events.Add(UnlimitedAt, () => ScheduleUnlimitedWaveCannon());
@@ -333,8 +340,8 @@ public sealed partial class TopP6AlphaOmegaScenario(bool unlimitedOnly = false, 
         if (!solo && !MultiplayerContext.IsClient)
         {
             using var scope = SimRandom.HostOnly();
-            if (Extended) TopP6FullAi.RunUnlimited(startAngle, clockwise, world, second);
-            else TopP6AlphaOmegaAi.RunUnlimited(startAngle, clockwise, world);
+            if (Extended) TopP6FullAi.RunUnlimited(startAngle, clockwise, world, second, moogle);
+            else TopP6AlphaOmegaAi.RunUnlimited(startAngle, clockwise, world, moogle);
         }
         if (second)
         {
@@ -358,7 +365,7 @@ public sealed partial class TopP6AlphaOmegaScenario(bool unlimitedOnly = false, 
         if (!solo && !MultiplayerContext.IsClient)
         {
             using var scope = SimRandom.HostOnly();
-            if (Extended) TopP6FullAi.RunSecondArrow(inFirst, world);
+            if (Extended) TopP6FullAi.RunSecondArrow(inFirst, world, moogle);
             else TopP6AlphaOmegaAi.RunSecondArrow(inFirst, world);
         }
         if (Extended)

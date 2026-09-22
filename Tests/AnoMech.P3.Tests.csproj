@@ -12,6 +12,7 @@
     <Compile Include="../AnoMech/Scenarios/Top/P6AlphaOmega/TopP6AutoAttackTargets.cs" />
     <Compile Include="../AnoMech/Scenarios/Top/P6AlphaOmega/TopP6MeteorFlarePlan.cs" />
     <Compile Include="../AnoMech/Scenarios/Top/P6AlphaOmega/TopP6LimitBreakRules.cs" />
+    <Compile Include="../AnoMech/Scenarios/Top/P6AlphaOmega/TopP6ClockSpots.cs" />
     <Compile Include="../AnoMech/Core/Combat/CombatTiming.cs" />
     <Compile Include="../AnoMech/Core/Combat/CombatRecastView.cs" />
     <Compile Include="../AnoMech/Core/Combat/JobCombatBase.cs" />

@@ -101,7 +101,7 @@ public sealed partial class TopP6AlphaOmegaScenario
             world.Events.Add(MeteorDirectPreparation, () =>
             {
                 ScheduleCosmoMeteorSequence();
-                if (!solo) TopP6FullAi.RunMeteorTail(world, 0f);
+                if (!solo) TopP6FullAi.RunMeteorTail(world, 0f, moogle);
             });
             return;
         }

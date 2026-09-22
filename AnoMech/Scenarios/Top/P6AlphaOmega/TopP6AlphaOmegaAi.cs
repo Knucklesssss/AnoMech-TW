@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Numerics;
 using AnoMech.Core.Game.Ai;
 using AnoMech.Core.Game.Party;
@@ -7,9 +7,10 @@ using static AnoMech.Scenarios.Top.P6AlphaOmega.TopP6AlphaOmegaScenario;
 
 namespace AnoMech.Scenarios.Top.P6AlphaOmega;
 
-public sealed class TopP6AlphaOmegaAi : IScenarioAi<bool>
+public sealed class TopP6AlphaOmegaAi(bool moogle = false) : IScenarioAi<bool>
 {
-    public string Name => "兩點集合／雙坦分離";
+    public string Name => moogle ? "B站莫古力" : "兩點集合／雙坦分離";
+    public string? Group => moogle ? "陸服" : "原有";
 
     public void Run(bool inFirst, SimWorld world)
     {
@@ -40,7 +41,7 @@ public sealed class TopP6AlphaOmegaAi : IScenarioAi<bool>
         ai.Move(48.3f, () => AiMove.All(Vector2.Zero), jitter: 0f);
     }
 
-    internal static void RunUnlimited(float startAngle, bool clockwise, SimWorld world)
+    internal static void RunUnlimited(float startAngle, bool clockwise, SimWorld world, bool moogle = false)
     {
         var ai = new AiManager(world);
         // The source is any of the eight waymarks. Start 1.5 waymark intervals
@@ -64,12 +65,10 @@ public sealed class TopP6AlphaOmegaAi : IScenarioAi<bool>
         // Sixth snapshot: immediately head inward toward each clock direction.
         // The short turns leave bait five nearby, so use a deep inner approach
         // rather than cutting through that still-pending circle on the way back.
-        ai.Move(LastPuddleAt + 0.05f, () => ClockSpots(2f), jitter: 0f);
-        ai.Move(LastPuddleAt + PuddleDelay + 0.05f, () => ClockSpots(13.63f), jitter: 0f);
-        // Two proteans are finished. B is east; both tanks stand boss-side.
-        ai.Move(SecondProteanAt + 0.05f, () => AiMove.Create(
-            new(11.63f, 0f), new(11.63f, 0f), new(13.63f, 0f), new(13.63f, 0f),
-            new(13.63f, 0f), new(13.63f, 0f), new(13.63f, 0f), new(13.63f, 0f)).NaturalOrder(), jitter: 0f);
+        ai.Move(LastPuddleAt + 0.05f, () => TopP6ClockSpots.Clock(2f, moogle), jitter: 0f);
+        ai.Move(LastPuddleAt + PuddleDelay + 0.05f, () => TopP6ClockSpots.Clock(13.63f, moogle), jitter: 0f);
+        // Two proteans are finished; both tanks stand boss-side of the stack.
+        ai.Move(SecondProteanAt + 0.05f, () => TopP6ClockSpots.Stack(moogle), jitter: 0f);
     }
 
     internal static void RunSecondArrow(bool inFirst, SimWorld world)
@@ -95,14 +94,6 @@ public sealed class TopP6AlphaOmegaAi : IScenarioAi<bool>
         }
     }
 
-    private static IAiMove ClockSpots(float radius)
-    {
-        var diagonal = radius / MathF.Sqrt(2f);
-        // MT=4, ST=C, H1=D, H2=B, D1=3, D2=2, D3=A, D4=1.
-        return AiMove.Create(new(-diagonal, -diagonal), new(0f, radius),
-            new(-radius, 0f), new(radius, 0f), new(-diagonal, diagonal),
-            new(diagonal, diagonal), new(0f, -radius), new(diagonal, -diagonal)).NaturalOrder();
-    }
 
     private static IAiMove Northeast(float distance) => AiMove.All(new(distance, -distance));
 }

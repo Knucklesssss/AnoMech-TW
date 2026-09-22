@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Linq;
 using System.Numerics;
 using AnoMech.Core.Game;
@@ -9,9 +9,10 @@ using static AnoMech.Scenarios.Top.P6AlphaOmega.TopP6AlphaOmegaScenario;
 
 namespace AnoMech.Scenarios.Top.P6AlphaOmega;
 
-public sealed class TopP6FullAi : IScenarioAi<bool>
+public sealed class TopP6FullAi(bool moogle = false) : IScenarioAi<bool>
 {
-    public string Name => "三號集合／雙坦分離／宇宙隕石";
+    public string Name => moogle ? "B站莫古力" : "三號集合／雙坦分離／宇宙隕石";
+    public string? Group => moogle ? "陸服" : "原有";
 
     public void Run(bool inFirst, SimWorld world)
     {
@@ -44,7 +45,7 @@ public sealed class TopP6FullAi : IScenarioAi<bool>
         Move(ai, world, 48.3f, () => AiMove.All(MeteorGatherPosition()));
     }
 
-    internal static void RunUnlimited(float startAngle, bool clockwise, SimWorld world, bool second = false)
+    internal static void RunUnlimited(float startAngle, bool clockwise, SimWorld world, bool second = false, bool moogle = false)
     {
         var ai = new AiManager(world);
         // This mechanic's bait path starts at center; idle gathering resumes later.
@@ -70,12 +71,12 @@ public sealed class TopP6FullAi : IScenarioAi<bool>
         // Sixth snapshot: immediately head inward toward each clock direction.
         // The short turns leave bait five nearby, so use a deep inner approach
         // rather than cutting through that still-pending circle on the way back.
-        Move(ai, world, LastPuddleAt + 0.05f, () => ClockSpots(2f));
+        Move(ai, world, LastPuddleAt + 0.05f, () => TopP6ClockSpots.Clock(2f, moogle));
         if (!second)
         {
-            Move(ai, world, LastPuddleAt + PuddleDelay + 0.05f, () => ClockSpots(13.63f));
+            Move(ai, world, LastPuddleAt + PuddleDelay + 0.05f, () => TopP6ClockSpots.Clock(13.63f, moogle));
             // Two proteans are finished. B is east; both tanks stand boss-side.
-            Move(ai, world, SecondProteanAt + 0.05f, StackAtB);
+            Move(ai, world, SecondProteanAt + 0.05f, () => TopP6ClockSpots.Stack(moogle));
             return;
         }
 
@@ -92,10 +93,10 @@ public sealed class TopP6FullAi : IScenarioAi<bool>
         var gather = MeteorGatherPosition();
         Move(ai, world, 26.18f, () => AiMove.Create(new(0f, -8f), new(0f, 16f),
             gather, gather, gather, gather, gather, gather).NaturalOrder());
-        RunMeteorTail(world, SecondUnlimitedMeteorAt);
+        RunMeteorTail(world, SecondUnlimitedMeteorAt, moogle);
     }
 
-    internal static void RunMeteorTail(SimWorld world, float meteorOffset)
+    internal static void RunMeteorTail(SimWorld world, float meteorOffset, bool moogle = false)
     {
         var ai = new AiManager(world);
         // Meteor puddles snapshot the party before the cast resolves. The idle
@@ -105,7 +106,7 @@ public sealed class TopP6FullAi : IScenarioAi<bool>
         // The eight puddles are a mechanic bait, not idle positioning. Start them
         // at center so every clock spot is reachable before the 3.987s detonation.
         Move(ai, world, meteorOffset, () => AiMove.All(Vector2.Zero));
-        Move(ai, world, meteorOffset + 5.064f, () => ClockSpots(13.63f));
+        Move(ai, world, meteorOffset + 5.064f, () => TopP6ClockSpots.Clock(13.63f, moogle));
 
         // D4 aims at the arena center from its spread position. Keep it stationary
         // until its job's real cast completes, not the log's slidecast time.
@@ -206,24 +207,7 @@ public sealed class TopP6FullAi : IScenarioAi<bool>
         return null;
     }
 
-    private static Vector2 ClockPosition(PartyRole role, float radius)
-    {
-        var diagonal = radius / MathF.Sqrt(2f);
-        return role switch
-        {
-            PartyRole.MainTank => new(-diagonal, -diagonal),
-            PartyRole.OffTank => new(0f, radius),
-            PartyRole.RegenHealer => new(-radius, 0f),
-            PartyRole.ShieldHealer => new(radius, 0f),
-            PartyRole.MeleeDpsA => new(-diagonal, diagonal),
-            PartyRole.MeleeDpsB => new(diagonal, diagonal),
-            PartyRole.PhysRangedDps => new(0f, -radius),
-            PartyRole.CasterDps => new(diagonal, -diagonal),
-            _ => Vector2.Zero,
-        };
-    }
-
-    internal static void RunSecondArrow(bool inFirst, SimWorld world)
+    internal static void RunSecondArrow(bool inFirst, SimWorld world, bool moogle = false)
     {
         var ai = new AiManager(world);
         // Wild Charge has resolved. Separate MT / farthest ST for both autos.
@@ -233,25 +217,25 @@ public sealed class TopP6FullAi : IScenarioAi<bool>
         // WC2 overlaps the final arrow pulses: establish each role's quadrant
         // before the arrows, then open eight lanes without crossing live strips.
         Move(ai, world, SecondArrowDelay + 2f,
-            () => ArrowSpots(inFirst ? 6f : 9f, inFirst ? 6f : 9f, inFirst ? 6f : 9f));
+            () => TopP6ClockSpots.Arrow(inFirst ? 6f : 9f, inFirst ? 6f : 9f, inFirst ? 6f : 9f, moogle));
         Move(ai, world, SecondArrowDelay + 10.5f,
-            () => ArrowSpots(inFirst ? 4f : 11f, inFirst ? 4f : 11f, inFirst ? 4f : 11f));
+            () => TopP6ClockSpots.Arrow(inFirst ? 4f : 11f, inFirst ? 4f : 11f, inFirst ? 4f : 11f, moogle));
         if (inFirst)
         {
             // Cardinals stay outside the central strips until the +17.91 pulse.
-            Move(ai, world, SecondArrowDelay + 14.5f, () => ArrowSpots(11f, 12f, 6f));
-            Move(ai, world, SecondArrowDelay + 17.96f, () => ArrowSpots(11f, 12f, 0f));
+            Move(ai, world, SecondArrowDelay + 14.5f, () => TopP6ClockSpots.Arrow(11f, 12f, 6f, moogle));
+            Move(ai, world, SecondArrowDelay + 17.96f, () => TopP6ClockSpots.Arrow(11f, 12f, 0f, moogle));
             // Second protean +21.07 precedes the ±12.5y strips at +21.91.
-            Move(ai, world, SecondArrowDelay + 21.12f, () => ClockSpots(9f));
-            Move(ai, world, SecondArrowDelay + 21.96f, StackAtB);
+            Move(ai, world, SecondArrowDelay + 21.12f, () => TopP6ClockSpots.Clock(9f, moogle));
+            Move(ai, world, SecondArrowDelay + 21.96f, () => TopP6ClockSpots.Stack(moogle));
         }
         else
         {
-            Move(ai, world, SecondArrowDelay + 14.5f, () => ArrowSpots(9f, 9f, 9f));
-            Move(ai, world, SecondArrowDelay + 16.5f, () => ArrowSpots(11f, 12f, 0f));
+            Move(ai, world, SecondArrowDelay + 14.5f, () => TopP6ClockSpots.Arrow(9f, 9f, 9f, moogle));
+            Move(ai, world, SecondArrowDelay + 16.5f, () => TopP6ClockSpots.Arrow(11f, 12f, 0f, moogle));
             // First protean +19.07 precedes the ±12.5y strips at +19.91.
-            Move(ai, world, SecondArrowDelay + 19.12f, () => ClockSpots(9f));
-            Move(ai, world, SecondArrowDelay + 21.12f, StackAtB);
+            Move(ai, world, SecondArrowDelay + 19.12f, () => TopP6ClockSpots.Clock(9f, moogle));
+            Move(ai, world, SecondArrowDelay + 21.12f, () => TopP6ClockSpots.Stack(moogle));
         }
         var secondChargeAt = SecondCannonAt + 11.37f;
         var gather = MeteorGatherPosition();
@@ -260,23 +244,8 @@ public sealed class TopP6FullAi : IScenarioAi<bool>
         Move(ai, world, secondChargeAt + 8.1f, () => AiMove.All(MeteorGatherPosition()));
     }
 
-    private static IAiMove ArrowSpots(float diagonal, float cardinal, float offset) =>
-        AiMove.Create(new(-diagonal, -diagonal), new(-offset, cardinal),
-            new(-cardinal, -offset), new(cardinal, offset), new(-diagonal, diagonal),
-            new(diagonal, diagonal), new(offset, -cardinal), new(diagonal, -diagonal)).NaturalOrder();
 
-    private static IAiMove StackAtB() => AiMove.Create(
-        new(11.63f, 0f), new(11.63f, 0f), new(13.63f, 0f), new(13.63f, 0f),
-        new(13.63f, 0f), new(13.63f, 0f), new(13.63f, 0f), new(13.63f, 0f)).NaturalOrder();
 
-    private static IAiMove ClockSpots(float radius)
-    {
-        var diagonal = radius / MathF.Sqrt(2f);
-        // MT=4, ST=C, H1=D, H2=B, D1=3, D2=2, D3=A, D4=1.
-        return AiMove.Create(new(-diagonal, -diagonal), new(0f, radius),
-            new(-radius, 0f), new(radius, 0f), new(-diagonal, diagonal),
-            new(diagonal, diagonal), new(0f, -radius), new(diagonal, -diagonal)).NaturalOrder();
-    }
 
     private static IAiMove FirstArrowSpots(float distance) => AiMove.All(new(-distance, distance));
 }
