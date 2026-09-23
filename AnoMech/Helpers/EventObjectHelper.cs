@@ -26,6 +26,9 @@ internal static unsafe class EventObjectHelper
                 }
             }
 
+            if (freeId == -1 && AnoMech.Core.Map.HousingEventObjectSlots.TryReleaseOne(manager, out var released))
+                freeId = released;
+
             if (freeId == -1)
             {
                 LogFailure(manager, packet, "all 40 event object slots are occupied");

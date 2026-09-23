@@ -59,5 +59,10 @@ internal sealed class LogManager : IDisposable
         writer?.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] Skill {text}");
     }
 
+    internal void LogHousing(string text)
+    {
+        writer?.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] Housing {text}");
+    }
+
     public void Dispose() => Close();
 }

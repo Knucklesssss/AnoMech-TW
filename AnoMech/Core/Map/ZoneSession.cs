@@ -180,7 +180,7 @@ public sealed unsafe class ZoneSession : IDisposable
         sessionSave.ItemLevelSync = itemLevelSync != 0;
         sessionSave.Attributes.Clear();
 
-        if (sessionSave.IsHousing) HousingEventObjectSlots.Release();
+        HousingEventObjectSlots.Remember(sessionSave.IsHousing);
         EnableFirewall();
         LoadZoneInternal(territoryId, false, playerSpawn);
         IsActive = true;
@@ -212,6 +212,7 @@ public sealed unsafe class ZoneSession : IDisposable
             LoadZoneInternal(sessionSave.TerritoryId, true, sessionSave.Position, sessionSave.Rotation);
 
         sessionSave.TerritoryId = 0;
+        HousingEventObjectSlots.Forget();
 
         IsActive = false;
         Plugin.Log.Information("[ZoneSession] Reverted to origin.");
