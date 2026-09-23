@@ -5,7 +5,7 @@
         "InternalName": "AnoMech",
         "AssemblyVersion": "0.4.2.0",
         "Punchline": "在旅館或住宅室內練習高難副本機制（繁中版 / API13）",
-        "Description": "在你的客戶端生出假隊友與假 boss，讓你一個人也能練習高難副本機制。進旅館、個人／公會住宅或個人房間後打 /anomech 開始，房內有其他玩家也可使用。\n\n本分支是 anomek/AnoMech 針對繁體中文版（Dalamud API 13）的非官方移植，屬實驗性質。包含絕歐米茄與絕神兵練習場景；本版不包含完整職業技能循環模擬。",
+        "Description": "在你的客戶端生出假隊友與假 boss 來練習高難副本機制，可以一個人練，也可以開房讓朋友連線一起練。進旅館，或住宅區的室內（房屋、個人房間、公寓房間、公會工房、公寓大廳）後打 /anomech 開始，房內有其他玩家也可使用。\n\n本分支是 anomek/AnoMech 針對繁體中文版（Dalamud API 13）的非官方移植，屬實驗性質。包含絕歐米茄與絕神兵練習場景；90 級戰鬥職業（青魔除外）可在模擬中用原本的熱鍵打技能循環，不計算傷害與治療量。",
         "ApplicableVersion": "any",
         "DalamudApiLevel": 13,
         "RepoUrl": "https://github.com/Knucklesssss/AnoMech-TW",

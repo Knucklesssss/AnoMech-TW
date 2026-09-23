@@ -4,18 +4,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-AnoMech ("Another FFXIV mechanics simulator") is a Dalamud plugin that **simulates FFXIV raid mechanics client-side** — it spawns fake `BattleChara` instances (party doppels and bosses) into the live game, drives their actions, and renders the canonical VFX/cast bars/tethers so players can practice mechanics solo. Currently focused on ultimate-raid phases (TOP P5 Delta / Sigma) but the engine is general-purpose. It is NOT the SamplePlugin template the README still describes; only the project skeleton was inherited.
+AnoMech ("Another FFXIV mechanics simulator") is a Dalamud plugin that **simulates FFXIV raid mechanics client-side** — it spawns fake `BattleChara` instances (party doppels and bosses) into the live game, drives their actions, and renders the canonical VFX/cast bars/tethers so players can practice mechanics solo. Currently covers TOP P2–P6 and UWU Ultimate Predation, but the engine is general-purpose.
 
 The reference scenario is **TOP P5 Delta** (`Scenarios/Top/P5Delta/`). Treat it as the canonical example of how a scenario consumes the engine — when designing new APIs, look at how it would read there. Scenarios are nested by family (e.g. `Scenarios/Top/`); IDs that recur across phases of the same family live in a shared `<Family>Constants.cs` (e.g. `Scenarios/Top/TopConstants.cs`) and are referenced from phase scenarios via the fully-qualified path `TopConstants.<Group>.<Const>`.
 
 ## Build / run
 
-- Build: `dotnet build` from `D:/Projects/ffxiv/AnoMech/`. Output is `bin/Debug/AnoMech.dll`.
+- Build: `dotnet build AnoMech/AnoMech.csproj` from the repo root (see the Dalamud note below). Output is `AnoMech/bin/Debug/AnoMech.dll`.
 - The csproj uses `Dalamud.NET.Sdk/13.0.0` (net9.0), matching the TC client's Dalamud 13. No NuGet restore tweaks are needed.
 - The SDK defaults to the Global client's Dalamud at `%AppData%/XIVLauncher/addon/Hooks/dev/`. If that holds a newer build (API 14 is net10), the build fails with CS1705. Point it at the TC Dalamud instead:
   `DALAMUD_HOME="$APPDATA/FFXIVSimpleLauncher/Dalamud/Injector" dotnet build AnoMech/AnoMech.csproj`
-- **There are no automated tests.** Verification is "build clean → load DLL via Dalamud Dev Plugins → run a scenario in-game and watch." For UI / behavior changes, ask the user to run the plugin; you cannot.
-- In-game entry point: chat command `/anomech` (alias `/ano`) opens the main window. Subcommands: `config`, `start`, `reset`, `leave`. Buttons in the main window run scenarios and despawn/reset.
+- Tests: `DALAMUD_HOME="$APPDATA/FFXIVSimpleLauncher/Dalamud/Injector" dotnet run --project Tests/AnoMech.P3.Tests.csproj`. It compiles only the dependency-free files listed in its csproj (plus `Core/Game/Ai/*.cs` by wildcard, against a stub `SimWorld` in `Tests/NativeStubs.cs`), so rules you want tested must live outside Dalamud-bound classes. Other `Tests.*` projects cover native/party-layout pieces.
+- Tests do not replace in-game checks: for UI / behavior changes, ask the user to run the plugin; you cannot.
+- In-game entry point: chat command `/anomech` (alias `/ano`) opens the main window. Subcommands: `config`, `start`, `reset`, `leave`, `mark`, `actions`, `net`, `npc`, `record`, `positions`. Buttons in the main window run scenarios and despawn/reset.
 
 ## Comments
 
