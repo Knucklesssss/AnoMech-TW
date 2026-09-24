@@ -17,11 +17,18 @@ public sealed class MitigationWindow : Window
         SizeCondition = ImGuiCond.FirstUseEver;
         RespectCloseHotkey = false;
     }
-    public override void PreOpenCheck() => IsOpen = plugin.Configuration.ShowMitigationFeedback && plugin.Game.ActiveScenario != null;
-    public override void OnClose()
+    private bool shown;
+
+    // PreOpenCheck runs before OnClose, so the X button has to be caught here or the config
+    // reopens the window on the next frame.
+    public override void PreOpenCheck()
     {
-        plugin.Configuration.ShowMitigationFeedback = false;
-        plugin.Configuration.Save();
+        if (shown && !IsOpen)
+        {
+            plugin.Configuration.ShowMitigationFeedback = false;
+            plugin.Configuration.Save();
+        }
+        IsOpen = shown = plugin.Configuration.ShowMitigationFeedback && plugin.Game.ActiveScenario != null;
     }
     public override void Draw()
     {
