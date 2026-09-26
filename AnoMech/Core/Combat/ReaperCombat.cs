@@ -164,7 +164,7 @@ public sealed class ReaperCombat : MeleeCombatBase
                 GainSoul(10);
                 ClearCombo();
                 return Strike(actionId, false, hasTarget);
-            case 24387: Buff(Soulsow, 0); ClearCombo(); return null;
+            case 24387: Buff(Soulsow, double.PositiveInfinity); ClearCombo(); return null;
             case 24388:
                 ClearBuff(Soulsow);
                 GainSoul(10);
@@ -268,6 +268,8 @@ public sealed class ReaperCombat : MeleeCombatBase
         lemure = 0;
         voidShroud = 0;
         gateReturn = 0;
+        // Soulsow is permanent in game but is not a stance: a fresh duty starts without it.
+        ClearBuff(Soulsow);
     }
 
     protected override (int Group, double Recast, int Charges) JobTimingContract(uint actionId) => actionId switch

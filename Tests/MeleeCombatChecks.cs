@@ -203,7 +203,10 @@ internal static class MeleeCombatChecks
         Use(kassatsu, 2261); kassatsu.Advance(0.6); Use(kassatsu, 2259); kassatsu.Advance(0.6);
         Check(kassatsu.Adjust(2260) == 16491, "Trait 250 must turn Katon into Goka Mekkyaku under Kassatsu.");
         Hit(kassatsu, 2260, aoe: true);
-        Check(kassatsu.Adjust(2260) == 2272, "Kassatsu must be spent by the ninjutsu.");
+        Check(kassatsu.Adjust(2260) == 2260 && kassatsu.Statuses().Single(s => s.Id == 497).Remaining == 0,
+            "Kassatsu must be spent by the ninjutsu.");
+        Check(!new NinjaCombat().CanUse(2260, true, true, true, checkTiming: false),
+            "Ninjutsu without a mudra must be refused, not resolve as Rabbit Medium.");
 
         var ninki = new NinjaCombat();
         Hit(ninki, 2240);
@@ -232,6 +235,30 @@ internal static class MeleeCombatChecks
         Check(shukuchi.TryUse(2262, false, false, true) == null && shukuchi.TakeMove() == new JobMove(JobMoveKind.GroundPoint, 0, false),
             "Shukuchi must request a ground-targeted move.");
         Check(!shukuchi.CanUse(2262, false, false, true, bound: true, checkTiming: false), "Shukuchi must be refused while bound.");
+
+        var hide = new NinjaCombat();
+        Check(hide.TryUse(2245, false, false, false) == null, "Hide must start out of combat.");
+        hide.Advance(0.6);
+        Check(hide.CanUse(2258, true, true, true, checkTiming: false), "Hide is permanent and must ready Trick Attack.");
+        Hit(hide, 2240);
+        Check(!hide.CanUse(2258, true, true, true, checkTiming: false), "Any other action must cancel Hide.");
+        var hidden = new NinjaCombat();
+        hidden.TryUse(2245, false, false, false);
+        hidden.Reset();
+        Check(hidden.Statuses().Single(s => s.Id == 614).Remaining == 0, "Reset must drop Hide.");
+
+        // Jin, Ten, Chi under Ten Chi Jin: Fuma Shuriken, Katon, Doton. The session hands the rules the id it
+        // already adjusted from the pressed button, so the ids are resolved here the same way.
+        var tcj = new NinjaCombat();
+        Check(tcj.TryUse(7403, false, false, true) == null, "Ten Chi Jin must start.");
+        tcj.Advance(0.6);
+        Check(tcj.Adjust(2263) == 2265, "The first Ten Chi Jin mudra must be Fuma Shuriken.");
+        Hit(tcj, tcj.Adjust(2263)); tcj.Advance(1.5);
+        Check(tcj.Adjust(2259) == 2266, "Jin then Ten under Ten Chi Jin must be Katon.");
+        Hit(tcj, tcj.Adjust(2259), aoe: true); tcj.Advance(1.5);
+        Check(tcj.Adjust(2261) == 2270, "Jin, Ten then Chi under Ten Chi Jin must be Doton.");
+        Hit(tcj, tcj.Adjust(2261), aoe: true);
+        Check(tcj.Adjust(2259) == 2259, "Three ninjutsu must end Ten Chi Jin.");
     }
 
     private static void Samurai()
@@ -264,6 +291,18 @@ internal static class MeleeCombatChecks
         Check(three.Adjust(7867) == 7487, "Three Sen must make Iaijutsu into Midare Setsugekka.");
         Cast(three, 7867);
         Check(three.Kaeshi == 16486 && three.Sen == 0, "Midare Setsugekka must arm Kaeshi Setsugekka.");
+        three.Advance(30);
+        Check(three.Kaeshi == 0 && !three.CanUse(16483, true, true, true, checkTiming: false),
+            "Kaeshi Setsugekka must lapse with its 30 s ready status.");
+
+        var fugetsu = new SamuraiCombat();
+        Hit(fugetsu, 7477); Gcd(fugetsu); Hit(fugetsu, 7478);
+        Check(fugetsu.Statuses().Any(st => st.Id == 1298 && st.Remaining == 40), "Jinpu's combo must grant 40 s of Fugetsu.");
+        Gcd(fugetsu); Hit(fugetsu, 7477); Gcd(fugetsu); Hit(fugetsu, 7479);
+        Check(fugetsu.Statuses().Any(st => st.Id == 1299 && st.Remaining == 40), "Shifu's combo must grant 40 s of Fuka.");
+        var uncombo = new SamuraiCombat();
+        Hit(uncombo, 7478);
+        Check(uncombo.Statuses().Single(st => st.Id == 1298).Remaining == 0, "Jinpu outside its combo must not grant Fugetsu.");
 
         var hagakure = new SamuraiCombat();
         Hit(hagakure, 7477); Gcd(hagakure); Hit(hagakure, 7478); Gcd(hagakure); Hit(hagakure, 7481); Gcd(hagakure);
@@ -370,6 +409,16 @@ internal static class MeleeCombatChecks
         Check(gate.TryUse(24402, false, false, true) == null && gate.TakeMove() == new JobMove(JobMoveKind.ReturnPoint, 0, false),
             "Regress must request the return move.");
         Check(!gate.CanUse(24401, false, false, true, bound: true, checkTiming: false), "The gates must be refused while bound.");
+
+        var soulsow = new ReaperCombat();
+        Check(soulsow.BeginCast(24387, false, false, false), "Soulsow must begin casting.");
+        soulsow.Advance(5);
+        Check(soulsow.CompleteCast(false, false, true, out _), "Soulsow must complete its cast.");
+        soulsow.Advance(0.1);
+        Check(soulsow.Adjust(24387) == 24388 && soulsow.CanUse(24388, true, true, true, checkTiming: false),
+            "Soulsow is permanent and must turn into Harvest Moon.");
+        soulsow.Reset();
+        Check(soulsow.Adjust(24387) == 24387, "Reset must drop Soulsow.");
     }
 
     private static void Viper()

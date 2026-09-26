@@ -38,12 +38,21 @@ public sealed class NinjaCombat : MeleeCombatBase
     {
         2246 => 3566,   // trait 515: 斷絕 -> 夢幻三段
         2248 => 36957,  // trait 585: 奪取 -> 介毒之術
-        2260 => Ninjutsu(mudras),
-        // Ten Chi Jin turns each mudra button into the ninjutsu its running sequence spells.
-        2259 => HasBuff(TenChiJin) ? Ninjutsu([.. mudras, Ten]) : 2259,
-        2261 => HasBuff(TenChiJin) ? Ninjutsu([.. mudras, Chi]) : 2261,
-        2263 => HasBuff(TenChiJin) ? Ninjutsu([.. mudras, Jin]) : 2263,
+        // Without a mudra the button stays Ninjutsu, which JobCanUse refuses.
+        2260 => HasBuff(Mudra) ? Ninjutsu(mudras) : 2260,
+        2259 => HasBuff(TenChiJin) ? TenChiJinNinjutsu(Ten) : 2259,
+        2261 => HasBuff(TenChiJin) ? TenChiJinNinjutsu(Chi) : 2261,
+        2263 => HasBuff(TenChiJin) ? TenChiJinNinjutsu(Jin) : 2263,
         _ => actionId,
+    };
+
+    // Ten Chi Jin turns each mudra button into a ninjutsu. The first press is always Fuma Shuriken, so the
+    // earlier mudras are never known; none repeats, and the table below is decided by the last one alone.
+    private uint TenChiJinNinjutsu(int mudra) => mudras.Count switch
+    {
+        0 => 2265,
+        1 => mudra == Ten ? 2266u : mudra == Chi ? 2267u : 2268u,
+        _ => mudra == Ten ? 2269u : mudra == Chi ? 2270u : 2271u,
     };
 
     // Trait 250 upgrades Katon and Hyoton while Kassatsu is up.
@@ -119,6 +128,8 @@ public sealed class NinjaCombat : MeleeCombatBase
     {
         // Anything that is not a mudra or a ninjutsu breaks a half-finished sequence.
         if (!IsNinjutsu(actionId) && actionId is not (2259 or 2261 or 2263)) DropMudras();
+        // Hide lasts until any other action; Trick Attack settles it below.
+        if (actionId is not (2245 or 2258)) ClearBuff(Hide);
 
         switch (actionId)
         {
@@ -169,7 +180,7 @@ public sealed class NinjaCombat : MeleeCombatBase
 
             case 2241: Buff(ShadeShift, 20); return null;
             case 2245:
-                Buff(Hide, 0);
+                Buff(Hide, double.PositiveInfinity);
                 // Out of combat only, so both mudra charges are always the ones being restored.
                 Timing.Reduce(4, 40);
                 return null;
@@ -273,6 +284,8 @@ public sealed class NinjaCombat : MeleeCombatBase
         ninki = 0;
         kazematoi = 0;
         tenChiJinUses = 0;
+        // Hide is permanent in game but is not a stance: a fresh duty starts without it.
+        ClearBuff(Hide);
     }
 
     protected override (int Group, double Recast, int Charges) JobTimingContract(uint actionId) => actionId switch

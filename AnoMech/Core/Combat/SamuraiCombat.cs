@@ -103,10 +103,10 @@ public sealed class SamuraiCombat : MeleeCombatBase
         {
             case 7477: SetCombo(7477); return Weaponskill(actionId, false, hasTarget);
             case 7478:
-                Combo(ComboAction == 7477, 7478);
+                if (Combo(ComboAction == 7477, 7478)) Buff(Fugetsu, 40);
                 return Weaponskill(actionId, false, hasTarget);
             case 7479:
-                Combo(ComboAction == 7477, 7479);
+                if (Combo(ComboAction == 7477, 7479)) Buff(Fuka, 40);
                 return Weaponskill(actionId, false, hasTarget);
             case 7480:
                 if (Combo(ComboAction == 7477, 0)) { GainSen(Setsu); GainKenki(15); }
@@ -223,6 +223,8 @@ public sealed class SamuraiCombat : MeleeCombatBase
 
     protected override void AdvanceJob(double seconds)
     {
+        // Trait 277's ready status lasts 30 s; Kaeshi Namikiri has no status row and keeps its own gate.
+        if (kaeshi is 16485 or 16486 && !HasBuff(TsubameFiveSwords) && !HasBuff(TsubameMidare)) kaeshi = 0;
         // ponytail: Meditate's per-second Kenki and Meditation rate is not in the client text — one of each
         // per second until the user calibrates it in game.
         if (!HasBuff(Meditate)) return;
