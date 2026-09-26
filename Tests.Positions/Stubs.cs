@@ -25,5 +25,5 @@ namespace AnoMech.Core.SimObjects {
   public SimCharacter Get(int index)=>Members[index]; public SimCharacter Get(PartyRole role)=>Get((int)role);
   public void GiveInvuln(PartyRole role, float seconds) {}
  }
- public sealed class SimWorld(PracticePositions positions) { public EventScheduler Events = new(); public SimParty Party = new(); public PracticePositions PracticePositions = positions; }
+ public sealed class SimWorld(PracticePositions positions) { public EventScheduler Events = new(); public SimParty Party = new(); public PracticePositions PracticePositions = positions; public float ArenaRadius => 0f; }
 }
