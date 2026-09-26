@@ -212,10 +212,10 @@ public sealed class CharacterFind<T> where T : IPositioned
             .ToList();
     }
 
-    // One member chosen uniformly at random from the live set. Null when empty.
-    public T? RandomMember()
+    // One member chosen uniformly at random from the live set, optionally narrowed. Null when none qualify.
+    public T? RandomMember(Func<T, bool>? where = null)
     {
-        var pool = source() as IReadOnlyList<T> ?? source().ToList();
+        var pool = where != null ? source().Where(where).ToList() : source() as IReadOnlyList<T> ?? source().ToList();
         return pool.Count == 0 ? default : pool[SimRandom.Current.Next(pool.Count)];
     }
 

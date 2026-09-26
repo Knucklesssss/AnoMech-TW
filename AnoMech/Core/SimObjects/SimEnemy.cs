@@ -179,7 +179,9 @@ public sealed unsafe class SimEnemy : SimNpc
                 break;
         }
 
-        if (nativeHitbox)
+        if (nativeHitbox && ModelContainerPointers.CalculateUnscaledRadius == null)
+            chara->HitboxRadius = config.HitboxRadius > 0f ? config.HitboxRadius : ResolveHitboxRadius(modelCharaId, scale);
+        else if (nativeHitbox)
         {
             chara->ModelContainer.UnscaledRadius = ModelContainerPointers.CalculateUnscaledRadius(&chara->ModelContainer);
             chara->HitboxRadius = chara->Scale * chara->ModelContainer.UnscaledRadius; // From Client::Game::Character::ModelContainer_UpdateHitboxRadius
@@ -355,7 +357,11 @@ public sealed unsafe class SimEnemy : SimNpc
 
     public override void Tick(float deltaSeconds)
     {
+        var reloading = PendingDraw;
         base.Tick(deltaSeconds);
+        // Every deferred EnableDraw (spawn, or a SetModeAttributeFlags reload while hidden) shows the
+        // model; mark it shown so the reconciler hides it again on the same frame when it should be.
+        if (reloading && !PendingDraw) currentVisible = true;
         ReconcileVisibility();
         cast.Tick(deltaSeconds);
     }

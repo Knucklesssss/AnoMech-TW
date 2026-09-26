@@ -18,6 +18,7 @@ public unsafe class SimNpc : SimCharacter
 
     private int index;
     private bool pendingDraw;
+    private protected bool PendingDraw => pendingDraw;
 
     private Movement? movement;
 

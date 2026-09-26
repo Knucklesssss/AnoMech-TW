@@ -161,6 +161,8 @@ public sealed unsafe class ZoneSession : IDisposable
             return;
         if (sendPacketHook == null || receivePacketHook == null || heartbeatOpcode == 0
             || GameMainPointers.LoadZone == null || EventFramework.Instance() == null
+            || EventFrameworkPointers.InitDirector == null || EventFrameworkPointers.TerminateDirector == null
+            || PacketDispatcherPointers.HandleUpdateClassInfoPacket == null
             || GameMain.Instance() == null || GetContentFinderCondition(territoryId) == null)
         {
             Plugin.Log.Error("[ZoneSession] Required zone loading or packet isolation is unavailable; entry cancelled.");

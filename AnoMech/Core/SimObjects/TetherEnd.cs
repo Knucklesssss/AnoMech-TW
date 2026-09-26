@@ -84,7 +84,9 @@ public sealed class PassableEnd : DynamicEnd
 
     public override SimCharacter? Resolve(SimCharacter? self, SimCharacter? other, TetherContext ctx)
     {
-        var holder = self ?? initial ?? ctx.Party.RandomMember();
+        // Seeded like a pass: parallel tethers of one id created together must not share a first holder.
+        var holder = self ?? initial
+            ?? ctx.Party.RandomMember(c => !c.HasTetherInSlot0(ctx.TetherId)) ?? ctx.Party.RandomMember();
         if (holder is null || !holder.IsAlive()) return holder;
         if (other is null || !other.IsAlive()) return holder;   // anchor gone → don't migrate
 
