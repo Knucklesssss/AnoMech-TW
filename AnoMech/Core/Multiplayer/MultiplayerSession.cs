@@ -76,6 +76,7 @@ internal sealed unsafe class MultiplayerSession : IDisposable
         public List<(byte Role, uint ActionId, Vector3 CasterPosition, Vector3? Aim)> PendingLimitBreaks { get; } = [];
         public bool LimitBreakDirty { get; set; }
         public string? PendingFailReason { get; set; }
+        public byte ReleasedHumans { get; set; }
         public List<TickFrame> Pending { get; } = [];
     }
 
@@ -403,7 +404,8 @@ internal sealed unsafe class MultiplayerSession : IDisposable
                     Chat($"{entry.Name} 無法開始場景：{failed.Reason}");
                 }
                 break;
-            case MessageType.RestartRequest when hostRun is { } current && current.Remote.ContainsKey(player.Id):
+            case MessageType.RestartRequest when RestartRequestDto.TryRead(reader, out var restart):
+                if (hostRun is not { } current || restart.RunId != current.RunId || !current.Remote.ContainsKey(player.Id)) break;
                 Chat($"{entry.Name} 請求重來，重新開始場景。");
                 HostStartRun(current.Scenario, current.Strat, current.Waymark);
                 break;
@@ -414,12 +416,14 @@ internal sealed unsafe class MultiplayerSession : IDisposable
         }
     }
 
-    private static void HandOverToAi(RemoteHuman remote)
+    private void HandOverToAi(RemoteHuman remote)
     {
         remote.Connected = false;
         remote.Puppet.Member.NetworkDriven = false;
         remote.Puppet.Member.ResetActionTimeline();
         MultiplayerContext.ReleaseHuman(remote.Role);
+        // Clients run the same AI-only presses (P6 limit breaks), so they must drop the slot too.
+        if (hostRun is { } run) run.ReleasedHumans |= (byte)(1 << remote.Role);
     }
 
     private void AssignRole(LobbyEntry entry, byte requested)
@@ -529,6 +533,8 @@ internal sealed unsafe class MultiplayerSession : IDisposable
             NetLog.Write($"host: run failed at tick {run.Tick} — {reason}");
             run.PendingFailReason = null;
         }
+        frame.ReleasedHumans = run.ReleasedHumans;
+        run.ReleasedHumans = 0;
         if (run.Tick % SyncIntervalTicks == 0) frame.Sync = CaptureSync();
         run.Pending.Add(frame);
         run.Tick++;
@@ -590,7 +596,10 @@ internal sealed unsafe class MultiplayerSession : IDisposable
     }
 
     public void ClientRequestRestart()
-        => Net.Client.Send(MessageType.RestartRequest, _ => { }, DeliveryMethod.ReliableOrdered);
+    {
+        if (clientRun is { } run)
+            Net.Client.Send(MessageType.RestartRequest, new RestartRequestDto(run.RunId).Write, DeliveryMethod.ReliableOrdered);
+    }
 
     private void SyncClientConnection()
     {
@@ -819,6 +828,9 @@ internal sealed unsafe class MultiplayerSession : IDisposable
             if (party.Get(slot) is { } member) member.NetworkLogicPose = (run.Logic[slot].Position, run.Logic[slot].Rotation);
         }
 
+        for (var slot = 0; slot < Wire.Slots; slot++)
+            if ((frame.ReleasedHumans & (1 << slot)) != 0) MultiplayerContext.ReleaseHuman(slot);
+
         SimRandom.Reseed(run.Seed, frame.Tick);
         game.Tick(Step);
         if (frame.Sync is { } sync) CompareSync(sync, frame.Tick);
@@ -858,7 +870,8 @@ internal sealed unsafe class MultiplayerSession : IDisposable
         }
         clientRun = null;
         MultiplayerContext.End();
-        if (reset) game.Reset();
+        // Synchronous: a StartRun handled in the same poll would otherwise be torn down next frame.
+        if (reset) game.ResetNow();
         if (message is not null) Chat(message);
     }
 

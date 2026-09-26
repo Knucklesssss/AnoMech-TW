@@ -79,7 +79,8 @@ internal sealed unsafe class PracticeLimitBreakRuntime : IDisposable
         PartyRole role,
         uint actionId,
         Vector3? location = null,
-        SimCharacter? target = null)
+        SimCharacter? target = null,
+        bool remote = false)
     {
         if (disposed || !available || active != null || (uint)role >= 8 || IsBusy(role))
             return false;
@@ -89,7 +90,8 @@ internal sealed unsafe class PracticeLimitBreakRuntime : IDisposable
             caster is SimPlayer && world.Combat is { Active: true, CastingAction: not 0 })
             return false;
 
-        if (ActionFor(role) != actionId || !TryGetValidatedAction(actionId, out var action))
+        // A relayed press is the presser's own job's LB3; a stand-in keeps its slot's preset job.
+        if ((!remote && ActionFor(role) != actionId) || !TryGetValidatedAction(actionId, out var action))
             return false;
 
         if (action.TargetArea)
@@ -190,10 +192,10 @@ internal sealed unsafe class PracticeLimitBreakRuntime : IDisposable
         // Resolve the geometry from where the presser actually stood: on every other machine
         // this member is an interpolated network puppet, not the true origin of the press.
         caster.SetPosition(casterPosition);
-        if (action.TargetArea) return TryStart(role, actionId, aim, null);
+        if (action.TargetArea) return TryStart(role, actionId, aim, null, remote: true);
         if (aim is { } point)
             caster.SetRotation(MathF.Atan2(point.X - casterPosition.X, point.Z - casterPosition.Z));
-        return TryStart(role, actionId, null, null);
+        return TryStart(role, actionId, null, null, remote: true);
     }
 
     internal void Refill()
@@ -322,7 +324,6 @@ internal sealed unsafe class PracticeLimitBreakRuntime : IDisposable
         if (battleChara == null ||
             !TryGetTankStatus(
                 pending.ActionId,
-                (byte)battleChara->ClassJob,
                 out var statusId,
                 out var duration))
             return;
@@ -339,14 +340,16 @@ internal sealed unsafe class PracticeLimitBreakRuntime : IDisposable
         }
     }
 
-    private static bool TryGetTankStatus(uint action, byte job, out ushort status, out float duration)
+    // Keyed on the action alone: each tank LB3 belongs to one job, and a relayed press may come
+    // from a stand-in carrying a different preset job.
+    private static bool TryGetTankStatus(uint action, out ushort status, out float duration)
     {
-        status = (action, job) switch
+        status = action switch
         {
-            (199, 19) => 196,
-            (4240, 21) => 863,
-            (4241, 32) => 864,
-            (17105, 37) => 1931,
+            199 => 196,
+            4240 => 863,
+            4241 => 864,
+            17105 => 1931,
             _ => 0,
         };
         duration = 8f;

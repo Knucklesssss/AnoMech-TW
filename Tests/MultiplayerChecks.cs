@@ -136,6 +136,8 @@ internal static class MultiplayerChecks
         Check(client.NewNorthB is null, "unset settings stay unset");
         var garbage = MultiplayerOverrides.Deserialize<TopP5SigmaStateOverrides>([5, 1, 2, 3]);
         Check(garbage.NewNorthA is null && garbage.Markers == MarkerMode.System, "a malformed payload yields defaults instead of throwing");
+        var badString = MultiplayerOverrides.Deserialize<TopP5SigmaStateOverrides>([1, 0x80, 0x80, 0x80, 0x80, 0x10]);
+        Check(badString.NewNorthA is null, "a malformed string length yields defaults instead of throwing");
     }
 
     private static void DeltaStateMatchesAcrossMachines()
@@ -250,6 +252,9 @@ internal static class MultiplayerChecks
             (NetDataReader r, out StopRunDto v) => StopRunDto.TryRead(r, out v), "StopRun(HostLeft)");
         Check(left.Reason == StopReason.HostLeft && left.Reason != stopped.Reason,
             "Leaving must reach the room as its own reason, distinct from stopping the run");
+        var restart = RoundTrip(new RestartRequestDto(12).Write,
+            (NetDataReader r, out RestartRequestDto v) => RestartRequestDto.TryRead(r, out v), "RestartRequest");
+        Check(restart.RunId == 12, "a restart request names the run it restarts");
         var lbUsed = RoundTrip(new LimitBreakUsedDto(3, 9, 208, new Vector3(1.5f, 0f, -2.5f), new Vector3(0f, 0f, 4f)).Write,
             (NetDataReader r, out LimitBreakUsedDto v) => LimitBreakUsedDto.TryRead(r, out v), "LimitBreakUsed");
         Check(lbUsed == new LimitBreakUsedDto(3, 9, 208, new Vector3(1.5f, 0f, -2.5f), new Vector3(0f, 0f, 4f)),
@@ -278,6 +283,19 @@ internal static class MultiplayerChecks
             (NetDataReader r, out TickFrame v) => FrameCodec.TryRead(r, out v), "TickFrame(over-long fail reason)");
         Check(longBack.FailReason is { Length: > 0 } clamped && System.Text.Encoding.UTF8.GetByteCount(clamped) <= 256,
             "an over-long fail reason is clamped to fit instead of poisoning the frame batch");
+
+        // A claim the host refused leaves the bar free and no limit break to send; the ack alone is the answer.
+        var refused = new TickFrame { Tick = 9 };
+        refused.LimitBreakAcks[3] = 4;
+        var refusedBack = RoundTrip(w => FrameCodec.Write(w, refused),
+            (NetDataReader r, out TickFrame v) => FrameCodec.TryRead(r, out v), "TickFrame(refused claim)");
+        Check(refusedBack.LimitBreakAcks[3] == 4 && refusedBack.LimitBreakHolder == LimitBreakArbiter.Nobody,
+            "a refused claim's ack reaches the client so it can roll its cast back");
+
+        // Only the host hands a dropped player's slot to AI; clients must learn it at the same tick.
+        var released = RoundTrip(w => FrameCodec.Write(w, new TickFrame { Tick = 10, ReleasedHumans = 1 << 3 }),
+            (NetDataReader r, out TickFrame v) => FrameCodec.TryRead(r, out v), "TickFrame(released humans)");
+        Check(released.ReleasedHumans == 1 << 3, "the frame carries the slots handed to AI");
 
         var plainFrame = RoundTrip(w => FrameCodec.Write(w, new TickFrame { Tick = 7 }),
             (NetDataReader r, out TickFrame v) => FrameCodec.TryRead(r, out v), "TickFrame(plain)");

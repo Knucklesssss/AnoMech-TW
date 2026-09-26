@@ -92,7 +92,7 @@ public static class MultiplayerOverrides
                     property.SetValue(result, converted);
             }
         }
-        catch (Exception e) when (e is EndOfStreamException or InvalidDataException or IOException)
+        catch (Exception e) when (e is EndOfStreamException or InvalidDataException or IOException or FormatException)
         {
         }
         return result;

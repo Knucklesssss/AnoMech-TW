@@ -233,6 +233,20 @@ public readonly record struct StopRunDto(uint RunId, StopReason Reason)
     }
 }
 
+// Names the run it asks to restart, so a second or late request cannot restart the new run as well.
+public readonly record struct RestartRequestDto(uint RunId)
+{
+    public void Write(NetDataWriter writer) => writer.Put(RunId);
+
+    public static bool TryRead(NetDataReader reader, out RestartRequestDto request)
+    {
+        request = default;
+        if (!reader.TryGetUInt(out var runId)) return false;
+        request = new RestartRequestDto(runId);
+        return true;
+    }
+}
+
 public readonly record struct RunFailedDto(uint RunId, string Reason)
 {
     public const int MaxReasonLength = 64;
@@ -397,6 +411,8 @@ public sealed class TickFrame
     // Judging moved to the host, so the reason has to travel to the room that only sees the wipe.
     public string? FailReason { get; set; }
     public SyncStateDto? Sync { get; set; }
+    // Slots the host handed to AI before this tick (a player dropped or could not start).
+    public byte ReleasedHumans { get; set; }
 }
 
 public static class FrameCodec
@@ -407,6 +423,7 @@ public static class FrameCodec
     private const byte HasTimelines = 8;
     private const byte HasLimitBreaks = 16;
     private const byte HasFailReason = 32;
+    private const byte HasReleasedHumans = 64;
     private const int MaxLimitBreaksPerFrame = 8;
     private const int MaxFailReasonBytes = 256;
 
@@ -434,8 +451,9 @@ public static class FrameCodec
         var failReason = ClampFailReason(frame.FailReason);
         var flags = (byte)((frame.Markers != null ? HasMarkers : 0) | (frame.Invulns.Count > 0 ? HasInvulns : 0)
                            | (frame.Sync != null ? HasSync : 0) | (frame.TimelineMask != 0 ? HasTimelines : 0)
-                           | (frame.LimitBreaks.Count > 0 || frame.LimitBreakHolder != LimitBreakArbiter.Nobody ? HasLimitBreaks : 0)
-                           | (failReason != null ? HasFailReason : 0));
+                           | (frame.LimitBreaks.Count > 0 || frame.LimitBreakHolder != LimitBreakArbiter.Nobody
+                              || Array.Exists(frame.LimitBreakAcks, ack => ack != 0) ? HasLimitBreaks : 0)
+                           | (failReason != null ? HasFailReason : 0) | (frame.ReleasedHumans != 0 ? HasReleasedHumans : 0));
         writer.Put(frame.Tick);
         writer.Put(flags);
         writer.Put(frame.PoseMask);
@@ -487,6 +505,7 @@ public static class FrameCodec
         }
         if (failReason != null) writer.Put(failReason);
         frame.Sync?.Write(writer);
+        if (frame.ReleasedHumans != 0) writer.Put(frame.ReleasedHumans);
     }
 
     // The reader rejects an empty or over-long reason and poisons the whole batch, so the writer
@@ -510,7 +529,7 @@ public static class FrameCodec
     {
         frame = null!;
         if (!reader.TryGetUInt(out var tick) || !reader.TryGetByte(out var flags) || !reader.TryGetByte(out var mask)) return false;
-        if ((flags & ~(HasMarkers | HasInvulns | HasSync | HasTimelines | HasLimitBreaks | HasFailReason)) != 0) return false;
+        if ((flags & ~(HasMarkers | HasInvulns | HasSync | HasTimelines | HasLimitBreaks | HasFailReason | HasReleasedHumans)) != 0) return false;
         var result = new TickFrame { Tick = tick, PoseMask = mask };
         for (var slot = 0; slot < Wire.Slots; slot++)
             if ((mask & (1 << slot)) != 0 && !NetPose.TryRead(reader, out result.Poses[slot])) return false;
@@ -571,6 +590,11 @@ public static class FrameCodec
         {
             if (!SyncStateDto.TryRead(reader, out var sync)) return false;
             result.Sync = sync;
+        }
+        if ((flags & HasReleasedHumans) != 0)
+        {
+            if (!reader.TryGetByte(out var released) || released == 0) return false;
+            result.ReleasedHumans = released;
         }
         frame = result;
         return true;

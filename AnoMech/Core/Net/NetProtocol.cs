@@ -7,7 +7,7 @@ namespace AnoMech.Core.Net;
 
 public static class NetProtocol
 {
-    public const ushort Version = 7; // Delta AI tether pins: an old client ignores them and deals a different board.
+    public const ushort Version = 8; // Frames carry slots handed to AI mid-run: an old client keeps them human and skips AI limit breaks.
     public const uint Magic = 0x414D5031; // "AMP1"
     public const int MaxPlayers = 8;
     public const byte HostPlayerId = 0;

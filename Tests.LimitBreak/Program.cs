@@ -39,6 +39,8 @@ unsafe {
     Check(resolved == 1 && !runtime.IsBusy(PartyRole.MainTank), "Recovery expires without repeat callback");
     runtime.Refill();
     Check(runtime.IsAvailable, "Scenario refills gauge");
+    // A relayed press carries the presser's own job's LB3, which need not match the stand-in's preset job.
+    Check(runtime.TryStartRemote(PartyRole.MainTank, 19, player.Position, null), "Accept a relayed LB whatever the stand-in's job");
     runtime.Dispose();
     Check(gauge.BarCount == 1 && gauge.CurrentUnits == 20 && gauge.BarUnits == 100, "Restore original native gauge");
     Check(!runtime.TryStart(PartyRole.MainTank, 199), "Disposed runtime rejects actions");

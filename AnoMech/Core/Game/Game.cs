@@ -278,7 +278,8 @@ public sealed class Game : IDisposable
         if (target == null) return false;
         if (target.Dead) return false;
         // Tank invulnerabilities live in the local combat rules, not the sim status list HasStatus reads.
-        if (target is SimPlayer && World.Combat is { Active: true } combat && combat.SurviveLethal())
+        // No other machine knows that buff, so a multiplayer run ignores it rather than desync the room.
+        if (target is SimPlayer && !MultiplayerContext.InRun && World.Combat is { Active: true } combat && combat.SurviveLethal())
         {
             Plugin.Log.Info($"[Invuln] {DescribeName(target)} survived with a tank invulnerability: {cause}");
             return false;
@@ -343,13 +344,17 @@ public sealed class Game : IDisposable
         ui->ShowErrorText($"{DescribeName(target)} died: {cause}", true);
     }
 
-    public void Reset() => Plugin.Framework.Run(() =>
+    public void Reset() => Plugin.Framework.Run(ResetNow);
+
+    // Framework.Run runs on the next frame, which is too late for a caller that starts the next
+    // scenario in this one. Framework thread only.
+    internal void ResetNow()
     {
         if (activeScenario is not null)
             TeleportPlayerToSpawnIfOutsideArena();
         ResetInternal();
         Bgm.Reset();
-    });
+    }
 
     // Pull the player back to the scenario's spawn point only if they're standing
     // outside the arena ring (e.g. knocked out of bounds, or wandered off). No-op
