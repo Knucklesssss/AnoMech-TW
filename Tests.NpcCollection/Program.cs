@@ -17,6 +17,11 @@ try
     Check(collection.Count == 0 && File.ReadAllLines(collection.FilePath).Length == 1, "Clear preserves saved records.");
     collection.Add(entry with { NameId = 3 });
     Check(File.ReadAllLines(collection.FilePath).Length == 2, "New records append without replacing old ones.");
+    collection.Add(entry);
+    var reopened = new NpcCollection(directory);
+    reopened.Add(entry);
+    Check(File.ReadAllLines(collection.FilePath).Length == 2 && reopened.Count == 1,
+        "NPCs already saved are listed again but never appended twice, after Clear or in a new session.");
 
     var blocked = Path.Combine(directory, "blocked");
     File.WriteAllText(blocked, "occupied");
