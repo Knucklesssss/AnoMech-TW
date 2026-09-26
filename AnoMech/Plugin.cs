@@ -261,10 +261,10 @@ public sealed class Plugin : IDalamudPlugin
                 StartSelectedScenario(solo: true);
                 break;
             case "reset":
-                Game.Reset();
+                ResetScenario();
                 break;
             case "leave":
-                Game.Leave();
+                LeaveScenario();
                 break;
             case "net":
                 ToggleMultiplayerUi();
@@ -373,31 +373,69 @@ public sealed class Plugin : IDalamudPlugin
                ? uint.TryParse(text[2..], System.Globalization.NumberStyles.HexNumber, null, out id)
                : uint.TryParse(text, out id);
 
+    // start/reset/leave route like MainWindow's buttons: in a room the host's run and each client's
+    // replay own the scenario, and driving Game directly would desync the rest of the room.
     private void StartSelectedScenario(bool solo)
     {
-        if (!ZoneSession.CanStartHere())
+        if (Multiplayer.IsClientConnected)
         {
-            Log.Warning("Scenarios can only be started from an inn or supported residential interior.");
-            return;
-        }
-        if (ZoneSession.IsPlayerBusy())
-        {
-            Log.Warning("Cannot start a scenario while you are busy (cutscene, NPC event, crafting, etc.).");
+            PrintMarkMessage("已加入多人房間：由房主選擇場景並開始。");
             return;
         }
         if (MainWindow.SelectedScenario is not { } scenario)
-            return;
-        if (solo && !scenario.SupportsSolo)
         {
-            Log.Warning($"{scenario.Name} does not support Solo mode.");
+            PrintMarkMessage("請先在主視窗選擇場景。");
             return;
         }
         if (!solo && MainWindow.SelectedStrat < 0)
         {
-            Log.Warning("No strat selected for the current region.");
+            PrintMarkMessage("這個地區目前還沒有可用的戰術。");
+            return;
+        }
+        if (Multiplayer.HostControlsRun)
+        {
+            if (solo) PrintMarkMessage("多人房間不能單人開始。");
+            else Multiplayer.HostStartRun(scenario, MainWindow.SelectedStrat, MainWindow.SelectedWaymark);
+            return;
+        }
+        if (!ZoneSession.CanStartHere())
+        {
+            PrintMarkMessage("場景只能在旅館、住宅室內、公會工坊或公寓大廳開始。");
+            return;
+        }
+        if (ZoneSession.IsPlayerBusy())
+        {
+            PrintMarkMessage(ZoneSession.BusyDescription());
+            return;
+        }
+        if (solo && !scenario.SupportsSolo)
+        {
+            PrintMarkMessage($"{Core.Game.Game.DisplayName(scenario)} 不支援單人開始。");
             return;
         }
         Game.RunScenario(scenario, MainWindow.SelectedRoleOverride, solo ? null : MainWindow.SelectedStrat, MainWindow.SelectedWaymark);
+    }
+
+    private void ResetScenario()
+    {
+        if (Multiplayer.ClientRunActive)
+        {
+            PrintMarkMessage("多人場景進行中，由房主控制重置。");
+            return;
+        }
+        if (Multiplayer.HostControlsRun) Multiplayer.HostStopRun();
+        Game.Reset();
+    }
+
+    private void LeaveScenario()
+    {
+        if (Multiplayer.ClientRunActive)
+        {
+            PrintMarkMessage("多人場景進行中，由房主控制開始與重置。");
+            return;
+        }
+        if (Multiplayer.HostControlsRun) Multiplayer.HostLeave();
+        Game.Leave();
     }
 
     public void ToggleConfigUi() => ConfigWindow.Toggle();
