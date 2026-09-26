@@ -25,6 +25,13 @@ public sealed class TopP5DeltaSettingsWindow
                 PlayerTetherAssignment.FarInner or
                 PlayerTetherAssignment.FarOuter;
             var bdOnly = closeOnly || Overrides.TetherAssignment == PlayerTetherAssignment.CloseOuter;
+            // TopP5DeltaState still honours these, so a greyed-out value would overrule the tether just picked.
+            if (closeOnly)
+            {
+                Overrides.Monitor = null;
+                Overrides.HelloWorld = HelloWorldOption.Auto;
+            }
+            if (bdOnly) Overrides.BeyondDefence = null;
 
             if (closeOnly) ImGui.BeginDisabled();
             DrawMonitor();

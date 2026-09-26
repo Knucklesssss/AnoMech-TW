@@ -33,5 +33,25 @@ internal static class P2StandardChecks
                 throw new Exception("Standard same-side stacks must swap the southern target only.");
         }
         Console.WriteLine("PASS: P2 Standard same-side swaps for both glitches and all row pairs.");
+
+        foreach (var strat in new TopP2PartySynergyAi[] { new(), new TopP2PartySynergyTuuuflessAi() })
+        foreach (var glitch in new[] { GlitchType.Mid, GlitchType.Far })
+        for (var first = 0; first < 8; first++)
+        for (var second = first + 1; second < 8; second++)
+        {
+            var world = new SimWorld();
+            var state = new TopP2PartySynergyState(world.Party, new() { Glitch = glitch });
+            state.Stacks.List[0] = state.Order[first];
+            state.Stacks.List[1] = state.Order[second];
+            strat.Run(state, world);
+            var stack = MoogleChecks.Move(strat, "StackPositions");
+            for (var pair = 0; pair < 4; pair++)
+            {
+                var distance = Vector2.Distance(stack[(int)state.Order[pair * 2]]!.Value, stack[(int)state.Order[pair * 2 + 1]]!.Value);
+                if (glitch == GlitchType.Far ? distance - .6f <= 34f : distance - .6f <= 21f || distance + .6f >= 26f)
+                    throw new Exception($"{strat.Name} {glitch} stack pair {pair} stands {distance:F2}y apart; movement jitter can break the tether range.");
+            }
+        }
+        Console.WriteLine("PASS: P2 Standard and tuuufless stack pairs keep the glitch tether range under movement jitter.");
     }
 }

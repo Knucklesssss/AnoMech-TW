@@ -112,7 +112,7 @@ public sealed class TopP5DeltaState
             }
         }
 
-        ApplyAiTetherPins(roles, overrides, playerRole);
+        ApplyAiTetherPins(roles, overrides, playerRole, validSlots != null ? Array.IndexOf(roles, playerRole) : -1);
 
         TetherOrder = roles;
         var playerSlot = Array.IndexOf(roles, playerRole);
@@ -206,10 +206,12 @@ public sealed class TopP5DeltaState
     // than shuffled order, so the outcome does not depend on how the deal came out; and a pin takes
     // the lowest free index in its group instead of drawing one, so no random draw depends on who is
     // human. That matters because "who is human" is the one input here that is read per machine.
-    private static void ApplyAiTetherPins(PartyRole[] roles, TopP5DeltaStateOverrides overrides, PartyRole playerRole)
+    private static void ApplyAiTetherPins(PartyRole[] roles, TopP5DeltaStateOverrides overrides, PartyRole playerRole, int reservedIndex)
     {
         if (overrides.AiTetherPins == 0) return;
         var claimed = new bool[roles.Length];
+        // The player's own tether choice (solo only; multiplayer clears it) outranks any pin.
+        if (reservedIndex >= 0) claimed[reservedIndex] = true;
         for (var slot = 0; slot < roles.Length; slot++)
         {
             var role = (PartyRole)slot;

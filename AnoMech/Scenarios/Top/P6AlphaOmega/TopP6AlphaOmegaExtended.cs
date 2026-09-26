@@ -193,6 +193,15 @@ public sealed partial class TopP6AlphaOmegaScenario
     private void ScheduleCosmoMeteorSequence()
     {
         ScheduleCosmoMeteor();
+        // Only a human's press is relayed, so AI presses must be scheduled on every machine; the
+        // host-only AI path that also leads to the meteors never runs on a client.
+        if (!solo)
+        {
+            world.Events.Add(CasterLimitBreakBegin - SecondUnlimitedMeteorAt,
+                () => TopP6FullAi.StartLimitBreak(world, PartyRole.CasterDps, Vector3.Zero));
+            world.Events.Add(RangedLimitBreakBegin - SecondUnlimitedMeteorAt,
+                () => TopP6FullAi.StartLimitBreak(world, PartyRole.PhysRangedDps, new(0f, 0f, 10f)));
+        }
         ScheduleMagicNumber(
             FirstMagicNumberAt - SecondUnlimitedAt - SecondUnlimitedMeteorAt,
             FirstMagicNumberStatusAt - SecondUnlimitedAt - SecondUnlimitedMeteorAt,

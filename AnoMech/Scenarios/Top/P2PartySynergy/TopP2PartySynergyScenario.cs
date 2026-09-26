@@ -50,7 +50,7 @@ public sealed class TopP2PartySynergyScenario : IScenario
         Run_Omega_4000A40A_0();
         Run_Omega_4000A409_0();
         Run_Omega_4000A405();
-        Run_Omega_M_4000A40B_3();
+        Run_Omega_M_4000A40B_3(solo);
         Run_InstanceEvents();
         Run_PlayerTethers(solo);
         Run_PlayerLockons(solo);
@@ -271,7 +271,7 @@ public sealed class TopP2PartySynergyScenario : IScenario
         }
     }
 
-    private void Run_Omega_M_4000A40B_3()
+    private void Run_Omega_M_4000A40B_3(bool solo)
     {
         for(int i = 0; i < 2; i++)
         {
@@ -279,7 +279,7 @@ public sealed class TopP2PartySynergyScenario : IScenario
             if (state.Stacks.Get(i) is not {} character) continue;
             world.Events.Add(33.21f, () => omega_M_4000A40B_3 = world.SpawnEnemy(new EnemySpawnConfig(BNpcBaseId: BNpcBaseId.OmegaHelper, NameId: BNpcNameId.OmegaM, Level: 1, Targetable: false, EnemyList: EnemyListMode.Never, IsVisible: false, Placement: new Placement(new Vector3(0.000f, -0.000f, 0.000f), -0.000f))));
             world.Events.Add(33.25f, () => omega_M_4000A40B_3?.Cast(ActionId.Spotlight, castSeconds: 0f, targetId: character.GameObjectId));
-            world.Events.Add(33.25f, () => damage.Resolve(character, ActionId.Spotlight, [DamageType.Magic], [(StatusId.MagicVulnerabilityUp, 1.96f)], stackMinTargets: 4));
+            world.Events.Add(33.25f, () => damage.Resolve(character, ActionId.Spotlight, [DamageType.Magic], [(StatusId.MagicVulnerabilityUp, 1.96f)], stackMinTargets: solo ? 1 : 4));
         }
     }
 }

@@ -25,6 +25,8 @@ internal static class DeltaSettingsChecks
                 throw new Exception($"Delta {label}: {role} assigned slot {slot}, expected {string.Join(',', slots)}");
         }
         AiTetherPinLabelsMatchTheirGroups();
+        GreyedOutRowsDoNotOverrideTheTether();
+        AiPinsLeaveThePlayersChosenTether();
         Console.WriteLine("PASS: Delta six tether UI choices assign correct near/far and inner/outer slots for all eight roles, and AI pin labels match their groups");
     }
 
@@ -50,6 +52,43 @@ internal static class DeltaSettingsChecks
             var slot = state.TetherOrder.ToList().IndexOf(role);
             if (!slots.Contains(slot))
                 throw new Exception($"Delta AI pin {label}: {role} assigned slot {slot}, expected {string.Join(',', slots)}");
+        }
+    }
+
+    // Monitor / Hello World grey out on a 近 tether and Beyond Defence on 近 or 遠-外; a value set before
+    // the row greyed out must not keep overriding the tether the player then picked.
+    private static void GreyedOutRowsDoNotOverrideTheTether()
+    {
+        (string label, int[] slots, Action<TopP5DeltaStateOverrides> earlier)[] cases =
+        [
+            ("近-任意##tether", [4, 5, 6, 7], o => o.Monitor = true),
+            ("近-外##tether", [6, 7], o => o.HelloWorld = HelloWorldOption.Near),
+            ("遠-外##tether", [2, 3], o => o.BeyondDefence = true),
+        ];
+        foreach (var (label, slots, earlier) in cases)
+        foreach (var role in Enum.GetValues<PartyRole>())
+        for (var repeat = 0; repeat < 20; repeat++)
+        {
+            var settings = new TopP5DeltaSettingsWindow();
+            earlier(settings.Overrides);
+            ImGui.ClickLabel = label;
+            settings.Draw();
+            var slot = new TopP5DeltaState(settings.Overrides, role).TetherOrder.ToList().IndexOf(role);
+            if (!slots.Contains(slot))
+                throw new Exception($"Delta {label} with a greyed-out setting: {role} assigned slot {slot}, expected {string.Join(',', slots)}");
+        }
+    }
+
+    private static void AiPinsLeaveThePlayersChosenTether()
+    {
+        for (var repeat = 0; repeat < 20; repeat++)
+        {
+            var overrides = new TopP5DeltaStateOverrides { TetherAssignment = PlayerTetherAssignment.CloseInner };
+            overrides.SetAiTether(PartyRole.MainTank, AiTetherGroup.CloseInner);
+            overrides.SetAiTether(PartyRole.OffTank, AiTetherGroup.CloseInner);
+            var slot = new TopP5DeltaState(overrides, PartyRole.CasterDps).TetherOrder.ToList().IndexOf(PartyRole.CasterDps);
+            if (slot is not (0 or 1))
+                throw new Exception($"Delta AI pins moved the player out of the chosen 遠-內 tether (slot {slot}).");
         }
     }
 }

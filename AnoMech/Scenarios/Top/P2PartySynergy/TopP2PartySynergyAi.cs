@@ -95,7 +95,14 @@ public class TopP2PartySynergyAi : IScenarioAi<TopP2PartySynergyState>
                      )
                      .Assignments(state.Order.List)
                      .ApplySwaps(SwapForCongaOrder, GlitchSwap, AdjustForStacks)
-                     .ApplyPositions(AdjustKbForFarGlitch, state.NewNorthB.Apply);
+                     .ApplyPositions(AdjustKbForFarGlitch, SpreadMidStacks, state.NewNorthB.Apply);
+    }
+
+    // At 15y the rotated Mid stacks leave each tether pair 21.2y apart, so movement jitter alone
+    // could pull a pair under the 21y minimum.
+    private void SpreadMidStacks(IAiPositions move)
+    {
+        if (state.Glitch == GlitchType.Mid) move.Multiply(15.8f / 15f);
     }
 
 

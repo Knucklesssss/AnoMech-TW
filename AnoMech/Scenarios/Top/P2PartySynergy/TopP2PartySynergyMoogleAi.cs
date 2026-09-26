@@ -37,9 +37,6 @@ public sealed class TopP2PartySynergyMoogleAi : TopP2PartySynergyAi
         roles.ByPosition(south, state.Glitch == GlitchType.Far ? 7 - south : south ^ 1);
     }
 
-    protected override IPositionStep StackPositions() => base.StackPositions()
-        .ApplyPositions(p => { if (state.Glitch == GlitchType.Mid) p.Multiply(15.8f / 15f); });
-
     protected override IPositionStep KnockbackPositions() => base.KnockbackPositions()
         .ApplyPositions(p => { if (state.Glitch == GlitchType.Mid) p.Multiply(2.8f / 2f); });
 }

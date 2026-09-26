@@ -110,14 +110,9 @@ public sealed class TopP6FullAi(bool moogle = false) : IScenarioAi<bool>
 
         // D4 aims at the arena center from its spread position. Keep it stationary
         // until its job's real cast completes, not the log's slidecast time.
-        var casterLbAt = meteorOffset + CasterLimitBreakBegin - SecondUnlimitedMeteorAt;
         var rangedLbAt = meteorOffset + RangedLimitBreakBegin - SecondUnlimitedMeteorAt;
         Move(ai, world, rangedLbAt - 1.1f,
             () => AiMove.Single((int)PartyRole.PhysRangedDps, new(0f, -19f)).NaturalOrder());
-        world.Events.Add(casterLbAt,
-            () => StartLimitBreak(world, PartyRole.CasterDps, Vector3.Zero));
-        world.Events.Add(rangedLbAt,
-            () => StartLimitBreak(world, PartyRole.PhysRangedDps, new(0f, 0f, 10f)));
     }
 
     internal static void RunMeteorFlares(

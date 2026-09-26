@@ -763,7 +763,7 @@ public unsafe class UltimatePredationScenario : IScenario
         BombBoulder(54.65f, 55.34f, 57.25f, 60.82f, 61.04f, 62.29f, boulderPositions[1]);
         BombBoulder(56.75f, 57.25f, 59.24f, 62.74f, 62.99f, 64.17f, boulderPositions[2]);
         BombBoulder(58.73f, 59.24f, 61.29f, 64.89f, 65.14f, 66.39f, boulderPositions[3]);
-        BombBoulder(60.62f, 61.29f, 63.24f, 66.87f, 67.11f, 66.39f, boulderPositions[4]);
+        BombBoulder(60.62f, 61.29f, 63.24f, 66.87f, 67.11f, 68.36f, boulderPositions[4]);
         BombBoulder(62.74f, 63.24f, 65.39f, 68.86f, 69.11f, 70.26f, boulderPositions[5]);
 
         world.Events.Add(54.45f, () =>

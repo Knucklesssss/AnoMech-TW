@@ -43,6 +43,13 @@ public sealed class TopP5DeltaScenario : IScenario
     {
         world = worldParam;
         party = worldParam.Party;
+        // One instance serves every run and Tick walks these from the first frame: an aborted
+        // run's tethers point at despawned doppels and would fail (wiping the new party) at t=0.
+        tethersShort = [];
+        tethersLong = [];
+        pilePitchPosition = null;
+        nearSolver = null;
+        farSolver = null;
         state = new TopP5DeltaState(MultiplayerOverrides.Resolve(settingsWindow.Overrides), party.PlayerRole);
         ScenarioAiRunner.Run(AiStrats, selectedAi, state, world);
         topUtils = new TopUtils(world);
